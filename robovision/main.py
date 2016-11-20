@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from visualization import Visualizer
 from image_recognition import ImageRecognizer, ImageRecognition
 from grabber import PanoramaGrabber
+from remoterf import RemoteRF
 
 # Get Gevent websocket patched for Python3 here:
 # https://bitbucket.org/noppo/gevent-websocket/
@@ -48,7 +49,8 @@ sockets = Sockets(app)
 grabber = PanoramaGrabber() # config read from ~/.robovision/grabber.conf
 image_recognizer = ImageRecognizer(grabber)
 gameplay = Gameplay(image_recognizer)
-visualizer = Visualizer(image_recognizer, framedrop=4)
+rf = RemoteRF(gameplay, "/dev/ttyACM0")
+visualizer = Visualizer(image_recognizer, framedrop=1)
 recorder = Recorder(grabber)
 
 def generator():
@@ -178,7 +180,7 @@ def main():
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
-    for facility in "grabber", "recognition", "cli", "flask", "arduino", "gameplay", "threading":
+    for facility in "grabber", "recognition", "cli", "flask", "arduino", "gameplay", "threading", "recorder":
         logging.getLogger(facility).addHandler(handler)
         logging.getLogger(facility).addHandler(ws_handler)
         logging.getLogger(facility).setLevel(logging.DEBUG)
@@ -204,7 +206,7 @@ def main():
     grabber.start()
     recorder.start()
     visualizer.start()
-
+    rf.start()
 
     # Register threads for monitoring
     from managed_threading import ThreadManager
@@ -214,7 +216,7 @@ def main():
     manager.register(grabber)
     manager.register(visualizer)
     manager.register(image_recognizer)
-    #manager.start()
+#    manager.start()
 
     # Enable some threads
     image_recognizer.enable()

@@ -4,8 +4,58 @@ import os
 from managed_threading import ManagedThread
 
 class Visualizer(ManagedThread):
+
     def step(self, r, grabber):
-        frame = np.rot90(cv2.cvtColor(r.frame.reshape((4320, 640, 2)), cv2.COLOR_YUV2BGR_YUYV), 3) # Approx 2ms
+        frame = r.frame
+        frame = np.rot90(cv2.cvtColor(frame.reshape((4320, 640, 2)), cv2.COLOR_YUV2BGR_YUYV), 3).copy() # Approx 2ms
+
+        """
+#        frame = frame[2160-1500:2160+1500]
+
+
+        if r.goal_yellow:
+            x = r.deg_to_x(r.goal_yellow.angle_deg)
+            cv2.line(frame, (x,0), (x,r.GOAL_BOTTOM-120), (255,255,255), 3)
+            cv2.putText(frame, "%.1fdeg" % r.goal_yellow.angle_deg, (x, r.GOAL_BOTTOM-80), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+            cv2.putText(frame, "%.1fm" % r.goal_yellow.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+            for rect in r.goal_yellow_rect:
+                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
+
+        if r.goal_blue:
+            x = r.deg_to_x(r.goal_blue.angle_deg)
+            cv2.line(frame, (x,0), (x,r.GOAL_BOTTOM-120), (255,255,255), 3)
+            cv2.putText(frame, "%.1fdeg" % r.goal_blue.angle_deg, (x, r.GOAL_BOTTOM-80), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+            cv2.putText(frame, "%.1fm" % r.goal_blue.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+            for rect in r.goal_blue_rect:
+                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
+
+        index = 0
+        for relative, absolute, x, y, radius in r.balls:
+
+            cv2.circle(frame, (x,y), radius, (255,255,255) if index else (0,0,255), 3)
+            if index == 0:
+                x = r.deg_to_x(relative.angle_deg)
+                cv2.putText(frame, "%.1fdeg" % relative.angle_deg, (x + 20, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,192,255), 4)
+                cv2.putText(frame, "%.1fm" % relative.dist, (x + 20, y + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,192,255), 4)
+
+            index += 1
+
+
+
+        scope = 1500
+#        frame = frame[:,frame.shape[1]-scope:frame.shape[1]+scope]
+        frame = frame[:,660:3660]
+
+#        frame = np.vstack([frame[:,-240+1080:1080+2160+240],
+#            np.hstack([frame[:,240:1080], frame[:,1080+2160:-240]])])
+
+
+        ret, jpeg = cv2.imencode('.jpg', frame, (cv2.IMWRITE_JPEG_QUALITY, 50))
+        buf = jpeg.tostring()
+        self.produce(buf)
+
+        return
+        """
 
         field_mask = np.rot90(np.repeat(r.field_mask, 2, axis=1), 3)
         goal_blue_mask = np.rot90(np.repeat(r.goal_blue_mask, 2, axis=1), 3)
@@ -13,6 +63,8 @@ class Visualizer(ManagedThread):
         field_cutout = cv2.bitwise_and(frame, frame, mask=field_mask)
         cv2.line(field_cutout, (0,0), (5000,0), (255,255,255), 2)
         cv2.putText(field_cutout, "field detection", (80, field_cutout.shape[0] >> 1), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+
+
 
 
         # Visualize yellow goal
@@ -65,11 +117,11 @@ class Visualizer(ManagedThread):
 
         def left_top(args):
             y,x  = args
-            return x-4, y*2-4
+            return 4320-x-4, y*2-4
 
         def right_bottom(args):
             y,x = args
-            return x+4, y*2+4
+            return 4320-x+4, y*2+4
 
         cv2.putText(balls_cutout, "Got it!" if r.ball_grabbed else "Lost!", (2212, 500), cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),1)
 

@@ -70,7 +70,7 @@ class Arduino(Thread):
             assert j >= -1.0 and j <= 1.0
         speed = [j*self.factor for j in speed]
         if self.speed != speed:
-            logger.debug("Setting motor speeds: %s %s %s", *speed)
+            #logger.debug("Setting motor speeds: %s %s %s", *speed)
             self.speed = speed
             self.changed.set()
 

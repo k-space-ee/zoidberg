@@ -75,7 +75,7 @@ class Grabber(Thread):
         self.daemon = True
         self.running = True # Whether thread is running
         self.alive = False # Whether frames are being captured
-        self.vd = None # Video capture descriptor
+        self.vd = 0 # Video capture descriptor
         self.latencies = deque(maxlen=10)
         self.timestamp = time()
         self.frame_count = 0
@@ -99,11 +99,11 @@ class Grabber(Thread):
 
     def open(self):
         logger.info("Opening %s requesting %d fps", self.path, self.fps)
-        self.vd = open(os.path.realpath(self.path), 'rb+', buffering=0)
+        vd = open(os.path.realpath(self.path), 'rb+', buffering=0)
 
         # Query camera capabilities
         cp = v4l2_capability()
-        fcntl.ioctl(self.vd, VIDIOC_QUERYCAP, cp)
+        fcntl.ioctl(vd, VIDIOC_QUERYCAP, cp)
         self.driver = "".join((chr(c) for c in cp.driver if c))
 
         if False:
@@ -112,38 +112,51 @@ class Grabber(Thread):
                 ctrl = v4l2_control()
                 ctrl.id = V4L2_CID_SATURATION
                 ctrl.value = self.saturation
-                fcntl.ioctl(self.vd, VIDIOC_S_CTRL, ctrl)
+                fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
 
+        if self.exposure is not None:
+            logger.info("Setting exposure for %s to %d", self.path, self.exposure)
+            # Disable auto exposure
+            ctrl = v4l2_control()
+            ctrl.id = V4L2_CID_EXPOSURE_AUTO
+            ctrl.value = V4L2_EXPOSURE_MANUAL
+            fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
 
-            # Disable autogain and set gain manually
-            if self.exposure is not None:
-                logger.info("Setting exposure for %s to %d", self.path, self.exposure)
-                ctrl = v4l2_control()
-                ctrl.id = V4L2_CID_EXPOSURE
-                ctrl.value = self.exposure
-                fcntl.ioctl(self.vd, VIDIOC_S_CTRL, ctrl)
+            # Set exposure manually
+            ctrl = v4l2_control()
+            ctrl.id = V4L2_CID_EXPOSURE
+            ctrl.value = self.exposure
+            fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
 
-            if self.gain is not None:
-                # Disable autogain
-                logger.info("Setting gain for %s to %d", self.path, self.gain)
-                ctrl = v4l2_control()
-                ctrl.id = V4L2_CID_AUTOGAIN
-                ctrl.value = 0
-                fcntl.ioctl(self.vd, VIDIOC_S_CTRL, ctrl)
+        else:
+            # Enable auto exposure
+            logger.info("Setting auto exposure for %s", self.path)
+            ctrl = v4l2_control()
+            ctrl.id = V4L2_CID_EXPOSURE_AUTO
+            ctrl.value = V4L2_EXPOSURE_AUTO
+            fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
 
-                # Set gain manually
-                ctrl = v4l2_control()
-                ctrl.id = V4L2_CID_GAIN
-                ctrl.value = self.gain
-                fcntl.ioctl(self.vd, VIDIOC_S_CTRL, ctrl)
+        if self.gain is not None:
+            # Disable autogain
+            logger.info("Setting gain for %s to %d", self.path, self.gain)
+            ctrl = v4l2_control()
+            ctrl.id = V4L2_CID_AUTOGAIN
+            ctrl.value = 0
+            fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
 
-            else:
-                # Enable autogain
-                logger.info("Setting autogain for %s", self.path)
-                ctrl = v4l2_control()
-                ctrl.id = V4L2_CID_AUTOGAIN
-                ctrl.value = 1
-                fcntl.ioctl(self.vd, VIDIOC_S_CTRL, ctrl)
+            # Set gain manually
+            ctrl = v4l2_control()
+            ctrl.id = V4L2_CID_GAIN
+            ctrl.value = self.gain
+            fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
+
+        else:
+            # Enable autogain
+            logger.info("Setting autogain for %s", self.path)
+            ctrl = v4l2_control()
+            ctrl.id = V4L2_CID_AUTOGAIN
+            ctrl.value = 1
+            fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
 
 
         if self.fps is not None:
@@ -151,17 +164,17 @@ class Grabber(Thread):
             parm = v4l2_streamparm()
             parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
             parm.parm.capture.capability = V4L2_CAP_TIMEPERFRAME
-            fcntl.ioctl(self.vd, VIDIOC_G_PARM, parm) # get current camera settings
+            fcntl.ioctl(vd, VIDIOC_G_PARM, parm) # get current camera settings
             parm.parm.capture.timeperframe.numerator = 1
             parm.parm.capture.timeperframe.denominator = self.fps
-            fcntl.ioctl(self.vd, VIDIOC_S_PARM, parm) # change camera capture settings
+            fcntl.ioctl(vd, VIDIOC_S_PARM, parm) # change camera capture settings
 
         # Initalize mmap with multiple buffers
         req = v4l2_requestbuffers()
         req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
         req.memory = V4L2_MEMORY_MMAP
         req.count = 4  # nr of buffer frames
-        fcntl.ioctl(self.vd, VIDIOC_REQBUFS, req)
+        fcntl.ioctl(vd, VIDIOC_REQBUFS, req)
         self.buffers = []
 
         # Setup buffers
@@ -170,20 +183,21 @@ class Grabber(Thread):
             buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
             buf.memory = V4L2_MEMORY_MMAP
             buf.index = i
-            fcntl.ioctl(self.vd, VIDIOC_QUERYBUF, buf)
-            mm = mmap.mmap(self.vd.fileno(), buf.length, mmap.MAP_SHARED, mmap.PROT_READ | mmap.PROT_WRITE, offset=buf.m.offset)
+            fcntl.ioctl(vd, VIDIOC_QUERYBUF, buf)
+            mm = mmap.mmap(vd.fileno(), buf.length, mmap.MAP_SHARED, mmap.PROT_READ | mmap.PROT_WRITE, offset=buf.m.offset)
             self.buffers.append(mm)
-            fcntl.ioctl(self.vd, VIDIOC_QBUF, buf)
+            fcntl.ioctl(vd, VIDIOC_QBUF, buf)
 
         # Start streaming
-        fcntl.ioctl(self.vd, VIDIOC_STREAMON, v4l2_buf_type(V4L2_BUF_TYPE_VIDEO_CAPTURE))
+        fcntl.ioctl(vd, VIDIOC_STREAMON, v4l2_buf_type(V4L2_BUF_TYPE_VIDEO_CAPTURE))
 
         # Wait cameras to get ready
         t0 = time()
         max_t = 1
         ready_to_read, ready_to_write, in_error = ([], [], [])
         while len(ready_to_read) == 0 and time() - t0 < max_t:
-            ready_to_read, ready_to_write, in_error = select.select([self.vd], [], [], max_t)
+            ready_to_read, ready_to_write, in_error = select.select([vd], [], [], max_t)
+        return vd
 
     def run(self):
         while self.running:
@@ -196,7 +210,12 @@ class Grabber(Thread):
                     self.wake.wait()
                     self.wake.clear()
                     continue
-                self.open()
+                try:
+                    self.vd = self.open()
+                except OSError:
+                    logger.info("Failed to open: %s", self.path)
+                    sleep(1)
+                    raise
 
             # get image from the driver queue
             buf = v4l2_buffer()
@@ -245,7 +264,7 @@ class Grabber(Thread):
         logger.info("%s dying because %s", self.path, reason)
         if self.vd:
             self.vd.close()
-        self.vd = None
+        self.vd = 0
         self.alive = False
         self.error_count += 1
         self.frame = None
@@ -257,7 +276,7 @@ class Grabber(Thread):
         self.wake.set()
 
     def disable(self):
-        self.vd = None
+        self.vd = 0
         self.frame = None
 
 class PanoramaGrabber(Thread):

@@ -62,8 +62,8 @@ class ImageRecognition(object):
     GOAL_BOTTOM = 200
 
     # Y U Y V
-    FIELD_LOWER = 32, 0, 32, 0
-    FIELD_UPPER = 255, 140, 255, 150
+    FIELD_LOWER = 50, 0, 50, 0
+    FIELD_UPPER = 255, 150, 255, 150
 
     YELLOW_LOWER = 128, 50, 128, 150
     YELLOW_UPPER = 255, 100, 255, 200
@@ -73,11 +73,11 @@ class ImageRecognition(object):
     BLUE_UPPER = 255, 255, 255, 128
 
 
-    BALL_LOWER = 64, 0, 64, 220
-    BALL_UPPER = 255, 96, 255, 255
+    BALL_LOWER = 64, 0, 64, 200
+    BALL_UPPER = 255, 100, 255, 255
 
 
-    KICKER_OFFSET = 0 # -50
+    KICKER_OFFSET = 0
     # Ball search scope vertically
     BALLS_BOTTOM = 300
 
@@ -218,19 +218,19 @@ class ImageRecognition(object):
         assert mask.shape == (4320, 320)
         mask = cv2.erode(mask, None, iterations=4)
 
-        slices = [mask[:480,:]]
+        slices = []
 
         # iterate over cameras because otherwise convex hull wraps around distorted field edges
-        for j in range(1,9):
-            sliced = mask[j*480-20:(j+1)*480,:]
+        for j in range(0,9):
+            sliced = mask[j*480:(j+1)*480,:]
             _, contours, hierarchy = cv2.findContours(sliced, 1, 5)
-            sliced = mask[j*480-20:(j+1)*480,:]
+            sliced = mask[j*480:(j+1)*480,:]
             contours = [c for c in contours if cv2.contourArea(c) > 30]
             if contours:
                 merged = np.vstack(contours) # merge contours
                 hull = cv2.convexHull(merged) # get convex hull poly
                 cv2.drawContours(sliced, [hull],0, 9, -1) # Fill in mask with convex hull
-            slices.append(sliced[20:,:])
+            slices.append(sliced)
 
         mask = np.vstack(slices)
         assert mask.shape == (4320, 320), "got instead %s" % repr(mask.shape)
@@ -296,7 +296,9 @@ class ImageRecognition(object):
                 absolute = None
             ball_coords = relative, absolute, int(x), int(y), int(radius)
             balls.add(ball_coords)
-        return mask, sorted(balls, key=lambda b:b[0].dist * abs( b[0].angle))
+        #TODO: better alghoritm to sort balls
+        #return mask, sorted(balls, key=lambda b:b[0].dist * abs( b[0].angle / 180) )
+        return mask, sorted(balls, key=lambda b:b[0].dist)
 
 
     def dist_to_y(self, d):
