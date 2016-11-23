@@ -49,8 +49,9 @@ CFLAGS =	-Wall \
 			-mmcu=$(BOARD) \
 			-DF_CPU=16000000UL \
 			-DGIT_DESCR=\"$(shell git describe --abbrev=6 --dirty --always --tags --long)\" \
+			-DDEBUG=$(DEBUG) \
 			-ffreestanding \
-			-std=c11
+			-std=gnu11
 
 # Linker flags
 LDFLAGS =	-mmcu=$(BOARD) \

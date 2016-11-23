@@ -6,6 +6,11 @@
 #include <avr/interrupt.h>
 //#include "../lib/andygock_avr-uart/uart.h"
 
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+#define debug_print(...) \
+            do { if (DEBUG) fprintf(stderr, ##__VA_ARGS__); } while (0)
 
 #ifndef F_CPU
 #define F_CPU 16000000UL
@@ -16,6 +21,12 @@
 #endif
 #include <util/setbaud.h>
 
+#define RECV_OK_ERR_SETUP DDRA |= _BV(DDA1) | _BV(DDA0)
+#define RECV_OK_ON PORTA |= _BV(PORTA0)
+#define RECV_OK_OFF PORTA &= ~_BV(PORTA0)
+#define RECV_OK_TOGGLE PORTA ^= _BV(PORTA0)
+#define RECV_ERR_ON PORTA |= _BV(PORTA1)
+#define RECV_ERR_OFF PORTA &= ~_BV(PORTA1)
 
 void uart0_init(void)
 {
@@ -103,12 +114,14 @@ FILE uart0_out = FDEV_SETUP_STREAM(uart0_putc, NULL, _FDEV_SETUP_WRITE);
 FILE uart3_out = FDEV_SETUP_STREAM(uart3_putc, NULL, _FDEV_SETUP_WRITE);
 
 static inline uint8_t read_uart(uint8_t byte_count) {
+    static uint8_t checksum;
     //return byte_count;
     //char bin[10] = {0};
     if (bit_is_set(UCSR0A, RXC0)) {
+        RECV_OK_TOGGLE;
         uint8_t data = UDR0;
         (void) data;
-        fprintf(stderr, "recv, %d\n", byte_count);
+        //fprintf(stderr, "recv, %d\n", byte_count);
         //uart0_putc(' ', stdout);
         //itoa(byte_count, bin, 10);
         //puts(bin);
@@ -120,29 +133,41 @@ static inline uint8_t read_uart(uint8_t byte_count) {
 
         // find start of a packet with two 0xAA bytes
         if (data == 0xAA && byte_count == 0) {
-                fprintf(stderr, "first start\n");
+                debug_print("first start\n");
                 return 1;
         } else if (data == 0xAA && byte_count == 1) {
-                fprintf(stderr, "second start\n");
+                debug_print("second start\n");
                 return 2;
         }
 
         //uart0_puts("reading data\n\r");
         switch (byte_count) {
             case 2:
-                fprintf(stderr, "data1, %#02x\n", data);
+                debug_print("data1, %#02x\n", data);
                 OCR1AL = data;
+                checksum += data;
                 break;
             case 3:
-                fprintf(stderr, "data2, %#02x\n", data);
+                debug_print("data2, %#02x\n", data);
                 OCR2B = data;
+                checksum += data;
                 break;
             case 4:
-                fprintf(stderr, "data3, %#02x\n", data);
+                debug_print("data3, %#02x\n", data);
                 OCR2A = data;
+                checksum += data;
+                break;
+            case 5:
+                debug_print("chksum, %#02x %#02x\n", data, checksum);
+                checksum = 0;
+                RECV_ERR_OFF;
+                RECV_OK_ON;
                 return 0; // end of packet
             default:
-                fprintf(stderr, "reset\n");
+                RECV_ERR_ON;
+                RECV_OK_OFF;
+                checksum = 0;
+                debug_print("reset\n");
                 // something went wrong, end of packet and try to resync
                 return 0;
         }
@@ -154,12 +179,16 @@ static inline uint8_t read_uart(uint8_t byte_count) {
 
 int main (void)
 {
+    RECV_OK_ERR_SETUP;
+    RECV_OK_ON;
+    RECV_ERR_OFF;
     init_pwm();
     uart0_init();
     uart3_init();
     stdout = stdin = &uart0_out;
     stderr = &uart3_out;
     fprintf(stderr, "Start\n");
+    debug_print("Debug mode\n");
     //uart0_init(UART_BAUD_SELECT(BAUDRATE, F_CPU));
     //sei();
     //DDRF = 0;
