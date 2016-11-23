@@ -25,7 +25,7 @@ def slow_write(data):
         byte = struct.pack("B", byte)
         ser.write(byte)
         #print("wrote", byte)
-        sleep(0.06)
+        sleep(0.0)
 
 
 def write_packet(packet):
@@ -43,12 +43,13 @@ def write_packet(packet):
     return final
 
 def speed(m1, m2, m3):
-    write_packet((m1&0xff, m2&0xff, m3&0xff))
+    write_packet((int(m1)&0xff, int(m2)&0xff, int(m3)&0xff))
 
-speed(127, 127, 127)
-speed(-128, -128, -128)
-speed(0, 0, 0)
-
+s = int(64)
+#speed(127, 127, 127)
+#speed(0, 127, 0)
+#speed(s, s, s)
+#exit(0)
 while True:
     #slow_write(b"\xaa\xaa\xff\xff\xff")
     #sleep(1)
@@ -58,10 +59,14 @@ while True:
     #    data_str = ser.read(ser.inWaiting())
     #    print(' '.join('{:02x}'.format(x) for x in data_str))
     #continue
-    for x in range(0, 0xff, 10):
+    step = 1
+    l = list(range(-128, 127, step))
+    l.extend(list(range(127, -128, -step)))
+
+    for x in l:
         print(">", "{:02x}".format(x), end=': ')
         speed(x, x, x)
-        sleep(0.0)
+        sleep(0.00)
         if ser.inWaiting() > 0:
             data_str = ser.read(ser.inWaiting())
             print(" <", ' '.join('{:02x}'.format(x) for x in data_str))

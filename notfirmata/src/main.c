@@ -92,13 +92,11 @@ static inline void set_pwm(uint8_t m1, uint8_t m2, uint8_t m3) {
 }
 
 static void set_motor1(uint8_t pwm, bool fwd, bool rev) {
-    debug_print("m1, %d, %d, %d ", pwm, fwd, rev);
-    if (pwm == 0) {
-        TCCR1A &= ~_BV(COM1A1);
-    } else {
-        TCCR1A |= _BV(COM1A1);
-        OCR1A = pwm; // 11
-    }
+    debug_print("m1, %d, %d, %d\n", pwm, fwd, rev);
+
+    TCCR1A |= _BV(COM1A1);
+    OCR1A = 255;
+
     if (fwd) {
         PORTH |= _BV(PORTH5);
     } else {
@@ -109,16 +107,21 @@ static void set_motor1(uint8_t pwm, bool fwd, bool rev) {
     } else {
         PORTE &= ~_BV(PORTE3); // 5
     }
+
+    if (pwm == 0) {
+        TCCR1A &= ~_BV(COM1A1);
+    } else {
+        TCCR1A |= _BV(COM1A1);
+        OCR1A = pwm; // 11
+    }
 }
 
 static void set_motor2(uint8_t pwm, bool fwd, bool rev) {
-    debug_print("m2, %d, %d, %d ", pwm, fwd, rev);
-    if (pwm == 0) {
-        TCCR2A &= ~_BV(COM2B1);
-    } else {
-        TCCR2A |= _BV(COM2B1);
-        OCR2B = pwm; // 9
-    }
+    debug_print("m2, %d, %d, %d\n", pwm, fwd, rev);
+
+    TCCR2A |= _BV(COM2A1);
+    OCR2A = 255;
+
     if (fwd) {
         PORTH |= _BV(PORTH4);
     } else {
@@ -129,17 +132,21 @@ static void set_motor2(uint8_t pwm, bool fwd, bool rev) {
     } else {
         PORTG &= ~_BV(PORTG5); // 4
     }
-}
 
-static void set_motor3(uint8_t pwm, bool fwd, bool rev) {
-    debug_print("m3, %d, %d, %d\n", pwm, fwd, rev);
     if (pwm == 0) {
         TCCR2A &= ~_BV(COM2A1);
     } else {
         TCCR2A |= _BV(COM2A1);
         OCR2A = pwm; // 9
     }
-    OCR2A = pwm; // 10
+}
+
+static void set_motor3(uint8_t pwm, bool fwd, bool rev) {
+    debug_print("m3, %d, %d, %d\n", pwm, fwd, rev);
+
+    TCCR2A |= _BV(COM2B1);
+    OCR2B = 255;
+
     if (fwd) {
         PORTH |= _BV(PORTH3);
     } else {
@@ -150,6 +157,32 @@ static void set_motor3(uint8_t pwm, bool fwd, bool rev) {
     } else {
         PORTE &= ~_BV(PORTE5); // 3
     }
+
+    if (pwm == 0) {
+        TCCR2A &= ~_BV(COM2B1);
+    } else {
+        TCCR2A |= _BV(COM2B1);
+        OCR2B = pwm; // 9
+    }
+}
+
+static uint8_t speed2pwm(int8_t speed) {
+    debug_print("speed2pwm speed: %d, abs: %d, ", speed, abs(speed));
+    uint8_t pwm = 0;
+    if (speed < 0) {
+        debug_print("less 0, ");
+        pwm = (abs(speed)-1)<<1;
+        pwm++;
+    } else if (speed > 0){
+        debug_print("more 0, ");
+        pwm = (speed<<1)+1;
+    } else {
+        debug_print("is 0, ");
+        pwm = 0;
+    }
+    pwm = 255 - pwm;
+    debug_print("pwm: %u\n", pwm);
+    return pwm;
 }
 
 static void set_speed(int8_t m1, int8_t m2, int8_t m3) {
@@ -159,35 +192,9 @@ static void set_speed(int8_t m1, int8_t m2, int8_t m3) {
     set_motor2(255, false, false);
     set_motor3(255, false, false);
 
-    // set
-    debug_print("m1 speed: %d, abs: %d\n", m1, abs(m1));
-    uint8_t m1_pwm = 0;
-    if (m1 < 0) {
-        m1_pwm = (abs(m1)-1)<<1;
-        m1_pwm++;
-    } else if (m1 > 0) {
-        m1_pwm = (m1<<1)+1;
-    }
-
-    uint8_t m2_pwm = 0;
-    if (m2 < 0) {
-        m2_pwm = (abs(m2)-1)<<1;
-        m2_pwm++;
-    } else if (m1 > 0) {
-        m2_pwm = (m2<<1)+1;
-    }
-
-    uint8_t m3_pwm = 0;
-    if (m3 < 0) {
-        m3_pwm = (abs(m3)-1)<<1;
-        m3_pwm++;
-    } else if (m1 > 0) {
-        m3_pwm = (m3<<1)+1;
-    }
-
-    set_motor1(m1_pwm, m1 <= 0 ? 1:0, m1 >= 0 ? 1:0);
-    set_motor2(m2_pwm, m2 <= 0 ? 1:0, m2 >= 0 ? 1:0);
-    set_motor3(m3_pwm, m3 <= 0 ? 1:0, m3 >= 0 ? 1:0);
+    set_motor1(speed2pwm(m1), m1 <= 0 ? 1:0, m1 >= 0 ? 1:0);
+    set_motor2(speed2pwm(m2), m2 <= 0 ? 1:0, m2 >= 0 ? 1:0);
+    set_motor3(speed2pwm(m3), m3 <= 0 ? 1:0, m3 >= 0 ? 1:0);
 }
 
 
