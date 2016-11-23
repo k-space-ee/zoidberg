@@ -66,7 +66,6 @@ AVRDUDEARGS =	-p $(BOARD) \
 				-F \
 				-P $(DEVICE) \
 				-b 115200 \
-				-V \
 				-D
 
 AVRSIZEARGS =	-C \
@@ -96,7 +95,7 @@ install:
 				"\nAlso make sure that ARDUINO env var points to a valid tty device\n\n"; \
 		exit 1;\
 	fi
-	
+
 	$(AVRDUDE) $(AVRDUDEARGS) -U flash:w:$(TARGET)
 
 format:

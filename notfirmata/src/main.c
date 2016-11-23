@@ -1,11 +1,47 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
-#include "../lib/andygock_avr-uart/uart.h"
+//#include "../lib/andygock_avr-uart/uart.h"
 
-#define BAUDRATE 19200
+
+#ifndef F_CPU
+#define F_CPU 16000000UL
+#endif
+
+#ifndef BAUD
+#define BAUD 9600
+#endif
+#include <util/setbaud.h>
+
+
+void uart0_init(void)
+{
+    UBRR0H = UBRRH_VALUE;
+    UBRR0L = UBRRL_VALUE;
+#if USE_2X
+    UCSR0A |= _BV(U2X0);
+#else
+    UCSR0A &= ~(_BV(U2X0));
+#endif
+    UCSR0C = _BV(UCSZ01) | _BV(UCSZ00); /* 8-bit data */
+    UCSR0B = _BV(RXEN0) | _BV(TXEN0);   /* Enable RX and TX */
+}
+
+void uart3_init(void)
+{
+    UBRR3H = UBRRH_VALUE;
+    UBRR3L = UBRRL_VALUE;
+#if USE_2X
+    UCSR3A |= _BV(U2X3);
+#else
+    UCSR3A &= ~(_BV(U2X3));
+#endif
+    UCSR3C = _BV(UCSZ31) | _BV(UCSZ30); /* 8-bit data */
+    UCSR3B = _BV(TXEN3);   /* Enable TX */
+}
 
 static inline void init_pwm() {
     // arduino pins 9(OC2B) and 10(OC2A)
@@ -35,79 +71,119 @@ static inline void init_adc() {
 
 }
 
+int uart0_putc(char c, FILE *stream);
+int uart0_putc(char c, FILE *stream)
+{
+    (void) stream;
+
+    //if (c == '\n') {
+    //    uart0_putc('\r', stream);
+    //}
+
+    loop_until_bit_is_set(UCSR0A, UDRE0);
+    UDR0 = c;
+    return 0;
+}
+
+int uart3_putc(char c, FILE *stream);
+int uart3_putc(char c, FILE *stream)
+{
+    (void) stream;
+
+    if (c == '\n') {
+        uart3_putc('\r', stream);
+    }
+
+    loop_until_bit_is_set(UCSR3A, UDRE3);
+    UDR3 = c;
+    return 0;
+}
+
+FILE uart0_out = FDEV_SETUP_STREAM(uart0_putc, NULL, _FDEV_SETUP_WRITE);
+FILE uart3_out = FDEV_SETUP_STREAM(uart3_putc, NULL, _FDEV_SETUP_WRITE);
+
 static inline uint8_t read_uart(uint8_t byte_count) {
-    char bin[10] = {0};
-    if (uart0_available()) {
-        uart0_putc(' ');
-        uint16_t in = uart0_getc();
-
-        if (bit_is_set(in, UART_NO_DATA)) {
-            return byte_count; // do nothing
-        }
-
-        if (bit_is_set(in, UART_BUFFER_OVERFLOW ||
-                           UART_OVERRUN_ERROR ||
-                           UART_FRAME_ERROR)) {
-            //return 0; // reset reading of the packet
-        }
-
-        uint8_t data = (uint8_t)in;
-        itoa(byte_count, bin, 10);
-        //uart0_puts(bin);
+    //return byte_count;
+    //char bin[10] = {0};
+    if (bit_is_set(UCSR0A, RXC0)) {
+        uint8_t data = UDR0;
+        (void) data;
+        fprintf(stderr, "recv, %d\n", byte_count);
+        //uart0_putc(' ', stdout);
+        //itoa(byte_count, bin, 10);
+        //puts(bin);
         //uart0_putc(' ');
         //uart0_putc('\r');
         //uart0_putc('\n');
-        //uart0_putc(data);
+        //uart0_putc(data, stdout);
+        //return byte_count;
 
         // find start of a packet with two 0xAA bytes
         if (data == 0xAA && byte_count == 0) {
-                //uart0_puts("first start\n\r");
+                fprintf(stderr, "first start\n");
                 return 1;
         } else if (data == 0xAA && byte_count == 1) {
-                //uart0_puts("second start\n\r");
+                fprintf(stderr, "second start\n");
                 return 2;
         }
 
         //uart0_puts("reading data\n\r");
         switch (byte_count) {
             case 2:
-                //uart0_puts("data1\n\r");
+                fprintf(stderr, "data1, %#02x\n", data);
                 OCR1AL = data;
                 break;
             case 3:
-                //uart0_puts("data2\n\r");
+                fprintf(stderr, "data2, %#02x\n", data);
                 OCR2B = data;
                 break;
             case 4:
-                //uart0_puts("data3\n\r");
+                fprintf(stderr, "data3, %#02x\n", data);
                 OCR2A = data;
                 return 0; // end of packet
             default:
-                //uart0_puts("default\n\r");
-                return 0; // something went wrong, end of packet and try to resync
+                fprintf(stderr, "reset\n");
+                // something went wrong, end of packet and try to resync
+                return 0;
         }
         return ++byte_count;
+    } else {
+        return byte_count;
     }
-    return byte_count;
 }
 
 int main (void)
 {
-
     init_pwm();
-    uart0_init(UART_BAUD_SELECT(BAUDRATE, F_CPU));
-    sei();
-    DDRF = 0;
+    uart0_init();
+    uart3_init();
+    stdout = stdin = &uart0_out;
+    stderr = &uart3_out;
+    fprintf(stderr, "Start\n");
+    //uart0_init(UART_BAUD_SELECT(BAUDRATE, F_CPU));
+    //sei();
+    //DDRF = 0;
     uint8_t byte_count = 0;
-
+    //(void) byte_count;
     //char bin[10] = {0};
-    uart0_puts("Start");
-
+    //puts("Start");
+    //_delay_ms(1000);
     while (1) {
+        /*
+        if(bit_is_set(UCSR0A, RXC0)){
+            uint8_t c = UDR0;
+            loop_until_bit_is_set(UCSR0A, UDRE0);
+            UDR0 = c;
+            //putc(c, stderr  );
+            //uart0_putc(UDR0, stdout);
+        }*/
+        //fprintf(stderr, "alive, %d\r", byte_count);
         byte_count = read_uart(byte_count);
 
         //itoa(byte_count, bin, 2);
-        //uart0_puts(bin);
+        //puts(bin);
+        //putc(byte_count, stdout);
+        //_delay_ms(500);
         //uart0_putc('\r');
         //uart0_putc('\n');
         //_delay_ms(1000);
