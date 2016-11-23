@@ -3,7 +3,21 @@ import serial
 from kbhit import KBHit
 from time import sleep
 
-ser = serial.Serial("/dev/ttyACM0", 9600, timeout=3)
+ser = serial.Serial("/dev/ttyACM0", 9600,
+                    bytesize=serial.EIGHTBITS,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    timeout=1,
+                    xonxoff=0,
+                    rtscts=0)
+print("reset arduino")
+ser.setDTR(False)
+sleep(0.022)
+ser.flushInput()
+ser.setDTR(True)
+print("wait for arduino boot to end")
+sleep(1)
+print("Done")
 kb = KBHit()
 
 def slow_write(data):
@@ -11,7 +25,7 @@ def slow_write(data):
         byte = struct.pack("B", byte)
         ser.write(byte)
         #print("wrote", byte)
-        sleep(0.00)
+        sleep(0.1)
 
 
 def write_packet(packet):
@@ -40,7 +54,7 @@ while True:
         print(">", "{:02x}".format(x), end=': ')
         print(' '.join('{:02x}'.format(x) for x in packet), end='')
 
-        sleep(0.0)
+        sleep(0.5)
         if ser.inWaiting() > 0:
             data_str = ser.read(ser.inWaiting())
             print(" <", ' '.join('{:02x}'.format(x) for x in data_str))

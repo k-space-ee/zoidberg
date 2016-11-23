@@ -28,6 +28,8 @@
 #define RECV_ERR_ON PORTA |= _BV(PORTA1)
 #define RECV_ERR_OFF PORTA &= ~_BV(PORTA1)
 
+#define NUM_ELEMS(x)        (sizeof(x) / sizeof((x)[0]))
+
 void uart0_init(void)
 {
     UBRR0H = UBRRH_VALUE;
@@ -113,23 +115,12 @@ int uart3_putc(char c, FILE *stream)
 FILE uart0_out = FDEV_SETUP_STREAM(uart0_putc, NULL, _FDEV_SETUP_WRITE);
 FILE uart3_out = FDEV_SETUP_STREAM(uart3_putc, NULL, _FDEV_SETUP_WRITE);
 
-static inline uint8_t read_uart(uint8_t byte_count) {
+static inline uint8_t read_uart(uint8_t byte_count, uint8_t packet[], uint8_t packet_len) {
     static uint8_t checksum;
-    //return byte_count;
-    //char bin[10] = {0};
     if (bit_is_set(UCSR0A, RXC0)) {
-        RECV_OK_TOGGLE;
         uint8_t data = UDR0;
-        (void) data;
-        //fprintf(stderr, "recv, %d\n", byte_count);
-        //uart0_putc(' ', stdout);
-        //itoa(byte_count, bin, 10);
-        //puts(bin);
-        //uart0_putc(' ');
-        //uart0_putc('\r');
-        //uart0_putc('\n');
-        //uart0_putc(data, stdout);
-        //return byte_count;
+        RECV_OK_TOGGLE;
+        debug_print("byte_count %d\n", byte_count);
 
         // find start of a packet with two 0xAA bytes
         if (data == 0xAA && byte_count == 0) {
@@ -140,41 +131,31 @@ static inline uint8_t read_uart(uint8_t byte_count) {
                 return 2;
         }
 
-        //uart0_puts("reading data\n\r");
-        switch (byte_count) {
-            case 2:
-                debug_print("data1, %#02x\n", data);
-                OCR1AL = data;
-                checksum += data;
-                break;
-            case 3:
-                debug_print("data2, %#02x\n", data);
-                OCR2B = data;
-                checksum += data;
-                break;
-            case 4:
-                debug_print("data3, %#02x\n", data);
-                OCR2A = data;
-                checksum += data;
-                break;
-            case 5:
-                debug_print("chksum, %#02x %#02x\n", data, checksum);
-                checksum = 0;
+        if (byte_count > 1 && byte_count < packet_len +2) {
+            packet[byte_count-2] = data;
+            debug_print("data %u, %#02x\n", byte_count-2, data);
+            checksum += data;
+            return byte_count + 1;
+        } else if (byte_count == packet_len +2){
+            if (checksum == data) {
+                debug_print("checksum OK %#02x\n", checksum);
                 RECV_ERR_OFF;
-                RECV_OK_ON;
-                return 0; // end of packet
-            default:
-                RECV_ERR_ON;
-                RECV_OK_OFF;
                 checksum = 0;
-                debug_print("reset\n");
-                // something went wrong, end of packet and try to resync
+                return byte_count + 1;
+            } else {
+                debug_print("checksum ERR %#02x, %#02x\n", checksum, data);
+                RECV_ERR_ON;
+                checksum = 0;
                 return 0;
+            }
+        } else {
+            debug_print("packet ERR\n");
+            RECV_ERR_ON;
+            checksum = 0;
+            return 0;
         }
-        return ++byte_count;
-    } else {
-        return byte_count;
     }
+    return byte_count;
 }
 
 int main (void)
@@ -189,41 +170,18 @@ int main (void)
     stderr = &uart3_out;
     fprintf(stderr, "Start\n");
     debug_print("Debug mode\n");
-    //uart0_init(UART_BAUD_SELECT(BAUDRATE, F_CPU));
-    //sei();
-    //DDRF = 0;
     uint8_t byte_count = 0;
-    //(void) byte_count;
-    //char bin[10] = {0};
-    //puts("Start");
-    //_delay_ms(1000);
+    uint8_t packet[3] = {0};
+    uint8_t packet_len = NUM_ELEMS(packet);
     while (1) {
-        /*
-        if(bit_is_set(UCSR0A, RXC0)){
-            uint8_t c = UDR0;
-            loop_until_bit_is_set(UCSR0A, UDRE0);
-            UDR0 = c;
-            //putc(c, stderr  );
-            //uart0_putc(UDR0, stdout);
-        }*/
-        //fprintf(stderr, "alive, %d\r", byte_count);
-        byte_count = read_uart(byte_count);
-
-        //itoa(byte_count, bin, 2);
-        //puts(bin);
-        //putc(byte_count, stdout);
-        //_delay_ms(500);
-        //uart0_putc('\r');
-        //uart0_putc('\n');
-        //_delay_ms(1000);
-        //for (uint8_t i = 0; i < 0xff; i++) {
-        //    set_pwm(i, i, i);
-        //    _delay_ms(1);
-        //}
-        //for (uint8_t i = 0xff; i != 0; i--) {
-        //    set_pwm(i, i, i);
-        //    _delay_ms(1);
-        //}
+        byte_count = read_uart(byte_count, packet, packet_len);
+        if (byte_count == packet_len + 3) {
+            debug_print("packet received\n");
+            OCR1AL = packet[0]; // pin 11
+            OCR2B = packet[1]; // pin 9
+            OCR2A = packet[2]; // pin 10
+            byte_count = 0;
+        }
     }
 
 }
