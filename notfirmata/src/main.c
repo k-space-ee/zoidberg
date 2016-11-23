@@ -18,18 +18,27 @@
 #endif
 
 #ifndef BAUD
-#define BAUD 38400
+#define BAUD 9600
 #endif
 #include <util/setbaud.h>
 
 
 // debug leds
+#ifndef __AVR_ATmega328__
 #define RECV_OK_ERR_SETUP DDRA |= _BV(DDA1) | _BV(DDA0)
 #define RECV_OK_ON PORTA |= _BV(PORTA0)
 #define RECV_OK_OFF PORTA &= ~_BV(PORTA0)
 #define RECV_OK_TOGGLE PORTA ^= _BV(PORTA0)
 #define RECV_ERR_ON PORTA |= _BV(PORTA1)
 #define RECV_ERR_OFF PORTA &= ~_BV(PORTA1)
+#else
+#define RECV_OK_ERR_SETUP
+#define RECV_OK_ON
+#define RECV_OK_OFF
+#define RECV_OK_TOGGLE
+#define RECV_ERR_ON
+#define RECV_ERR_OFF
+#endif
 
 void uart0_init(void)
 {
@@ -44,6 +53,7 @@ void uart0_init(void)
     UCSR0B = _BV(RXEN0) | _BV(TXEN0);   /* Enable RX and TX */
 }
 
+#ifndef __AVR_ATmega328__
 void uart3_init(void)
 {
     UBRR3H = UBRRH_VALUE;
@@ -56,8 +66,16 @@ void uart3_init(void)
     UCSR3C = _BV(UCSZ31) | _BV(UCSZ30); /* 8-bit data */
     UCSR3B = _BV(TXEN3);   /* Enable TX */
 }
+#else
+void uart3_init() {
+    return;
+}
+#endif
+
+
 
 static inline void init_pwm() {
+#ifndef __AVR_ATmega328__
     // arduino pins 9(OC2B) and 10(OC2A)
     TCCR2A |= _BV(COM2A1) | _BV(COM2B1) | _BV(WGM21) | _BV(WGM20);
     TCCR2B |= _BV(CS22);  // divide clock by 64
@@ -70,30 +88,20 @@ static inline void init_pwm() {
     DDRB |= _BV(DDB5); // 11
     DDRB |= _BV(DDB4); // 10
     DDRH |= _BV(DDH6); // 9
+#endif
 }
 
 static inline void init_io() {
+#ifndef __AVR_ATmega328__
     DDRH |= _BV(DDH5) | _BV(DDH4) | _BV(DDH3); // pins 8 7 6
     DDRE |= _BV(DDE3) | _BV(DDE5); // pins 5 3
     DDRG |= _BV(DDG5); // pin 4
-}
-
-static inline void init_adc() {
-
-}
-
-static inline void set_pwm(uint8_t m1, uint8_t m2, uint8_t m3) {
-    //11 = m1
-    OCR1AL = m1;
-    //9 = m2
-    OCR2B = m2;
-    //10 = m3
-    OCR2A = m3;
+#endif
 }
 
 static void set_motor1(uint8_t pwm, bool fwd, bool rev) {
     debug_print("m1, %d, %d, %d\n", pwm, fwd, rev);
-
+#ifndef __AVR_ATmega328__
     TCCR1A |= _BV(COM1A1);
     OCR1A = 255;
 
@@ -114,11 +122,12 @@ static void set_motor1(uint8_t pwm, bool fwd, bool rev) {
         TCCR1A |= _BV(COM1A1);
         OCR1A = pwm; // 11
     }
+#endif
 }
 
 static void set_motor2(uint8_t pwm, bool fwd, bool rev) {
     debug_print("m2, %d, %d, %d\n", pwm, fwd, rev);
-
+#ifndef __AVR_ATmega328__
     TCCR2A |= _BV(COM2A1);
     OCR2A = 255;
 
@@ -139,11 +148,12 @@ static void set_motor2(uint8_t pwm, bool fwd, bool rev) {
         TCCR2A |= _BV(COM2A1);
         OCR2A = pwm; // 9
     }
+#endif
 }
 
 static void set_motor3(uint8_t pwm, bool fwd, bool rev) {
     debug_print("m3, %d, %d, %d\n", pwm, fwd, rev);
-
+#ifndef __AVR_ATmega328__
     TCCR2A |= _BV(COM2B1);
     OCR2B = 255;
 
@@ -164,6 +174,7 @@ static void set_motor3(uint8_t pwm, bool fwd, bool rev) {
         TCCR2A |= _BV(COM2B1);
         OCR2B = pwm; // 9
     }
+#endif
 }
 
 static uint8_t speed2pwm(int8_t speed) {
@@ -223,9 +234,12 @@ int uart3_putc(char c, FILE *stream)
     if (c == '\n') {
         uart3_putc('\r', stream);
     }
-
+#ifndef __AVR_ATmega328__
     loop_until_bit_is_set(UCSR3A, UDRE3);
     UDR3 = c;
+#else
+    (void) c;
+#endif
     return 0;
 }
 

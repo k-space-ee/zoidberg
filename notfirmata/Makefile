@@ -10,7 +10,8 @@ AVRDUDE = avrdude
 CODE_FORMATTER = tooling/format-code.sh
 AVRSIZE = avr-size
 
-BOARD = atmega2560
+#BOARD = atmega2560
+BOARD = atmega328
 
 # Use shell command export to define it
 # Example: export ARDUINO=/dev/ttyACM0
@@ -63,7 +64,7 @@ OBJCOPYARGS =	-O ihex \
 
 # FIXME Find out why some Arduinos require -D to write code
 AVRDUDEARGS =	-p $(BOARD) \
-				-c wiring \
+				-c arduino \
 				-F \
 				-P $(DEVICE) \
 				-b 115200 \
