@@ -18,7 +18,7 @@
 #endif
 
 #ifndef BAUD
-#define BAUD 9600
+#define BAUD 38400
 #endif
 #include <util/setbaud.h>
 
@@ -184,13 +184,16 @@ static uint8_t speed2pwm(int8_t speed) {
     debug_print("pwm: %u\n", pwm);
     return pwm;
 }
+static inline void motor_reset() {
+    set_motor1(255, false, false);
+    set_motor2(255, false, false);
+    set_motor3(255, false, false);
+}
 
 static void set_speed(int8_t m1, int8_t m2, int8_t m3) {
 
     // reset
-    set_motor1(255, false, false);
-    set_motor2(255, false, false);
-    set_motor3(255, false, false);
+    motor_reset();
 
     set_motor1(speed2pwm(m1), m1 <= 0 ? 1:0, m1 >= 0 ? 1:0);
     set_motor2(speed2pwm(m2), m2 <= 0 ? 1:0, m2 >= 0 ? 1:0);
@@ -233,7 +236,6 @@ static inline uint8_t read_uart(uint8_t byte_count, uint8_t packet[], uint8_t pa
     static uint8_t checksum;
     if (bit_is_set(UCSR0A, RXC0)) {
         uint8_t data = UDR0;
-        RECV_OK_TOGGLE;
         debug_print("byte_count %d\n", byte_count);
 
         // find start of a packet with two 0xAA bytes
@@ -289,13 +291,23 @@ int main (void)
     uint8_t byte_count = 0;
     uint8_t packet[3] = {0};
     uint8_t packet_len = sizeof(packet) / sizeof(packet[0]);
+    uint32_t counter = 0;
     while (1) {
         byte_count = read_uart(byte_count, packet, packet_len);
         if (byte_count == packet_len + 3) {
+            RECV_OK_TOGGLE;
             debug_print("packet received\n");
             set_speed(*(uint8_t*)&packet[0], *(uint8_t*)&packet[1], *(uint8_t*)&packet[2]);
             byte_count = 0;
+            counter = 0;
         }
+        counter++;
+        if (counter > 1000000) {
+            debug_print("reset\n");
+            motor_reset();
+            counter = 0;
+        }
+
     }
 
 }

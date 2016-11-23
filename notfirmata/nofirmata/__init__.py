@@ -3,7 +3,7 @@ import serial
 from kbhit import KBHit
 from time import sleep
 
-ser = serial.Serial("/dev/ttyACM0", 9600,
+ser = serial.Serial("/dev/ttyACM0", 38400,
                     bytesize=serial.EIGHTBITS,
                     parity=serial.PARITY_NONE,
                     stopbits=serial.STOPBITS_ONE,
@@ -25,7 +25,7 @@ def slow_write(data):
         byte = struct.pack("B", byte)
         ser.write(byte)
         #print("wrote", byte)
-        sleep(0.0)
+        sleep(0.1)
 
 
 def write_packet(packet):
