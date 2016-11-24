@@ -6,8 +6,8 @@ from managed_threading import ManagedThread
 class Visualizer(ManagedThread):
 
     def step(self, r, grabber):
-        frame = r.frame
-        frame = np.rot90(cv2.cvtColor(frame.reshape((4320, 640, 2)), cv2.COLOR_YUV2BGR_YUYV), 3).copy() # Approx 2ms
+
+        frame = np.swapaxes(cv2.cvtColor(r.frame.reshape((-1, 640, 2)), cv2.COLOR_YUV2BGR_YUYV), 0, 1).copy()
 
         """
 #        frame = frame[2160-1500:2160+1500]
@@ -57,8 +57,8 @@ class Visualizer(ManagedThread):
         return
         """
 
-        field_mask = np.rot90(np.repeat(r.field_mask, 2, axis=1), 3)
-        goal_blue_mask = np.rot90(np.repeat(r.goal_blue_mask, 2, axis=1), 3)
+        field_mask = np.swapaxes(np.repeat(r.field_mask, 2, axis=1), 0, 1)
+        goal_blue_mask = np.swapaxes(np.repeat(r.goal_blue_mask, 2, axis=1), 0, 1)
 
         field_cutout = cv2.bitwise_and(frame, frame, mask=field_mask)
         cv2.line(field_cutout, (0,0), (5000,0), (255,255,255), 2)
@@ -69,7 +69,7 @@ class Visualizer(ManagedThread):
 
         # Visualize yellow goal
         sliced = frame[:r.BALLS_BOTTOM*2-r.GOAL_FIELD_DILATION*2,:]
-        goal_yellow_mask = np.rot90(np.repeat(r.goal_yellow_mask, 2, axis=1), 3)
+        goal_yellow_mask = np.swapaxes(np.repeat(r.goal_yellow_mask, 2, axis=1), 0, 1)
         goal_yellow_cutout = cv2.bitwise_and(sliced, sliced, mask=goal_yellow_mask)
         cv2.line(goal_yellow_cutout, (0,0), (5000,0), (255,255,255), 2)
         cv2.putText(goal_yellow_cutout, "yellow goal detection", (80, goal_yellow_cutout.shape[0] >> 1), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
@@ -84,7 +84,7 @@ class Visualizer(ManagedThread):
 
         # Visualize blue goal
         sliced = frame[:r.BALLS_BOTTOM*2-r.GOAL_FIELD_DILATION*2,:]
-        goal_blue_mask = np.rot90(np.repeat(r.goal_blue_mask, 2, axis=1), 3)
+        goal_blue_mask = np.swapaxes(np.repeat(r.goal_blue_mask, 2, axis=1), 0, 1)
         goal_blue_cutout = cv2.bitwise_and(sliced, sliced, mask=goal_blue_mask)
         cv2.line(goal_blue_cutout, (0,0), (5000,0), (255,255,255), 2)
         cv2.putText(goal_blue_cutout, "blue goal detection", (80, goal_blue_cutout.shape[0] >> 1), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
@@ -98,19 +98,17 @@ class Visualizer(ManagedThread):
                 cv2.rectangle(goal_blue_cutout, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
 
         sliced = frame[:r.BALLS_BOTTOM*2]
-        balls_mask = np.rot90(np.repeat(r.balls_mask, 2, axis=1), 3)
+        balls_mask = np.swapaxes(np.repeat(r.balls_mask, 2, axis=1), 0, 1)
         balls_cutout = cv2.bitwise_and(sliced, sliced, mask=balls_mask)
         cv2.line(balls_cutout, (0,0), (5000,0), (255,255,255), 2)
         cv2.putText(balls_cutout, "balls detection", (80, balls_cutout.shape[0] >> 1), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
         index = 0
         for relative, absolute, x, y, radius in r.balls:
 
-            cv2.circle(balls_cutout, (x,y), radius, (255,255,255) if index else (0,0,255), 3)
-            if index == 0:
-                x = r.deg_to_x(relative.angle_deg)
-                cv2.line(balls_cutout, (x,0), (x,200-120), (255,255,255), 3)
-                cv2.putText(balls_cutout, "%.1fdeg" % relative.angle_deg, (x, 200-80), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
-                cv2.putText(balls_cutout, "%.1fm" % relative.dist, (x, 200-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+            cv2.circle(frame, (x,y), radius, (255,255,255) if index else (0,0,255), 3)
+            cv2.putText(frame, "%.1fdeg" % relative.angle_deg, (x+radius+10, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,0), 4)
+            cv2.putText(frame, "%.1fm" % relative.dist, (x+radius+10, y+30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,0), 4)
+            cv2.putText(frame, "%dpx" % radius, (x+radius+10, y+50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,0), 4)
 
             index += 1
 

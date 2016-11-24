@@ -119,7 +119,7 @@ class ImageRecognition(object):
     def update(self, frame):
         assert frame.shape == (4320, 320, 4)
         self.frame = frame
-        self.field_mask, self.field_mask_dilated = self._recognize_field(self.FIELD_LOWER, self.FIELD_UPPER)
+        self.field_mask = self._recognize_field(self.FIELD_LOWER, self.FIELD_UPPER)
 
         self.goal_blue_mask, \
         self.goal_blue, \
@@ -235,16 +235,13 @@ class ImageRecognition(object):
         mask = np.vstack(slices)
         assert mask.shape == (4320, 320), "got instead %s" % repr(mask.shape)
 
-        return mask, cv2.dilate(mask, None, iterations=10)
+        return mask
 
     def _recognize_goal(self, lower, upper):
-        # Recognize yellow goal
-
-        goal_mask = cv2.inRange(self.frame[:,:self.BALLS_BOTTOM-self.GOAL_FIELD_DILATION], lower, upper)
-        goal_mask = cv2.erode(goal_mask, None, iterations=4)
-        mask = cv2.bitwise_and(goal_mask, self.field_mask_dilated[:,self.GOAL_FIELD_DILATION:self.BALLS_BOTTOM])
-
-        goal_mask = mask
+        # Recognize goal
+        mask = cv2.inRange(self.frame[:,:self.BALLS_BOTTOM-self.GOAL_FIELD_DILATION], lower, upper)
+        mask = cv2.erode(mask, None, iterations=4)
+        mask = cv2.bitwise_and(mask, self.field_mask[:,self.GOAL_FIELD_DILATION:self.BALLS_BOTTOM])
 
         rect = None
         maxwidth = 0
@@ -264,37 +261,42 @@ class ImageRecognition(object):
 
                 if w < scope and w > maxwidth:
                     maxwidth = w
-                    rect = 4320-(x+j*step)-w,2*y,w,h
+                    rect = (x+j*step),2*y,w,h
                     rects.append(rect)
 
         if maxwidth:
             x,y,w,h = rect # done
-            return goal_mask, PolarPoint(self.x_to_rad(x+w/2.0), self.y_to_dist(y+h+self.GOAL_FIELD_DILATION)), rects
-        return goal_mask, None, []
+            return mask, PolarPoint(self.x_to_rad(x+w/2.0), self.y_to_dist(y+h+self.GOAL_FIELD_DILATION)), rects
+        return mask, None, []
 
     def _recognize_balls(self):
+        """
+        Return mask for balls and list of balls
+        """
         mask = cv2.inRange(self.frame[:,:self.BALLS_BOTTOM], self.BALL_LOWER, self.BALL_UPPER)
         mask = cv2.bitwise_and(mask, self.field_mask[:,:self.BALLS_BOTTOM])
-        mask = cv2.dilate(mask, None, iterations=2)
         cnts = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
         balls = set()
         for c in cnts:
-            (y, x), radius = cv2.minEnclosingCircle(c) # non-swapped
-            x = 4320 - x
-            y = y*2 # self.BALLS_BOTTOM - y*2
-            if radius < 5:
+            y, x, h, w = cv2.boundingRect(c)
+
+            # Balls on the other side look tiny
+            if w < 2 or h < 2:
                 continue
-            M = cv2.moments(c)
-            if M["m00"] == 0:
-                continue
-            relative = PolarPoint(self.x_to_rad(x), self.y_to_dist(y+radius))
+
+            # Adjust for the fact that we have 320 YUYV pixels
+            radius = w >> 1 if w > h else h >> 1
+            cx = x + radius
+            cy = y * 2 + radius
+
+            relative = PolarPoint(self.x_to_rad(cx), self.y_to_dist(cy+radius))
             if self.robot and self.orientation:
                 absolute = relative.rotate(-self.orientation).translate(self.robot)
                 if absolute.x > 4.0 and absolute.y < 0.5 and absolute.y > -0.5:
                     continue # skip balls in goal, not really working right now
             else:
                 absolute = None
-            ball_coords = relative, absolute, int(x), int(y), int(radius)
+            ball_coords = relative, absolute, cx, cy, radius
             balls.add(ball_coords)
         #TODO: better alghoritm to sort balls
         #return mask, sorted(balls, key=lambda b:b[0].dist * abs( b[0].angle / 180) )

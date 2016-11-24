@@ -136,6 +136,19 @@ class Grabber(Thread):
             ctrl.value = V4L2_EXPOSURE_AUTO
             fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
 
+        # Flip camera horizontally
+        ctrl = v4l2_control()
+        ctrl.id = V4L2_CID_HFLIP
+        ctrl.value = 0
+        fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
+
+        # Flip camera vertically
+        ctrl = v4l2_control()
+        ctrl.id = V4L2_CID_VFLIP
+        ctrl.value = 1
+        fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
+
+
         if self.gain is not None:
             # Disable autogain
             logger.info("Setting gain for %s to %d", self.path, self.gain)
@@ -373,8 +386,7 @@ class PanoramaGrabber(Thread):
             self.latency.append(now-then2)
             self.rate.append(now-then)
 
-            stacked = np.vstack([frame for frame, in reversed(products)])
-            assert stacked.shape == (480*9, 320, 4), "got instead: %s" % repr(stacked.shape)
+            stacked = np.vstack([frame for frame, in products])
             # Pump panorama frames to consumers
             for queue in self.queues:
                 try:
@@ -397,21 +409,43 @@ if __name__ == "__main__":
     from recorder import Recorder
     grabber = PanoramaGrabber()
     grabber.start()
-    observer.start()
     recorder = Recorder(grabber)
     recorder.enable()
 
     queue = grabber.get_queue()
     try:
         while True:
-            panorama = queue.get()
-            frame = cv2.resize(panorama, (0,0), fx=0.4, fy=0.4)
+            yuyv, = queue.get()
+            frame = np.swapaxes(cv2.cvtColor(yuyv.reshape((-1, 640, 2)), cv2.COLOR_YUV2BGR_YUYV), 0, 1)
+            frame = cv2.resize(frame, (0,0), fx=0.5, fy=0.5)
+
             height, width, depth = frame.shape
-            step = width / (len(grabber.slaves) + 1)
+            step = width / len(grabber.slaves)
+
+
+            mask = cv2.inRange(yuyv, (64,0,64,160), (255,128,255,255))
+            cnts = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
+            balls = set()
+            for c in cnts:
+                y, x, h, w = cv2.boundingRect(c)
+
+                if w < 2 or h < 2:
+                    continue
+
+                # Adjust for the fact that we have 320 YUYV pixels
+                x = x >> 1
+                w = w >> 1
+                cx = x + (w >> 1)
+                cy = y + (h >> 1)
+                radius = w >> 1 if w > h else h >> 1
+
+                cv2.rectangle(frame, (x,y), (x+w, y+h), (255,255,255), 3)
+                cv2.circle(frame, (cx,cy), radius, (255,255,255), 3)
 
             for index, slave in enumerate(grabber.slaves):
                 x = int(index*step + 20)
-                cv2.putText(frame, os.path.basename(slave.path), (x,30), cv2.FONT_HERSHEY_SIMPLEX, 0.5,(255,255,255),1)
+                _, _, _, slug, _ = os.path.basename(slave.path).split("-", 4)
+                cv2.putText(frame, slug, (x,30), cv2.FONT_HERSHEY_SIMPLEX, 0.5,(255,255,255),1)
                 if slave.alive:
                     cv2.putText(frame,"fps: %.01f" % (len(slave.latencies)/sum(slave.latencies)), (x,80), cv2.FONT_HERSHEY_SIMPLEX, 1,(255,255,255),1)
                 else:
