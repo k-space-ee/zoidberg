@@ -34,7 +34,7 @@ print("Unpowering:", self.sysfs_path)
 with open(os.path.join(self.sysfs_path, "authorized"), "w") as fh:
     fh.write("0")
 """
-BLANK = np.zeros((480,640,3), dtype=np.uint8)
+BLANK = np.zeros((480,320,4), dtype=np.uint8)
 
 observer = Observer()
 observer.start()
@@ -51,7 +51,7 @@ class CaptureHotplugHandler(FileSystemEventHandler):
         self.grabber.wake.set()
 
 class Grabber(Thread):
-    def __init__(self, device, fps=30, exposure=None, gain=None, saturation=None, name=None, observer=None):
+    def __init__(self, device, fps=30, exposure=None, gain=None, saturation=None, name=None):
         Thread.__init__(self)
         logger.info("Starting grabber for:", device)
         self.path = os.path.join("/dev/v4l/by-path", device)
@@ -228,7 +228,9 @@ class Grabber(Thread):
                 except OSError:
                     logger.info("Failed to open: %s", self.path)
                     sleep(1)
-                    raise
+                    self.vd = None
+                    continue
+#                    raise
 
             # get image from the driver queue
             buf = v4l2_buffer()
@@ -379,7 +381,7 @@ class PanoramaGrabber(Thread):
         while self.running:
             then = time()
             # Synchronize producers
-            products = [queue.get() for queue in self.input_queues]
+            products = [(queue.get() if slave.alive else (BLANK,)) for queue, slave in zip(self.input_queues, self.slaves)]
             products.append(products[0])
             then2 = time()
             now = time()

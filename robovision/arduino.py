@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger("arduino")
 
 class Arduino(Thread):
-    def __init__(self, factor=1):
+    def __init__(self, factor=0.3):
         Thread.__init__(self)
         self.daemon = True
         from configparser import ConfigParser
@@ -24,7 +24,7 @@ class Arduino(Thread):
         self.path = os.path.join("/dev/serial/by-path", device)
         self.kicker = cp.getint("global", "kicker")
         self.pwm = [cp.getint("motor%d" % j, "pwm") for j in indexes]
-        self.fwd = [cp.getint("motor%d" % j, "fwd") for j in indexes]
+        self.en = [cp.getint("motor%d" % j, "en") for j in indexes]
         self.rev = [cp.getint("motor%d" % j, "rev") for j in indexes]
 
         # X, Y, rotation to A, B, C transformation matrix
@@ -42,7 +42,7 @@ class Arduino(Thread):
         if self.board:
             for pin in self.pwm:
                 self.board.analog_write(pin, 255)
-            for pin in self.fwd + self.rev:
+            for pin in self.en + self.rev:
                 self.board.digital_write(pin, False)
             self.board.digital_write(self.kicker, True) # should close with discharge
         self.running = False
@@ -54,16 +54,20 @@ class Arduino(Thread):
         self.set_abc(0.866*y, -0.866*y, w)
 
     def set_xyw(self, x, y, w):
-        a = 0.5 * x + 0.866 * y - w
-        b = 0.5 * x - 0.866 * y - w
-        c = -x - w
 
-        m = max([abs(a), abs(b), abs(c), 2.366])
+        x, y, w = [min(speed, 0.90) for speed in [x,y,w]]
+
+
+        a = -0.5 * x + 0.866 * y + w
+        b = -0.5 * x - 0.866 * y + w
+        c = x + w
+
+        m = max([abs(a), abs(b), abs(c)])
         if m > 1.0:
             a = a / m
             b = b / m
             c = c / m
-        self.set_abc(a,b,-c)
+        self.set_abc(a,b,c)
 
     def set_abc(self, *speed):
         for j in speed:
@@ -99,11 +103,28 @@ class Arduino(Thread):
                         for pin in self.pwm:
                             logger.debug("Setting up pin %s as PWM output"%pin)
                             board.set_pin_mode(pin, board.PWM, board.DIGITAL)
-                        for pin in self.fwd + self.rev:
+                            board.analog_write(pin, 26)
+
+                        for pin in self.rev:
                             logger.debug("Setting up pin %s as digital output" %pin)
                             board.set_pin_mode(pin, board.OUTPUT, board.DIGITAL)
+                            board.digital_write(pin, 0)
+
+                        for pin in self.en:
+                            logger.debug("Setting up pin %s as digital output" %pin)
+                            board.set_pin_mode(pin, board.OUTPUT, board.DIGITAL)
+                            board.digital_write(pin, 1)
+
+                        for pin in self.en:
+                            board.set_pin_mode(pin, board.OUTPUT, board.DIGITAL)
+                            board.digital_write(pin, 0)
+
+
                         board.set_pin_mode(self.kicker,   board.OUTPUT, board.DIGITAL)
                         board.digital_write(self.kicker, False)
+                        board.set_pin_mode(13, board.INPUT, board.DIGITAL)
+                        board.set_pin_mode(12, board.OUTPUT, board.DIGITAL)
+                        board.digital_write(12, 0 )
                     except serial.serialutil.SerialException:
                         logger.error("Failed to connect to Arduino")
                         continue # Try again
@@ -121,16 +142,11 @@ class Arduino(Thread):
 
     def write(self):
         try:
-            for speed, pwm_pin, fwd_pin, rev_pin in zip(self.speed, self.pwm, self.fwd, self.rev):
-                self.board.analog_write(pwm_pin, 255) # Disable H-bridge
-                self.board.digital_write(fwd_pin, 0) # Reset forward
-                self.board.digital_write(rev_pin, 0) # Reset reverse
-                self.board.digital_write(fwd_pin, speed <= 0) # Set forward
-                self.board.digital_write(rev_pin, speed >= 0) # Set reverse
-                if speed == 0:
-                    self.board.analog_write(pwm_pin, 0) # Set max duty cycle to brake
-                else:
-                    self.board.analog_write(pwm_pin, 255-abs(int(float(speed) * 255))) # Set duty cycle
+            for speed, pwm_pin, en_pin, rev_pin in zip(self.speed, self.pwm, self.en, self.rev):
+                self.board.digital_write(en_pin, 1) #speed != 0)
+                self.board.digital_write(rev_pin, speed < 0)
+                self.board.analog_write(pwm_pin, 20 + abs(int(float(speed) * 202))) # Set duty cycle
+
         except serial.serialutil.SerialException:
             logger.info("Arduino disconnected at %s", self.path)
             self.alive = False
@@ -144,7 +160,32 @@ class Arduino(Thread):
 
 if __name__ == "__main__":
     arduino = Arduino()
-    arduino.set_xyw(0,0,1)
-    sleep(6)
+    arduino.start()
+
+    sleep(5)
+    """
+    print("A")
+    arduino.set_abc(-1,0,0)
+    sleep(1)
+    arduino.set_abc(1,0,0)
+    sleep(1)
+
+    print("B")
+    arduino.set_abc(0,-1,0)
+    sleep(1)
+    arduino.set_abc(0,1,0)
+    sleep(1)
+
+    print("C")
+
+    arduino.set_abc(0,0,-1)
+    sleep(1)
+    arduino.set_abc(0,0,1)
+    sleep(1)
+    """
+    
+    arduino.kick()
+    sleep(2)
+
     arduino.stop()
     arduino.join()

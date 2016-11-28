@@ -9,7 +9,7 @@ class Visualizer(ManagedThread):
 
         frame = np.swapaxes(cv2.cvtColor(r.frame.reshape((-1, 640, 2)), cv2.COLOR_YUV2BGR_YUYV), 0, 1).copy()
 
-        """
+        
 #        frame = frame[2160-1500:2160+1500]
 
 
@@ -56,7 +56,9 @@ class Visualizer(ManagedThread):
 
         return
         """
-
+        
+        
+        """
         field_mask = np.swapaxes(np.repeat(r.field_mask, 2, axis=1), 0, 1)
         goal_blue_mask = np.swapaxes(np.repeat(r.goal_blue_mask, 2, axis=1), 0, 1)
 
@@ -121,25 +123,26 @@ class Visualizer(ManagedThread):
             y,x = args
             return 4320-x+4, y*2+4
 
-        cv2.putText(balls_cutout, "Got it!" if r.ball_grabbed else "Lost!", (2212, 500), cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),1)
+#        cv2.putText(balls_cutout, "Got it!" if r.ball_grabbed else "Lost!", (2212, 500), cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,255),1)
 
-        cv2.rectangle(balls_cutout, left_top(r.ball_grabbed_orange), right_bottom(r.ball_grabbed_orange), (255,255,255), 2) #[588][2212][0]
-        cv2.rectangle(balls_cutout, left_top(r.ball_grabbed_green1), right_bottom(r.ball_grabbed_green1), (255,255,255), 2) #[588][2212][0]
-        cv2.rectangle(balls_cutout, left_top(r.ball_grabbed_green2), right_bottom(r.ball_grabbed_green2), (255,255,255), 2) #[588][2212][0]
+#        cv2.rectangle(balls_cutout, left_top(r.ball_grabbed_orange), right_bottom(r.ball_grabbed_orange), (255,255,255), 2) #[588][2212][0]
+#        cv2.rectangle(balls_cutout, left_top(r.ball_grabbed_green1), right_bottom(r.ball_grabbed_green1), (255,255,255), 2) #[588][2212][0]
+#        cv2.rectangle(balls_cutout, left_top(r.ball_grabbed_green2), right_bottom(r.ball_grabbed_green2), (255,255,255), 2) #[588][2212][0]
 
+        """
 
-
+        """
         frame = np.vstack([
             frame,
-            field_cutout,
-            goal_blue_cutout,
-            goal_yellow_cutout,
-            balls_cutout,
+#            field_cutout,
+#            goal_blue_cutout,
+#            goal_yellow_cutout,
+#            balls_cutout,
         ])
-
-        cv2.rectangle(frame, left_top(r.ball_grabbed_orange), right_bottom(r.ball_grabbed_orange), (255,255,255), 2) #[588][2212][0]
-        cv2.rectangle(frame, left_top(r.ball_grabbed_green1), right_bottom(r.ball_grabbed_green1), (255,255,255), 2) #[588][2212][0]
-        cv2.rectangle(frame, left_top(r.ball_grabbed_green2), right_bottom(r.ball_grabbed_green2), (255,255,255), 2) #[588][2212][0]
+        
+#        cv2.rectangle(frame, left_top(r.ball_grabbed_orange), right_bottom(r.ball_grabbed_orange), (255,255,255), 2) #[588][2212][0]
+#        cv2.rectangle(frame, left_top(r.ball_grabbed_green1), right_bottom(r.ball_grabbed_green1), (255,255,255), 2) #[588][2212][0]
+#        cv2.rectangle(frame, left_top(r.ball_grabbed_green2), right_bottom(r.ball_grabbed_green2), (255,255,255), 2) #[588][2212][0]
 
         ret, jpeg = cv2.imencode('.jpg', frame, (cv2.IMWRITE_JPEG_QUALITY, 50))
         buf = jpeg.tostring()

@@ -17,7 +17,7 @@ import os
 import humanize
 from collections import deque
 from recorder import Recorder
-from gameplay.rotating import Gameplay
+from gameplay.stateful import Gameplay
 from datetime import datetime, timedelta
 from visualization import Visualizer
 from image_recognition import ImageRecognizer, ImageRecognition
@@ -49,7 +49,7 @@ sockets = Sockets(app)
 grabber = PanoramaGrabber() # config read from ~/.robovision/grabber.conf
 image_recognizer = ImageRecognizer(grabber)
 gameplay = Gameplay(image_recognizer)
-rf = RemoteRF(gameplay, "/dev/ttyACM0")
+#rf = RemoteRF(gameplay, "/dev/ttyACM0")
 visualizer = Visualizer(image_recognizer, framedrop=1)
 recorder = Recorder(grabber)
 
@@ -90,7 +90,6 @@ def command(websocket):
 
     for buf in log_queue:
         websocket.send(buf)
-
     while not websocket.closed:
         websockets.add(websocket)
         gevent.sleep(0.1)
@@ -206,7 +205,7 @@ def main():
     grabber.start()
     recorder.start()
     visualizer.start()
-    rf.start()
+    #rf.start()
 
     # Register threads for monitoring
     from managed_threading import ThreadManager

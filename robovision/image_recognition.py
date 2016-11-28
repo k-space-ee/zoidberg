@@ -58,19 +58,19 @@ class PolarPoint(Point):
 
 class ImageRecognition(object):
 
-    GOAL_FIELD_DILATION = 40
+    GOAL_FIELD_DILATION = 50
     GOAL_BOTTOM = 200
 
     # Y U Y V
-    FIELD_LOWER = 50, 0, 50, 0
-    FIELD_UPPER = 255, 150, 255, 150
+    FIELD_LOWER = 30, 0, 30, 0
+    FIELD_UPPER = 255, 140, 255, 140
 
     YELLOW_LOWER = 128, 50, 128, 150
     YELLOW_UPPER = 255, 100, 255, 200
 
 
-    BLUE_LOWER = 0, 150, 0, 0
-    BLUE_UPPER = 255, 255, 255, 128
+    BLUE_LOWER = 0, 140, 0, 0
+    BLUE_UPPER = 255, 255, 255, 140
 
 
     BALL_LOWER = 64, 0, 64, 200
@@ -95,13 +95,13 @@ class ImageRecognition(object):
         camera_horiz_fov -- Camera field of view horizontally (deg)
         """
 
-        self.ball_grabbed_green1 = 584>>1, 4320- (2200 + 32) #4320-2184,
-        self.ball_grabbed_orange = 606>>1, 4320-(2200) # 4320-2216
-        self.ball_grabbed_green2 = 584>>1, 4320-(2200 - 32) #4320-2248,
+#        self.ball_grabbed_green1 = 584>>1, 4320- (2200 + 32) #4320-2184,
+#        self.ball_grabbed_orange = 606>>1, 4320-(2200) # 4320-2216
+#        self.ball_grabbed_green2 = 584>>1, 4320-(2200 - 32) #4320-2248,
 
-#        self.ball_grabbed_green1 = 564>>1, 4320-2184,
-#        self.ball_grabbed_orange = 586>>1, 4320-2216
-#        self.ball_grabbed_green2 = 564>>1, 4320-2248,
+        self.ball_grabbed_green1 = 564>>1, 4320-2184
+        self.ball_grabbed_orange = 586>>1, 4320-2216
+        self.ball_grabbed_green2 = 564>>1, 4320-2248,
 
 
 
@@ -152,6 +152,8 @@ class ImageRecognition(object):
         return orange_pixels > 1000 and green1_pixels > 1000 and green2_pixels > 1000
 
     def _position_robot(self):
+        return None, None
+
         if not self.goal_blue or not self.goal_yellow:
             logger.info("Both goal not detected!")
             return None, None
@@ -175,6 +177,7 @@ class ImageRecognition(object):
         correction_factor = self.dist_goals / derived_dist # Divide goal-goal disance with percevied distance
 #        print("correction:", correction_factor)
 
+        # TODO: This is stupid, never assign without purpose
         self.goal_yellow.dist *= correction_factor
         self.goal_blue.dist *= correction_factor
 
@@ -223,7 +226,8 @@ class ImageRecognition(object):
         # iterate over cameras because otherwise convex hull wraps around distorted field edges
         for j in range(0,9):
             sliced = mask[j*480:(j+1)*480,:]
-            _, contours, hierarchy = cv2.findContours(sliced, 1, 5)
+            _, contours, hierarchy = cv2.findContours(sliced, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
             sliced = mask[j*480:(j+1)*480,:]
             contours = [c for c in contours if cv2.contourArea(c) > 30]
             if contours:
@@ -251,7 +255,7 @@ class ImageRecognition(object):
         for j in range(0,9):
             sliced = mask[j*step:j*step+scope,:]
 
-            _, contours, hierarchy = cv2.findContours(sliced, 1, 2)
+            _, contours, hierarchy = cv2.findContours(sliced, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contours = sorted(contours, key=cv2.contourArea)[-1:]
 
             if contours:
@@ -261,7 +265,7 @@ class ImageRecognition(object):
 
                 if w < scope and w > maxwidth:
                     maxwidth = w
-                    rect = (x+j*step),2*y,w,h
+                    rect = (x+j*step),2*y,w,h*2
                     rects.append(rect)
 
         if maxwidth:
@@ -277,6 +281,8 @@ class ImageRecognition(object):
         mask = cv2.bitwise_and(mask, self.field_mask[:,:self.BALLS_BOTTOM])
         cnts = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
         balls = set()
+        skipped = set()
+        
         for c in cnts:
             y, x, h, w = cv2.boundingRect(c)
 
@@ -290,10 +296,23 @@ class ImageRecognition(object):
             cy = y * 2 + radius
 
             relative = PolarPoint(self.x_to_rad(cx), self.y_to_dist(cy+radius))
+
+            """
+            # Skip balls in blue goal
+            if self.goal_blue:
+                bx, by, bw, bh = self.goal_blue_rect[0]
+                if cx + radius > bx and cx - radius < bx+bw and cy+radius > by and cy-radius < by+bh:
+                    continue
+
+            # Skip balls in yellow goal
+            if self.goal_yellow:
+                yx, yy, yw, yh = self.goal_yellow_rect[0]
+                if cx + radius > yx and cx - radius < yx+yw and cy+radius > yy and cy-radius < yy+yh:
+                    continue
+            """
+
             if self.robot and self.orientation:
                 absolute = relative.rotate(-self.orientation).translate(self.robot)
-                if absolute.x > 4.0 and absolute.y < 0.5 and absolute.y > -0.5:
-                    continue # skip balls in goal, not really working right now
             else:
                 absolute = None
             ball_coords = relative, absolute, cx, cy, radius
