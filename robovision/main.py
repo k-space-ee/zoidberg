@@ -81,6 +81,9 @@ def group():
         YELLOW_UPPER=ImageRecognition.YELLOW_UPPER,
     )
 
+@app.route('/logging')
+def logging_view():
+    return render_template('logging.html')
 
 @sockets.route('/')
 def command(websocket):
@@ -111,7 +114,7 @@ def command(websocket):
             controls = response.pop("data")
             x = controls.pop("controller0.axis0", x) * 0.99
             y = controls.pop("controller0.axis1", y) * 0.99
-            w = controls.pop("controller0.axis2", w) * 0.99
+            w = controls.pop("controller0.axis2", w) * 0.5
 
             # Kick the ball
             if controls.get("controller0.button7", None):

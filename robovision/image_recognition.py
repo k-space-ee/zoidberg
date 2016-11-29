@@ -58,15 +58,15 @@ class PolarPoint(Point):
 
 class ImageRecognition(object):
 
-    GOAL_FIELD_DILATION = 50
+    GOAL_FIELD_DILATION = 40
     GOAL_BOTTOM = 200
 
     # Y U Y V
     FIELD_LOWER = 30, 0, 30, 0
     FIELD_UPPER = 255, 140, 255, 140
 
-    YELLOW_LOWER = 128, 50, 128, 150
-    YELLOW_UPPER = 255, 100, 255, 200
+    YELLOW_LOWER = 150, 50, 150, 150
+    YELLOW_UPPER = 200, 100, 200, 200
 
 
     BLUE_LOWER = 0, 140, 0, 0
@@ -178,8 +178,8 @@ class ImageRecognition(object):
 #        print("correction:", correction_factor)
 
         # TODO: This is stupid, never assign without purpose
-        self.goal_yellow.dist *= correction_factor
-        self.goal_blue.dist *= correction_factor
+        #self.goal_yellow.dist *= correction_factor
+        #self.goal_blue.dist *= correction_factor
 
         #assert self.goal_blue.dist + self.goal_yellow.dist > self.dist_goals, "%.1fm" % (self.goal_blue.dist + self.goal_yellow.dist)
         assert self.dist_goals ** 2 - (self.goal_blue.dist ** 2 + self.goal_yellow.dist ** 2 - 2 * self.goal_blue.dist * self.goal_yellow.dist * math.cos(rad_diff)) < 0.00001, \
@@ -241,7 +241,7 @@ class ImageRecognition(object):
 
         return mask
 
-    def _recognize_goal(self, lower, upper):
+    def _recognize_goal(self, lower, upper, overlap=4):
         # Recognize goal
         mask = cv2.inRange(self.frame[:,:self.BALLS_BOTTOM-self.GOAL_FIELD_DILATION], lower, upper)
         mask = cv2.erode(mask, None, iterations=4)
@@ -249,24 +249,40 @@ class ImageRecognition(object):
 
         rect = None
         maxwidth = 0
-        step = 1 * 480
-        scope = 3 * 480
         rects = []
+        cnts = []
+        
+        # Iterate over cameras separately and generate mask for each camera
         for j in range(0,9):
-            sliced = mask[j*step:j*step+scope,:]
-
-            _, contours, hierarchy = cv2.findContours(sliced, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            contours = sorted(contours, key=cv2.contourArea)[-1:]
-
+            roi = mask[j*480:j*480+480:] # one camera
+            _, contours, hierarchy = cv2.findContours(roi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours = [c for c in contours if cv2.contourArea(c) > 100]
             if contours:
-                merged = np.vstack(contours)
-                hull = cv2.convexHull(merged) # get convex hull poly
+                hull = cv2.convexHull(np.vstack(contours))
                 y,x,h,w = cv2.boundingRect(hull)
+                rect = (x+j*480),2*y,w,h*2
+                rects.append(rect)  
+                cnts.append(hull)
+            else:
+                cnts.append(None)
 
-                if w < scope and w > maxwidth:
-                    maxwidth = w
-                    rect = (x+j*step),2*y,w,h*2
-                    rects.append(rect)
+        # Add two copies of contours to deal with goal having wider angle of three cameras in total
+        for j in range(0, overlap):
+            cnts.append(cnts[j])
+
+        # Find widest contour spanning over three cameras
+        maxwidth = 0
+        for j in range(0,11):
+            # stack contours of three cameras
+            contours = [c + (0, i*480) for i, c in enumerate(cnts[j:j+3]) if c is not None]
+            if not contours:
+                continue
+            merged = np.vstack(contours)
+            hull = cv2.convexHull(merged) # get convex hull poly
+            y,x,h,w = cv2.boundingRect(hull)
+            if w > maxwidth:
+                maxwidth = w
+                rect = (x+j*480),2*y,w,h*2            
 
         if maxwidth:
             x,y,w,h = rect # done

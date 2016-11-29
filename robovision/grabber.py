@@ -47,7 +47,7 @@ class CaptureHotplugHandler(FileSystemEventHandler):
     def on_created(self, event):
         if event.src_path != self.grabber.path:
             return
-        logger.info("Attached:", event.src_path)
+        logger.info("Attached: %s", event.src_path)
         self.grabber.wake.set()
 
 class Grabber(Thread):

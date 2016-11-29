@@ -50,7 +50,7 @@ function streamGamepad() {
       socket.send(JSON.stringify({"action": "gamepad", "data": data}));
       break;
     }
-    visualizeGamepads(controllers);
+    // visualizeGamepads(controllers);
     requestAnimationFrame(streamGamepad);
   }
 }

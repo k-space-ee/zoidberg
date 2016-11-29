@@ -4,9 +4,8 @@ import os
 from managed_threading import ManagedThread
 
 class Visualizer(ManagedThread):
-
     def step(self, r, grabber):
-
+        
         frame = np.swapaxes(cv2.cvtColor(r.frame.reshape((-1, 640, 2)), cv2.COLOR_YUV2BGR_YUYV), 0, 1).copy()
 
         
@@ -19,7 +18,7 @@ class Visualizer(ManagedThread):
             cv2.putText(frame, "%.1fdeg" % r.goal_yellow.angle_deg, (x, r.GOAL_BOTTOM-80), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
             cv2.putText(frame, "%.1fm" % r.goal_yellow.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
             for rect in r.goal_yellow_rect:
-                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
+                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (0,255,255), 4)
 
         if r.goal_blue:
             x = r.deg_to_x(r.goal_blue.angle_deg)
@@ -27,7 +26,7 @@ class Visualizer(ManagedThread):
             cv2.putText(frame, "%.1fdeg" % r.goal_blue.angle_deg, (x, r.GOAL_BOTTOM-80), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
             cv2.putText(frame, "%.1fm" % r.goal_blue.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
             for rect in r.goal_blue_rect:
-                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
+                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,128,128), 4)
 
         index = 0
         for relative, absolute, x, y, radius in r.balls:
@@ -42,20 +41,20 @@ class Visualizer(ManagedThread):
 
 
 
-        scope = 1500
+#        scope = 1500
 #        frame = frame[:,frame.shape[1]-scope:frame.shape[1]+scope]
-        frame = frame[:,660:3660]
+#        frame = frame[:,660:3660]
 
 #        frame = np.vstack([frame[:,-240+1080:1080+2160+240],
 #            np.hstack([frame[:,240:1080], frame[:,1080+2160:-240]])])
 
+        
 
         ret, jpeg = cv2.imencode('.jpg', frame, (cv2.IMWRITE_JPEG_QUALITY, 50))
         buf = jpeg.tostring()
         self.produce(buf)
 
         return
-        """
         
         
         """
@@ -128,8 +127,6 @@ class Visualizer(ManagedThread):
 #        cv2.rectangle(balls_cutout, left_top(r.ball_grabbed_orange), right_bottom(r.ball_grabbed_orange), (255,255,255), 2) #[588][2212][0]
 #        cv2.rectangle(balls_cutout, left_top(r.ball_grabbed_green1), right_bottom(r.ball_grabbed_green1), (255,255,255), 2) #[588][2212][0]
 #        cv2.rectangle(balls_cutout, left_top(r.ball_grabbed_green2), right_bottom(r.ball_grabbed_green2), (255,255,255), 2) #[588][2212][0]
-
-        """
 
         """
         frame = np.vstack([

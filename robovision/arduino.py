@@ -2,13 +2,13 @@ import os
 import numpy as np
 import serial
 from threading import Thread, Event
-from time import sleep
+from time import sleep, time
 from math import cos, sin, radians, atan2, pi
 import logging
 logger = logging.getLogger("arduino")
 
 class Arduino(Thread):
-    def __init__(self, factor=0.3):
+    def __init__(self, factor=0.4):
         Thread.__init__(self)
         self.daemon = True
         from configparser import ConfigParser
@@ -38,6 +38,8 @@ class Arduino(Thread):
         self.set_abc(0,0,0)
         self.board = None
 
+        self.last_kick = time()
+
     def clean_up(self):
         if self.board:
             for pin in self.pwm:
@@ -55,7 +57,7 @@ class Arduino(Thread):
 
     def set_xyw(self, x, y, w):
 
-        x, y, w = [min(speed, 0.90) for speed in [x,y,w]]
+        # x, y, w = [min(speed, 0.90) for speed in [x,y,w]]
 
 
         a = -0.5 * x + 0.866 * y + w
@@ -137,6 +139,10 @@ class Arduino(Thread):
                     break
                 self.changed.clear()
                 self.write()
+
+                if self.last_kick + 0.1 < time():
+                    self.set_kicker(False)
+
             self.set_abc(0,0,0)
             self.write()
 
@@ -145,18 +151,23 @@ class Arduino(Thread):
             for speed, pwm_pin, en_pin, rev_pin in zip(self.speed, self.pwm, self.en, self.rev):
                 self.board.digital_write(en_pin, 1) #speed != 0)
                 self.board.digital_write(rev_pin, speed < 0)
-                self.board.analog_write(pwm_pin, 20 + abs(int(float(speed) * 202))) # Set duty cycle
+                speed = 24 + abs(int(float(speed) * 205))
+                self.board.analog_write(pwm_pin, speed) # Set duty cycle
+                # logger.info(str(speed))
 
         except serial.serialutil.SerialException:
             logger.info("Arduino disconnected at %s", self.path)
             self.alive = False
             self.board = None
 
+    def set_kicker(self, value):
+        self.board.digital_write(self.kicker, value)
+
     def kick(self):
-        self.board.digital_write(self.kicker, True)
-        sleep(0.1)
-        self.board.digital_write(self.kicker, False)
-        sleep(0.1)
+        if self.last_kick + 0.5 < time():
+            logger.info("{} whut".format(self.last_kick))
+            self.set_kicker(True)
+            self.last_kick = time()
 
 if __name__ == "__main__":
     arduino = Arduino()
