@@ -128,32 +128,26 @@ class ImageRecognition(object):
         self.robot, self.orientation = self._position_robot() # Calculate x and y coords on the field and angle to grid
 
         self.balls_mask, self.balls = self._recognize_balls()
+        self.closest_edge, self.field_center = self._recognize_closest_edge()
 
     def _recognize_closest_edge(self):
         """
-        Recognize angle and distance to closest edge
+        Recognize angle and distance to closest edge and to center of field
         """
-        closest_angle_deg = 0
-        closest_dist = 999999.0
-
-        # Detect top lines of the field contours
-        for index, hull in enumerate(self.field_contours + self.field_contours[:2]):
-            started = False
-            stopped = False
-            px, py = 0, 0
-            for line in hull:
-                x, y = line[0]
-                if px and py and started and not stopped:
-                    new_dist = self.y_to_dist(y)
-                    if new_dist < closest_dist:
-                        closest_dist = new_dist
-                        closest_angle_rad = self.x_to_rad(x+index*480)
-                if px <= -18 and x > -18 and not stopped: # left side
-                    started = True
-                if x >= 480 and started:
-                    stopped = True
-                px, py = x,y
-        return PolarPoint(closest_angle_rad, closest_dist)
+        closest_dist = 99999
+        closest_angle = 0
+        dx = 0
+        dy = 0
+        for index, hull in enumerate(self.field_contours[:8]):
+            y,x,h,w = cv2.boundingRect(hull)
+            rotation = (index-4)*(math.pi*2/8.0)
+            dist = self.y_to_dist(y * 2)
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_angle = rotation
+            dx += math.sin(rotation) * dist
+            dy += math.cos(rotation) * dist
+        return PolarPoint(closest_angle, closest_dist), Point(dx/8.0, dy/8.0)
 
     def _position_robot(self):
         if not self.goal_blue or not self.goal_yellow:

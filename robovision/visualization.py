@@ -24,11 +24,14 @@ class Visualizer(ManagedThread):
         # Kicker offset
         cv2.line(frame, (r.kicker_offset, frame.shape[0]-50), (r.kicker_offset, frame.shape[0]), (255,255,255), 3)
 
-
         # Visualize closest edge
-#        closest_x = r.deg_to_x(r.closest_edge.angle_deg)
-#        cv2.line(frame, (closest_x,0), (closest_x,480), (255,255,255), 3)
-#        cv2.putText(frame, "%.1fdeg %.2fm" % (r.closest_edge.angle_deg, r.closest_edge.dist), (closest_x, 450), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+        closest_x, closest_y = r.deg_to_x(r.closest_edge.angle_deg), r.dist_to_y(r.closest_edge.dist)
+        cv2.putText(frame, "edge %.2fm" % r.closest_edge.dist, (closest_x-240, 600), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+
+        # Visualize center of field
+        center_x = r.deg_to_x(r.field_center.angle_deg)
+        cv2.line(frame, (center_x,0), (center_x,480), (255,255,255), 3)
+        cv2.putText(frame, "cnt %.1fdeg %.2fm" % (r.field_center.angle_deg, r.field_center.dist), (center_x, 450), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
 
         # Visualize field edges
         points = []
