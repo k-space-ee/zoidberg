@@ -36,12 +36,13 @@ class Visualizer(ManagedThread):
             y,x,h,w = cv2.boundingRect(hull)
             rect = (x+index*480),2*y,w,h*2
             points.append((int(x+index*480+w/2), 2*y))
-        points = [(points[-1][0] - 3840, points[-1][1])] + points
-        prev = None
-        for point in points:
-            if prev is not None:
-                cv2.line(frame, prev, point, (128,255,128),4)
-            prev = point
+        if points:
+            points = [(points[-1][0] - 3840, points[-1][1])] + points
+            prev = None
+            for point in points:
+                if prev is not None:
+                    cv2.line(frame, prev, point, (128,255,128),4)
+                prev = point
 
         # Visualize balls
         index = 0
@@ -82,10 +83,9 @@ class Visualizer(ManagedThread):
 
 
         if not self.DEBUG_MASK: # TODO: Read from config manager
-#            resized = cv2.resize(frame, (0,0), fx=self.ZOOM, fy=self.ZOOM)
-#            ret, jpeg = cv2.imencode('.jpg', frame, (cv2.IMWRITE_JPEG_QUALITY, 50))
-#            buf = jpeg.tostring()
-            buf = None
+            resized = cv2.resize(frame, (0,0), fx=self.ZOOM, fy=self.ZOOM)
+            ret, jpeg = cv2.imencode('.jpg', frame, (cv2.IMWRITE_JPEG_QUALITY, 50))
+            buf = jpeg.tostring()
             resized = frame
             self.produce(buf, resized, frame, r)
             return
@@ -136,7 +136,6 @@ class Visualizer(ManagedThread):
 
 
         resized = cv2.resize(frame, (0,0), fx=self.ZOOM, fy=self.ZOOM)
-
         ret, jpeg = cv2.imencode('.jpg', resized, (cv2.IMWRITE_JPEG_QUALITY, 50))
         buf = jpeg.tostring()
         self.produce(buf, resized, frame, r)
