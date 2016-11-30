@@ -60,10 +60,15 @@ class ManagedThread(Thread):
         self.last_product = 0
 
         if upstream_producer:
-
-            self.queue = upstream_producer.get_queue(lossy) # Queue of frames
+            if isinstance(upstream_producer, ManagedThread):
+                self.queue = upstream_producer.get_queue(lossy) # Queue of frames
+                self.args = ()
+            else:
+                self.queue = None
+                self.args = upstream_producer,
         else:
             self.queue = None
+            self.args = ()
 
     def produce(self, *args):
         for output_queue, lossy in self.queues:
@@ -121,9 +126,12 @@ class ManagedThread(Thread):
             first = True
             while self.alive: # Toggle with .toggle(), .enable(), .disable()
                 then = time()
-                for skips in range(0, self.framedrop):
-                    self.queue.get()
-                args = self.queue.get()
+                if self.queue:
+                    for skips in range(0, self.framedrop):
+                        self.queue.get()
+                    args = self.queue.get()
+                else:
+                    args = self.args
                 if first:
                     self.on_enabled(*args)
                     first = False

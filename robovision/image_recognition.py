@@ -4,8 +4,11 @@ import numpy as np
 import math
 import time
 import logging
-from managed_threading import ManagedThread
+from managed_threading import ManagedThread, ThreadManager
 logger = logging.getLogger("image_recognition")
+from config_manager import ConfigManager
+
+config = ConfigManager("imgrec")
 
 class Point(object):
     """
@@ -14,7 +17,7 @@ class Point(object):
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.angle = self.angle_rad = math.atan2(x, y)
+        self.angle_rad = math.atan2(x, y)
         self.angle_deg = math.degrees(self.angle_rad)
         self.dist = (x**2 + y**2)**0.5
 
@@ -49,39 +52,36 @@ class PolarPoint(Point):
     """
 
     def __init__(self, angle, dist):
-        self.angle = self.angle_rad = angle # radians
+        self.angle_rad = angle # radians
         self.dist = dist # distance in meters
-        self.angle_deg = math.degrees(self.angle)
+        self.angle_deg = math.degrees(self.angle_rad)
         self.x = self.dist * math.cos(self.angle_rad)
         self.y = self.dist * math.sin(self.angle_rad)
 
 
 class ImageRecognition(object):
 
-    GOAL_FIELD_DILATION = 40
+    GOAL_FIELD_DILATION = 50
     GOAL_BOTTOM = 200
 
-    # Y U Y V
-    FIELD_LOWER = 30, 0, 30, 0
-    FIELD_UPPER = 255, 140, 255, 140
-
-    YELLOW_LOWER = 150, 50, 150, 150
-    YELLOW_UPPER = 200, 100, 200, 200
-
-
-    BLUE_LOWER = 0, 140, 0, 0
-    BLUE_UPPER = 255, 255, 255, 140
-
-
-    BALL_LOWER = 64, 0, 64, 200
-    BALL_UPPER = 255, 100, 255, 255
-
-
-    KICKER_OFFSET = 0
     # Ball search scope vertically
     BALLS_BOTTOM = 300
 
-    def __init__(self, frame, copy=True, camera_height=0.22, camera_mount_radius=0.07, dist_goals=4.6, camera_vert_fov=72, camera_horiz_fov=54):
+    def get_thresholds(self, color):
+        return (
+            config.get_option(color, "luma lower", type=int, default=0).get_value(),
+            config.get_option(color, "chroma blue lower", type=int, default=0).get_value(),
+            config.get_option(color, "luma lower", type=int, default=0).get_value(),
+            config.get_option(color, "chroma red lower", type=int, default=0).get_value()
+         ), (
+            config.get_option(color, "luma upper", type=int, default=255).get_value(),
+            config.get_option(color, "chroma blue upper", type=int, default=255).get_value(),
+            config.get_option(color, "luma upper", type=int, default=255).get_value(),
+            config.get_option(color, "chroma red upper", type=int, default=255).get_value()
+         )
+
+
+    def __init__(self, frame, kicker_offset, copy=True, camera_height=0.22, camera_mount_radius=0.07, dist_goals=4.6, camera_vert_fov=72, camera_horiz_fov=54):
         """
         Create image recognition object for 8-headed camera mount which internally
         tracks the state and corrects sensor readings
@@ -94,17 +94,12 @@ class ImageRecognition(object):
         camera_vert_fov -- Camera field of view vertically (deg)
         camera_horiz_fov -- Camera field of view horizontally (deg)
         """
+        self.kicker_offset = kicker_offset
 
-#        self.ball_grabbed_green1 = 584>>1, 4320- (2200 + 32) #4320-2184,
-#        self.ball_grabbed_orange = 606>>1, 4320-(2200) # 4320-2216
-#        self.ball_grabbed_green2 = 584>>1, 4320-(2200 - 32) #4320-2248,
-
-        self.ball_grabbed_green1 = 564>>1, 4320-2184
-        self.ball_grabbed_orange = 586>>1, 4320-2216
-        self.ball_grabbed_green2 = 564>>1, 4320-2248,
-
-
-
+        self.FIELD_LOWER, self.FIELD_UPPER = self.get_thresholds("green")
+        self.BALL_LOWER, self.BALL_UPPER = self.get_thresholds("orange")
+        self.BLUE_LOWER, self.BLUE_UPPER = self.get_thresholds("blue")
+        self.YELLOW_LOWER, self.YELLOW_UPPER = self.get_thresholds("yellow")
 
         self.dist_goals = dist_goals
         self.camera_height = camera_height
@@ -117,50 +112,56 @@ class ImageRecognition(object):
         assert abs(self.y_to_dist(self.dist_to_y(2.0)) - 2.0) < 0.1
 
     def update(self, frame):
-        assert frame.shape == (4320, 320, 4)
         self.frame = frame
-        self.field_mask = self._recognize_field(self.FIELD_LOWER, self.FIELD_UPPER)
+        self.field_mask, self.field_contours = self._recognize_field(self.FIELD_LOWER, self.FIELD_UPPER)
 
         self.goal_blue_mask, \
         self.goal_blue, \
-        self.goal_blue_rect = self._recognize_goal(self.BLUE_LOWER, self.BLUE_UPPER)
+        self.goal_blue_rect, \
+        self.goal_blue_width_deg = self._recognize_goal(self.BLUE_LOWER, self.BLUE_UPPER)
+
         self.goal_yellow_mask, \
         self.goal_yellow,  \
-        self.goal_yellow_rect = self._recognize_goal(self.YELLOW_LOWER, self.YELLOW_UPPER)
+        self.goal_yellow_rect, \
+        self.goal_yellow_width_deg = self._recognize_goal(self.YELLOW_LOWER, self.YELLOW_UPPER)
 
         self.robot, self.orientation = self._position_robot() # Calculate x and y coords on the field and angle to grid
+
         self.balls_mask, self.balls = self._recognize_balls()
-        self.ball_grabbed = self._recognize_ball_grabbed()
 
+    def _recognize_closest_edge(self):
+        """
+        Recognize angle and distance to closest edge
+        """
+        closest_angle_deg = 0
+        closest_dist = 999999.0
 
-    def _recognize_ball_grabbed(self):
-        if self.frame is None:
-            return False
-        orange_pixels = cv2.inRange(self.frame[
-            self.ball_grabbed_orange[1]-4:self.ball_grabbed_orange[1]+4,
-            self.ball_grabbed_orange[0]-4:self.ball_grabbed_orange[0]+4],
-            self.BALL_LOWER, self.BALL_UPPER).sum()
-        green1_pixels = cv2.inRange(self.frame[
-            self.ball_grabbed_green1[1]-4:self.ball_grabbed_green1[1]+4,
-            self.ball_grabbed_green1[0]-4:self.ball_grabbed_green1[0]+4],
-            self.FIELD_LOWER, self.FIELD_UPPER).sum()
-        green2_pixels = cv2.inRange(self.frame[
-            self.ball_grabbed_green2[1]-4:self.ball_grabbed_green2[1]+4,
-            self.ball_grabbed_green2[0]-4:self.ball_grabbed_green2[0]+4],
-            self.FIELD_LOWER, self.FIELD_UPPER).sum()
-        #print("orange:", orange_pixels, "green1_pixels:", green1_pixels, "green2_pixels:", green2_pixels)
-        return orange_pixels > 1000 and green1_pixels > 1000 and green2_pixels > 1000
+        # Detect top lines of the field contours
+        for index, hull in enumerate(self.field_contours + self.field_contours[:2]):
+            started = False
+            stopped = False
+            px, py = 0, 0
+            for line in hull:
+                x, y = line[0]
+                if px and py and started and not stopped:
+                    new_dist = self.y_to_dist(y)
+                    if new_dist < closest_dist:
+                        closest_dist = new_dist
+                        closest_angle_rad = self.x_to_rad(x+index*480)
+                if px <= -18 and x > -18 and not stopped: # left side
+                    started = True
+                if x >= 480 and started:
+                    stopped = True
+                px, py = x,y
+        return PolarPoint(closest_angle_rad, closest_dist)
 
     def _position_robot(self):
-        return None, None
-
         if not self.goal_blue or not self.goal_yellow:
             logger.info("Both goal not detected!")
             return None, None
 
         if self.goal_blue.dist + self.goal_yellow.dist > 7:
             logger.info("Both goals overlap!")
-            #print("GLITCH READING DISTANCES, got:", self.goal_blue.dist, self.goal_yellow.dist)
             return None, None
 
         # Perceived angle between goals
@@ -170,27 +171,23 @@ class ImageRecognition(object):
         derived_dist = math.sqrt(self.goal_yellow.dist ** 2 + self.goal_blue.dist ** 2 - 2 * self.goal_yellow.dist * self.goal_blue.dist * math.cos(rad_diff))
 
         if not derived_dist:
-            # FAILBOX
+            logger.error("Triangulation failed 1")
             return None, None
 
-
         correction_factor = self.dist_goals / derived_dist # Divide goal-goal disance with percevied distance
-#        print("correction:", correction_factor)
-
         # TODO: This is stupid, never assign without purpose
         #self.goal_yellow.dist *= correction_factor
         #self.goal_blue.dist *= correction_factor
 
         #assert self.goal_blue.dist + self.goal_yellow.dist > self.dist_goals, "%.1fm" % (self.goal_blue.dist + self.goal_yellow.dist)
-        assert self.dist_goals ** 2 - (self.goal_blue.dist ** 2 + self.goal_yellow.dist ** 2 - 2 * self.goal_blue.dist * self.goal_yellow.dist * math.cos(rad_diff)) < 0.00001, \
-          "%.1f %.1f" % (self.dist_goals ** 2, self.goal_blue.dist ** 2 + self.goal_yellow.dist ** 2 - 2 * self.goal_blue.dist * self.goal_yellow.dist * math.cos(rad_diff))
+        #assert self.dist_goals ** 2 - (self.goal_blue.dist ** 2 + self.goal_yellow.dist ** 2 - 2 * self.goal_blue.dist * self.goal_yellow.dist * math.cos(rad_diff)) < 0.00001
 
         # Calculate distance projection along the line from goal to goal
         robot_x = (self.dist_goals**2-self.goal_blue.dist**2+self.goal_yellow.dist**2)/(2*self.dist_goals)
         try:
             robot_y = -math.sqrt(self.goal_yellow.dist**2-robot_x**2)
         except ValueError:
-            logger.info("Triangulation failed")
+            logger.error("Triangulation failed 2")
             return None, None
 
         # thx Fred, Lauri's too st00pid for this shit
@@ -210,40 +207,49 @@ class ImageRecognition(object):
         rad_yellow = math.asin(self.goal_yellow.dist / circumcircle_diameter)
 
         # TODO: Check if we got sensible triangle here
-
         orientation_rad = (-rad_blue -self.goal_blue.angle_rad) % (2*math.pi)
-
         return Point(robot_x, robot_y), orientation_rad
 
 
     def _recognize_field(self, lower, upper):
-        mask = cv2.inRange(self.frame, lower, upper)
-        assert mask.shape == (4320, 320)
-        mask = cv2.erode(mask, None, iterations=4)
 
         slices = []
+        hulls = []
+        overlap = 20 # overlap between cameras
+
+        mask = cv2.inRange(self.frame[:3840], lower, upper)
+        mask = np.vstack([mask, mask[:overlap]])
+
 
         # iterate over cameras because otherwise convex hull wraps around distorted field edges
+        # field edges are straight lines within single camera scope
         for j in range(0,9):
-            sliced = mask[j*480:(j+1)*480,:]
-            _, contours, hierarchy = cv2.findContours(sliced, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-            sliced = mask[j*480:(j+1)*480,:]
+            begin, end = j*480-overlap, (j+1)*480+overlap
+            begin2, end2 = overlap, -overlap
+            if begin < 0:
+                begin = 0
+                begin2 = 0
+            if end > 4320:
+                end = 4320
+                end2 = 480+overlap
+            roi = mask[begin:end,:]
+            _, contours, hierarchy = cv2.findContours(roi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contours = [c for c in contours if cv2.contourArea(c) > 30]
             if contours:
                 merged = np.vstack(contours) # merge contours
                 hull = cv2.convexHull(merged) # get convex hull poly
-                cv2.drawContours(sliced, [hull],0, 9, -1) # Fill in mask with convex hull
-            slices.append(sliced)
-
+                cv2.drawContours(roi, [hull],0, 9, -1) # Fill in mask with convex hull
+                hulls.append(hull)
+            slices.append(roi[begin2:end2])
         mask = np.vstack(slices)
-        assert mask.shape == (4320, 320), "got instead %s" % repr(mask.shape)
+        mask = mask[:3840]
 
-        return mask
+        assert mask.shape == (3840, 320), "got instead %s" % repr(mask.shape)
+        return mask, hulls
 
     def _recognize_goal(self, lower, upper, overlap=4):
         # Recognize goal
-        mask = cv2.inRange(self.frame[:,:self.BALLS_BOTTOM-self.GOAL_FIELD_DILATION], lower, upper)
+        mask = cv2.inRange(self.frame[:3840,:self.BALLS_BOTTOM-self.GOAL_FIELD_DILATION], lower, upper)
         mask = cv2.erode(mask, None, iterations=4)
         mask = cv2.bitwise_and(mask, self.field_mask[:,self.GOAL_FIELD_DILATION:self.BALLS_BOTTOM])
 
@@ -251,9 +257,9 @@ class ImageRecognition(object):
         maxwidth = 0
         rects = []
         cnts = []
-        
+
         # Iterate over cameras separately and generate mask for each camera
-        for j in range(0,9):
+        for j in range(0,8):
             roi = mask[j*480:j*480+480:] # one camera
             _, contours, hierarchy = cv2.findContours(roi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contours = [c for c in contours if cv2.contourArea(c) > 100]
@@ -261,7 +267,7 @@ class ImageRecognition(object):
                 hull = cv2.convexHull(np.vstack(contours))
                 y,x,h,w = cv2.boundingRect(hull)
                 rect = (x+j*480),2*y,w,h*2
-                rects.append(rect)  
+                rects.append(rect)
                 cnts.append(hull)
             else:
                 cnts.append(None)
@@ -282,23 +288,24 @@ class ImageRecognition(object):
             y,x,h,w = cv2.boundingRect(hull)
             if w > maxwidth:
                 maxwidth = w
-                rect = (x+j*480),2*y,w,h*2            
+                rect = (x+j*480),2*y,w,h*2
 
         if maxwidth:
             x,y,w,h = rect # done
-            return mask, PolarPoint(self.x_to_rad(x+w/2.0), self.y_to_dist(y+h+self.GOAL_FIELD_DILATION)), rects
-        return mask, None, []
+            return mask, PolarPoint(self.x_to_rad(x+w/2.0), self.y_to_dist(y+h+self.GOAL_FIELD_DILATION)), rects, w * 360 / 3840.0
+        return mask, None, [], 0
 
     def _recognize_balls(self):
         """
         Return mask for balls and list of balls
         """
-        mask = cv2.inRange(self.frame[:,:self.BALLS_BOTTOM], self.BALL_LOWER, self.BALL_UPPER)
-        mask = cv2.bitwise_and(mask, self.field_mask[:,:self.BALLS_BOTTOM])
+        mask = cv2.inRange(self.frame[:3840,:self.BALLS_BOTTOM], self.BALL_LOWER, self.BALL_UPPER)
+        mask = cv2.bitwise_and(mask, self.field_mask[:3840,:self.BALLS_BOTTOM])
+        mask = np.vstack([mask, mask[:480]])
         cnts = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
         balls = set()
         skipped = set()
-        
+
         for c in cnts:
             y, x, h, w = cv2.boundingRect(c)
 
@@ -307,13 +314,13 @@ class ImageRecognition(object):
                 continue
 
             # Adjust for the fact that we have 320 YUYV pixels
-            radius = w >> 1 if w > h else h >> 1
-            cx = x + radius
-            cy = y * 2 + radius
+            diameter = w if w > h else (h << 1)
+            radius = diameter >> 1
+            cx = x + (w >> 1)
+            cy = (y << 1) + (h >> 1)
 
             relative = PolarPoint(self.x_to_rad(cx), self.y_to_dist(cy+radius))
 
-            """
             # Skip balls in blue goal
             if self.goal_blue:
                 bx, by, bw, bh = self.goal_blue_rect[0]
@@ -325,7 +332,6 @@ class ImageRecognition(object):
                 yx, yy, yw, yh = self.goal_yellow_rect[0]
                 if cx + radius > yx and cx - radius < yx+yw and cy+radius > yy and cy-radius < yy+yh:
                     continue
-            """
 
             if self.robot and self.orientation:
                 absolute = relative.rotate(-self.orientation).translate(self.robot)
@@ -338,6 +344,7 @@ class ImageRecognition(object):
         return mask, sorted(balls, key=lambda b:b[0].dist)
 
 
+
     def dist_to_y(self, d):
         """
         Convert object distance to panorama image y coordinate
@@ -348,7 +355,10 @@ class ImageRecognition(object):
         """
         Convert panorama image y coordinate to distance
         """
-        return self.camera_height / math.tan(y * self.camera_vert_fov_rad / 640) + self.camera_mount_radius
+        j = math.tan(y * self.camera_vert_fov_rad / 640)
+        if j != 0:
+          return self.camera_height / j + self.camera_mount_radius
+        return 99999999 # infinity to prevent division by zero
 
     def deg_to_x(self, d):
         """
@@ -356,12 +366,11 @@ class ImageRecognition(object):
         """
         d = d % 360
         if d > 180: d -= 360
-        return int(d*3840/360+240+1920)-self.KICKER_OFFSET
+        return int(d*3840/360)+self.kicker_offset
 
 
     def x_to_deg(self, x):
-        x += self.KICKER_OFFSET
-        d = (x-2160.0)*360/(3840)
+        d = (x-self.kicker_offset)*360/(3840)
         return d % 360
 
     def x_to_rad(self, x):
@@ -369,8 +378,7 @@ class ImageRecognition(object):
         Convert panorama image x coordinate to angle in radians from the center of the image
         (angle from the the kicker)
         """
-        x += self.KICKER_OFFSET
-        d = (x-2160.0)*(math.pi*2)/(3840)
+        d = (x-self.kicker_offset)*(math.pi*2)/(3840)
         if d > math.pi:
             d -= math.pi * 2
         if d < -math.pi:
@@ -381,15 +389,96 @@ import json
 
 class ImageRecognizer(ManagedThread):
     def step(self, frame):
-        assert frame.shape == (4320, 320, 4), "Got %s instead" % repr(frame.shape)
-        r = ImageRecognition(frame)
+#        assert frame.shape == (4320, 320, 4), "Got %s instead" % repr(frame.shape)
+        r = ImageRecognition(frame,
+            kicker_offset = config.get_option("camera mount", "kicker offset", type=int).get_value())
         self.produce(r, self.grabber)
 
         # TODO: Put this in another sensible place, probably as a ImageRecognizer consumer
-        if r.robot:
-            for websocket in self.websockets:
-                websocket.send(json.dumps(dict(
-                    action="position-robot",
-                    x=r.robot.x,
-                    y=r.robot.y)))
+        if hasattr(self, "websockets"):
+            if r.robot:
+                for websocket in self.websockets:
+                    websocket.send(json.dumps(dict(
+                        action="position-robot",
+                        x=r.robot.x,
+                        y=r.robot.y)))
+
+class Player(ManagedThread):
+    """
+    Player thread reads RGB frames from a video file and converts them to YUYV frames
+    suitable for ImageRecognizer thread
+    """
+    def on_enabled(self, filename):
+       self.cap = cv2.VideoCapture(filename)
+
+    def step(self, filename):
+        succ, frame = self.cap.read()
+        if not succ:
+            self.disable()
+            return
+        rotated = np.rot90(frame, 1).copy()
+        yuv = cv2.cvtColor(rotated[:3840], cv2.COLOR_RGB2YCR_CB)
+        y, u, v = np.dsplit(yuv, 3)
+        y = y[:,::2]
+        u = u[:,::2]
+        v = v[:,::2]
+        yuyv = np.dstack([y,u,y,v])
+        self.produce(yuyv)
+
+
+class Shower(ManagedThread):
+    def step(self, buf, resized, frame, r):
+        frame = frame[:,:3840]
+        height, width, _ = frame.shape
+        # Align kicker to the middle of first row
+
+        x1 = r.kicker_offset-width/4
+        x2 = r.kicker_offset+width/4
+        j = np.hstack([frame[:,x2:], frame[:,:x1]])
+        frame = np.vstack([frame[:,x1:x2], j])
+
+        frame = cv2.resize(frame, (0,0), fx=0.5, fy=0.5)
+        cv2.imshow("Got balls?", frame)
+        if cv2.waitKey(1) >= 0:
+            self.disable()
+            self.stop()
+
+if __name__ == "__main__":
+    """
+    Apply image recognition on a recorded videofile, usage:
+    python3 image_recognition.py filename.avi
+    """
+    from visualization import Visualizer
+
+    import sys
+    path = sys.argv[1]
+    player = Player(path)
+
+    image_recognizer = ImageRecognizer(player)
+    visualizer = Visualizer(image_recognizer)
+    shower = Shower(visualizer)
+
+    image_recognizer.grabber = player
+    player.start()
+    image_recognizer.start()
+    visualizer.start()
+    shower.start()
+
+    manager = ThreadManager()
+    manager.register(player)
+    manager.register(image_recognizer)
+    manager.register(visualizer)
+    manager.register(shower)
+    manager.start()
+
+    player.enable()
+    image_recognizer.enable()
+    visualizer.enable()
+    shower.enable()
+
+    # Wait
+    shower.join()
+    image_recognizer.stop()
+    visualizer.stop()
+    player.stop()
 
