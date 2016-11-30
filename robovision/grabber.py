@@ -106,13 +106,20 @@ class Grabber(Thread):
         fcntl.ioctl(vd, VIDIOC_QUERYCAP, cp)
         self.driver = "".join((chr(c) for c in cp.driver if c))
 
-        if False:
-            if self.saturation is not None:
-                logger.info("Setting saturation for %s to %d", self.path, self.saturation)
-                ctrl = v4l2_control()
-                ctrl.id = V4L2_CID_SATURATION
-                ctrl.value = self.saturation
-                fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
+
+        logger.info("Disabling auto white balance for %s", self.path)
+        ctrl = v4l2_control()
+        ctrl.id = V4L2_CID_AUTO_WHITE_BALANCE
+        ctrl.value = 0
+        fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
+
+
+        if self.saturation is not None:
+            logger.info("Setting saturation for %s to %d", self.path, self.saturation)
+            ctrl = v4l2_control()
+            ctrl.id = V4L2_CID_SATURATION
+            ctrl.value = self.saturation
+            fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
 
         if self.exposure is not None:
             logger.info("Setting exposure for %s to %d", self.path, self.exposure)
