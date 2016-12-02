@@ -2,6 +2,7 @@ import struct
 import serial
 from kbhit import KBHit
 from time import sleep
+import itertools
 
 ser = serial.Serial("/dev/ttyACM0", 9600,
                     bytesize=serial.EIGHTBITS,
@@ -25,7 +26,7 @@ def slow_write(data):
         byte = struct.pack("B", byte)
         ser.write(byte)
         #print("wrote", byte)
-        sleep(0.1)
+        #sleep(0.05)
 
 
 def write_packet(packet):
@@ -38,12 +39,24 @@ def write_packet(packet):
             checksum &= 0x00FF
     final.append(checksum)
     print(' '.join('{:02x}'.format(x) for x in final))
-    final = struct.pack("6B", *final)
+    final = struct.pack("7B", *final)
     slow_write(final)
     return final
 
-def speed(m1, m2, m3):
-    write_packet((int(m1)&0xff, int(m2)&0xff, int(m3)&0xff))
+def speed(*speeds, grabber=False, kicker=False):
+    enables = []
+    directions = []
+    pwms = []
+    for n, speed in enumerate(speeds):
+        enables.append(True)
+        directions.append(speed > 0)
+        pwm = 24 + abs(int(float(speed) * 205))
+        pwms.append(pwm & 0xff)
+    bitlist = itertools.chain(enables, directions, (grabber, kicker))
+    bits = "".join(["1" if i else "0" for i in bitlist][::-1])
+    bits = int(bits, 2)
+    pwms.append(bits)
+    write_packet(pwms)
 
 s = int(64)
 #speed(127, 127, 127)
@@ -60,16 +73,19 @@ while True:
     #    print(' '.join('{:02x}'.format(x) for x in data_str))
     #continue
     step = 1
-    l = list(range(-128, 127, step))
-    l.extend(list(range(127, -128, -step)))
+    r = 5
+    l = list(range(-r, r, step))
+    l.extend(list(range(r, -r, -step)))
 
     for x in l:
-        print(">", "{:02x}".format(x), end=': ')
+        x = x/100;
+        print(">", "{}".format(x), end=': ')
         speed(x, x, x)
-        sleep(0.00)
+        sleep(0.05)
         if ser.inWaiting() > 0:
             data_str = ser.read(ser.inWaiting())
-            print(" <", ' '.join('{:02x}'.format(x) for x in data_str))
+            print("<", data_str.decode())
+            #print(" <", ' '.join('{:02x}'.format(x) for x in data_str))
             #print(struct.unpack('5B', data_str), end='')
         else:
             pass
