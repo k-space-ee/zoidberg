@@ -14,12 +14,13 @@ class Point(object):
     """
     Cartesian coordinate (meters)
     """
-    def __init__(self, x, y):
+    def __init__(self, x, y, suspicious=False):
         self.x = x
         self.y = y
         self.angle_rad = math.atan2(x, y)
         self.angle_deg = math.degrees(self.angle_rad)
         self.dist = (x**2 + y**2)**0.5
+        self.suspicious = suspicious
 
     def __iter__(self):
         yield self.x
@@ -51,7 +52,7 @@ class PolarPoint(Point):
     Polar coordinate (radians, meters)
     """
 
-    def __init__(self, angle, dist):
+    def __init__(self, angle, dist, suspicious=False):
         self.angle_rad = angle # radians
         self.dist = dist # distance in meters
         self.angle_deg = math.degrees(self.angle_rad)
@@ -81,7 +82,7 @@ class ImageRecognition(object):
          )
 
 
-    def __init__(self, frame, kicker_offset, copy=True, camera_height=0.22, camera_mount_radius=0.07, dist_goals=4.6, camera_vert_fov=72, camera_horiz_fov=54):
+    def __init__(self, frame, kicker_offset, copy=True, camera_height=0.265, camera_mount_radius=0.07, dist_goals=4.6, camera_vert_fov=72, camera_horiz_fov=54):
         """
         Create image recognition object for 8-headed camera mount which internally
         tracks the state and corrects sensor readings
@@ -138,18 +139,21 @@ class ImageRecognition(object):
         closest_angle = 0
         dx = 0
         dy = 0
+#        print("----")
         for index, hull in enumerate(self.field_contours[:8]):
             y,x,h,w = cv2.boundingRect(hull)
             rotation = (index-4)*(math.pi*2/8.0)
             dist = self.y_to_dist(y * 2)
             if dist < closest_dist:
                 closest_dist = dist
-                closest_angle = rotation
+                closest_angle = rotation               
+#            print("rot:", rotation, "dist:", dist, "xy:", math.sin(rotation) * dist, math.cos(rotation) * dist)
             dx += math.sin(rotation) * dist
             dy += math.cos(rotation) * dist
         return PolarPoint(closest_angle, closest_dist), Point(dx/8.0, dy/8.0)
 
     def _position_robot(self):
+        return None, None
         if not self.goal_blue or not self.goal_yellow:
             logger.info("Both goal not detected!")
             return None, None
@@ -286,7 +290,7 @@ class ImageRecognition(object):
 
         if maxwidth:
             x,y,w,h = rect # done
-            return mask, PolarPoint(self.x_to_rad(x+w/2.0), self.y_to_dist(y+h+self.GOAL_FIELD_DILATION)), rects, w * 360 / 3840.0
+            return mask, PolarPoint(self.x_to_rad(x+w/2.0), self.y_to_dist(y+h)), rects, w * 360 / 3840.0
         return mask, None, [], 0
 
     def _recognize_balls(self):
@@ -315,17 +319,19 @@ class ImageRecognition(object):
 
             relative = PolarPoint(self.x_to_rad(cx), self.y_to_dist(cy+radius))
 
-            # Skip balls in blue goal
+            suspicious = False
+            # SkipFlag balls in blue goal
             if self.goal_blue:
                 bx, by, bw, bh = self.goal_blue_rect[0]
                 if cx + radius > bx and cx - radius < bx+bw and cy+radius > by and cy-radius < by+bh:
-                    continue
+                    suspicious = True
 
-            # Skip balls in yellow goal
+            # Flag balls in yellow goal
             if self.goal_yellow:
                 yx, yy, yw, yh = self.goal_yellow_rect[0]
                 if cx + radius > yx and cx - radius < yx+yw and cy+radius > yy and cy-radius < yy+yh:
-                    continue
+                    suspicious = True
+            relative.suspicious = suspicious
 
             if self.robot and self.orientation:
                 absolute = relative.rotate(-self.orientation).translate(self.robot)

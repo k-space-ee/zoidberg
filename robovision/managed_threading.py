@@ -18,7 +18,7 @@ class ThreadManager(Thread):
         self.threads.add(thread)
 
     def run(self):
-        while True:
+        while False:
             sleep(1)
             now = time()
             for thread in self.threads:
@@ -60,7 +60,7 @@ class ManagedThread(Thread):
         self.last_product = 0
 
         if upstream_producer:
-            if isinstance(upstream_producer, ManagedThread):
+            if hasattr(upstream_producer, "get_queue"):
                 self.queue = upstream_producer.get_queue(lossy) # Queue of frames
                 self.args = ()
             else:

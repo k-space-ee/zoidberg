@@ -49,7 +49,7 @@ sockets = Sockets(app)
 grabber = PanoramaGrabber() # config read from ~/.robovision/grabber.conf
 image_recognizer = ImageRecognizer(grabber)
 gameplay = Gameplay(image_recognizer)
-#rf = RemoteRF(gameplay, "/dev/ttyACM0")
+rf = RemoteRF(gameplay, "/dev/ttyACM0")
 visualizer = Visualizer(image_recognizer, framedrop=1)
 recorder = Recorder(grabber)
 
@@ -58,14 +58,18 @@ def generator():
     queue = visualizer.get_queue()
     while True:
         try:
-            frame, = queue.get_nowait()
-        except:
+        
+        
+            buf, resized, frame, r = queue.get_nowait()
+            
+
+        except Empty:
             sleep(0.001) # Fix this stupid thingie
             continue
         else:
 
             yield b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'
-            yield frame
+            yield buf
             yield b'\r\n\r\n'
 
 @app.route('/combined/<path:type_str>')
@@ -77,8 +81,6 @@ def video_combined(type_str):
 def group():
     return render_template(
         'group.html',
-        YELLOW_LOWER=ImageRecognition.YELLOW_LOWER,
-        YELLOW_UPPER=ImageRecognition.YELLOW_UPPER,
     )
 
 @app.route('/logging')
@@ -95,7 +97,7 @@ def command(websocket):
         websocket.send(buf)
     while not websocket.closed:
         websockets.add(websocket)
-        gevent.sleep(0.1)
+        gevent.sleep(0.01)
 
         msg = websocket.receive()
 
@@ -218,7 +220,7 @@ def main():
     manager.register(grabber)
     manager.register(visualizer)
     manager.register(image_recognizer)
-#    manager.start()
+    manager.start()
 
     # Enable some threads
     image_recognizer.enable()

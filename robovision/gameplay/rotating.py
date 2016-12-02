@@ -63,8 +63,8 @@ class Gameplay(ManagedThread):
     def try_to_kick(self, r):
         print('Inside try to kick')
         for relative, absolute, _, _, _ in r.balls[1:]:
-            if abs(relative.dist*math.sin(relative.angle))<0.08:
-                self.arduino.set_xyw([1,-1][relative.angle>0]*0.99,0.0,0.0)
+            if abs(relative.dist*math.sin(relative.angle_rad))<0.08:
+                self.arduino.set_xyw([1,-1][relative.angle_rad>0]*0.99,0.0,0.0)
                 self.keep_state_counter=10
                 new_state = "repeat_last_move"
                 break
