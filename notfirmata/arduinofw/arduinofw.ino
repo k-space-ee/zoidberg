@@ -6,7 +6,7 @@
 
 #define MOTOR1_PWM 5
 #define MOTOR1_ENABLE 4
-#define MOTOR1_DIRECTION 9
+#define MOTOR1_DIRECTION 3
 
 
 #define MOTOR2_PWM 11
@@ -57,7 +57,7 @@ void kick() {
 		lastkick = millis();
 		digitalWrite(KICKER, 1);
 	}
-	
+
 }
 
 void loop()
@@ -85,12 +85,12 @@ void loop()
 			kick();
 		}
 	}
-	
-	// 
+
+	//
 	if (lastkick + KICKER_DISCHARGE_TIME < millis()) {
 		digitalWrite(KICKER, 0);
 	}
-	
+
 	// Reset everything on packet timeout
 	if (millis() - lastpt > PACKET_TIMEOUT) {
 		checksum = 0;
