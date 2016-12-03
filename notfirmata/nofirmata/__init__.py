@@ -52,9 +52,10 @@ def speed(*speeds, grabber=False, kicker=False):
         directions.append(speed > 0)
         pwm = 24 + abs(int(float(speed) * 205))
         pwms.append(pwm & 0xff)
-    bitlist = itertools.chain(enables, directions, (grabber, kicker))
-    bits = "".join(["1" if i else "0" for i in bitlist][::-1])
+    bitlist = itertools.chain((kicker, grabber), directions[::-1], enables[::-1])
+    bits = "".join(["1" if i else "0" for i in bitlist][::1])
     bits = int(bits, 2)
+    print(bin(bits), end=" ")
     pwms.append(bits)
     write_packet(pwms)
 
@@ -63,6 +64,21 @@ s = int(64)
 #speed(0, 127, 0)
 #speed(s, s, s)
 #exit(0)
+grabber = True
+while True:
+    grabber = not grabber
+    print(grabber)
+    speed(0.1, 0.1, 0.1, grabber=grabber, kicker=True)
+    sleep(0.01)
+step = 1
+r = 75
+l = list(range(-r, r, step))
+l.extend(list(range(r, -r, -step)))
+for s in range(0, -r, -step):
+    x = s/100
+    print(">", "{}".format(x), end=': ')
+    speed(x, x, x)
+    sleep(0.01)
 while True:
     #slow_write(b"\xaa\xaa\xff\xff\xff")
     #sleep(1)
@@ -72,16 +88,12 @@ while True:
     #    data_str = ser.read(ser.inWaiting())
     #    print(' '.join('{:02x}'.format(x) for x in data_str))
     #continue
-    step = 1
-    r = 5
-    l = list(range(-r, r, step))
-    l.extend(list(range(r, -r, -step)))
 
     for x in l:
         x = x/100;
         print(">", "{}".format(x), end=': ')
         speed(x, x, x)
-        sleep(0.05)
+        sleep(0.01)
         if ser.inWaiting() > 0:
             data_str = ser.read(ser.inWaiting())
             print("<", data_str.decode())
