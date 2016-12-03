@@ -55,30 +55,75 @@ def speed(*speeds, grabber=False, kicker=False):
     bitlist = itertools.chain((kicker, grabber), directions[::-1], enables[::-1])
     bits = "".join(["1" if i else "0" for i in bitlist][::1])
     bits = int(bits, 2)
-    print(bin(bits), end=" ")
     pwms.append(bits)
     write_packet(pwms)
-
+#for x in range(1000):
+#    speed(0,0,0,grabber=True, kicker=True)
+#    sleep(0.05)
+#exit(0)
 s = int(64)
 #speed(127, 127, 127)
 #speed(0, 127, 0)
 #speed(s, s, s)
 #exit(0)
-grabber = True
-while True:
-    grabber = not grabber
-    print(grabber)
-    speed(0.1, 0.1, 0.1, grabber=grabber, kicker=True)
-    sleep(0.01)
+#grabber = True
+#while True:
+    #grabber = not grabber
+#    print(grabber)
+#    speed(0.1, 0.1, 0.1, grabber=grabber, kicker=True)
+#    sleep(0.01)
 step = 1
 r = 75
 l = list(range(-r, r, step))
 l.extend(list(range(r, -r, -step)))
-for s in range(0, -r, -step):
-    x = s/100
-    print(">", "{}".format(x), end=': ')
-    speed(x, x, x)
-    sleep(0.01)
+#for s in range(0, -r, -step):
+#    x = s/100
+#    print(">", "{}".format(x), end=': ')
+#    speed(x, x, x)
+#    sleep(0.01)
+recv = []
+checksum = 0
+def read_packet(data):
+    global recv
+    global checksum
+    #print(len(recv), hex(data))
+    if data == 0xAA and len(recv) == 0:
+        recv.append(data)
+        #print("First")
+        return
+    if data == 0xAA and len(recv) == 1:
+        recv.append(data)
+        #print("Second")
+        return
+
+    if len(recv) > 1 and len(recv) < 7:
+        recv.append(data)
+        checksum += data & 0xff
+        if checksum > 255:
+            checksum &= 0x00FF
+        return
+    elif len(recv) == 7:
+        recv.append(data)
+        if checksum == data:
+            print("<", ' '.join('{:02x}'.format(x) for x in recv))
+            checksum = 0
+            del recv[:]
+            return
+        else:
+            print("SERR", end="")
+            print(" <", ' '.join('{:02x}'.format(x) for x in recv))
+            checksum = 0
+            del recv[:]
+            return
+    else:
+        print("Packet error")
+        checksum = 0
+        del recv[:]
+        return
+
+
+
+
 while True:
     #slow_write(b"\xaa\xaa\xff\xff\xff")
     #sleep(1)
@@ -92,11 +137,13 @@ while True:
     for x in l:
         x = x/100;
         print(">", "{}".format(x), end=': ')
-        speed(x, x, x)
+        speed(x, x, x, grabber=True, kicker=True)
         sleep(0.01)
         if ser.inWaiting() > 0:
             data_str = ser.read(ser.inWaiting())
-            print("<", data_str.decode())
+            for d in data_str:
+                read_packet(d)
+            #print("<", data_str.decode())
             #print(" <", ' '.join('{:02x}'.format(x) for x in data_str))
             #print(struct.unpack('5B', data_str), end='')
         else:
