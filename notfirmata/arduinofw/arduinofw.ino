@@ -24,7 +24,7 @@
 #define KICKER 17
 #define KICKER_CAPACITOR_SELECT 18
 #define KICKER_RECHARGE_TIME 2000
-#define KICKER_DISCHARGE_TIME 500
+#define KICKER_DISCHARGE_TIME 200
 
 #define MOTOR_BATTERY_VOLTAGE A0
 #define PC_BATTERY_VOLTAGE A1
@@ -46,8 +46,9 @@ bool pready = false;
 uint32_t lastpt = 0;
 uint32_t lastkick = 0;
 uint32_t lastspt = 0;
+bool packet_fail = true;
 
-
+void sendPacket();
 
 void setup()
 {
@@ -59,6 +60,7 @@ void setup()
 	lastpt = millis();
 	lastspt = millis();
 	lastkick = millis();
+	sendPacket();
 }
 
 
@@ -167,6 +169,7 @@ void loop()
 {
 	if (pready) {
 		pready = false;
+		packet_fail = false;
 		lastpt = millis();
 
 		analogWrite(MOTOR1_PWM, packet[0]);
@@ -187,15 +190,18 @@ void loop()
 	}
 
 	// switch kicker from discharge to charge mode 
-	if (lastkick + KICKER_DISCHARGE_TIME < millis()) {
+	if (lastkick + KICKER_DISCHARGE_TIME < millis() && !packet_fail) {
 		digitalWrite(KICKER, 0);
 	}
 
 	// Reset everything on packet timeout
+	//if (false) {
 	if (millis() - lastpt > PACKET_TIMEOUT) {
+		lastpt = millis();
 		checksum = 0;
 		pcount = 0;
 		pready = false;
+		packet_fail = true;
 		analogWrite(MOTOR1_PWM, 0);
 		analogWrite(MOTOR2_PWM, 0);
 		analogWrite(MOTOR3_PWM, 0);
@@ -206,7 +212,7 @@ void loop()
 		digitalWrite(MOTOR2_DIRECTION, 0);
 		digitalWrite(MOTOR3_DIRECTION, 0);
 		digitalWrite(GRABBER_MOTOR, 0);
-		digitalWrite(KICKER, 0);
+		digitalWrite(KICKER, 1);
 	}
 	
 	if (millis() - lastspt > RESPONSE_INTERVAL) {
