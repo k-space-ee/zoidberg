@@ -165,7 +165,6 @@ class Arduino(Thread):
 
     def kick(self):
         if self.last_kick + 0.5 < time():
-            logger.info("{} whut".format(self.last_kick))
             self.set_kicker(True)
             self.last_kick = time()
 

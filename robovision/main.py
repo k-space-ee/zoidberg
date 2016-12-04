@@ -23,6 +23,9 @@ from visualization import Visualizer
 from image_recognition import ImageRecognizer, ImageRecognition
 from grabber import PanoramaGrabber
 from remoterf import RemoteRF
+from config_manager import ConfigManager
+
+
 
 # Get Gevent websocket patched for Python3 here:
 # https://bitbucket.org/noppo/gevent-websocket/
@@ -45,6 +48,7 @@ sockets = Sockets(app)
 
 
 
+
 # Build pipeline
 grabber = PanoramaGrabber() # config read from ~/.robovision/grabber.conf
 image_recognizer = ImageRecognizer(grabber)
@@ -58,16 +62,11 @@ def generator():
     queue = visualizer.get_queue()
     while True:
         try:
-        
-        
             buf, resized, frame, r = queue.get_nowait()
-            
-
         except Empty:
             sleep(0.001) # Fix this stupid thingie
             continue
         else:
-
             yield b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'
             yield buf
             yield b'\r\n\r\n'
@@ -95,8 +94,29 @@ def command(websocket):
 
     for buf in log_queue:
         websocket.send(buf)
+
+    game_config = ConfigManager.instance("game")
+
+    def get_game_options():
+        return [
+            ("field_id", [game_config.get_value("global", "field_id"),"A","B"]),
+            ("robot_id", [game_config.get_value("global", "robot_id"),"A","B"]),
+            ("target goal color", [game_config.get_value("global", "target goal color"),"yellow","blue"]),
+            ("gameplay status", [game_config.get_value("global", "gameplay status"),"disabled", "enabled"]),
+        ]
+    
+    game_options = get_game_options()
+
+    settings_packet = json.dumps(dict(
+        action = "settings-packet",
+        sliders = ConfigManager.as_list("imgrec"),
+        options = game_options
+    ))
+    websocket.send(settings_packet)
+
     while not websocket.closed:
         websockets.add(websocket)
+
         gevent.sleep(0.01)
 
         msg = websocket.receive()
@@ -105,6 +125,7 @@ def command(websocket):
             websockets.remove(websocket)
             logger.info("WebSocket connection presumably closed, %d left connected" % len(websockets))
             break
+
         response = json.loads(msg)
         action = response.pop("action", None)
         if not action:
@@ -116,7 +137,7 @@ def command(websocket):
             controls = response.pop("data")
             x = controls.pop("controller0.axis0", x) * 0.99
             y = controls.pop("controller0.axis1", y) * 0.99
-            w = controls.pop("controller0.axis2", w) * 0.5
+            w = controls.pop("controller0.axis2", w) * 0.7
 
             # Kick the ball
             if controls.get("controller0.button7", None):
@@ -130,7 +151,7 @@ def command(websocket):
             if not gameplay.alive:
                 gameplay.arduino.set_xyw(x,-y,-w)
 
-
+        # TODO: slders
         elif action == "record_toggle":
             print("TOGGLING RECORDER")
             recorder.toggle()
@@ -138,6 +159,15 @@ def command(websocket):
             recorder.enable()
         elif action == "record_disable":
             recorder.disable()
+        elif action == "set_settings":
+            for k, v in response.items():
+                ConfigManager.set_config_value(k, v)
+            print(response.items())
+        elif action == "set_options":
+            for k, v in response.items():
+                game_config.get_option("global", k).set_value(v)
+                game_config.save()
+            print(response.items())
         else:
             logger.error("Unhandled action: %s", action)
     websockets.remove(websocket)
@@ -210,7 +240,7 @@ def main():
     grabber.start()
     recorder.start()
     visualizer.start()
-    #rf.start()
+    rf.start()
 
     # Register threads for monitoring
     from managed_threading import ThreadManager
@@ -225,6 +255,8 @@ def main():
     # Enable some threads
     image_recognizer.enable()
     visualizer.enable()
+    if gameplay.is_enabled:
+        gameplay.enable()
     server.serve_forever()
 
 if __name__ == '__main__':
