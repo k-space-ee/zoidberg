@@ -204,7 +204,7 @@ class Arduino(Thread):
                         sleep(0.1)
                     logger.info("Arduino is talking")
 
-                except serial.serialutil.SerialException:
+                except serial.serialutil.SerialException, OSError:
                     logger.error("Failed to connect to Arduino")
                     continue # Try again
                 else:
