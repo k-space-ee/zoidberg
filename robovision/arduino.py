@@ -216,7 +216,7 @@ class Arduino(Thread):
                     data = self.board.read(self.board.inWaiting())
                     for byte in data:
                         self.parse(byte)
-            except serial.serialutil.SerialException:
+            except (serial.serialutil.SerialException, OSError):
                 logger.info("Arduino disconnected at %s", self.path)
                 self.alive = False
                 self.board = None
