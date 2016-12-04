@@ -4,7 +4,7 @@ from kbhit import KBHit
 from time import sleep
 import itertools
 
-ser = serial.Serial("/dev/ttyACM0", 9600,
+ser = serial.Serial("/dev/ttyUSB0", 9600,
                     bytesize=serial.EIGHTBITS,
                     parity=serial.PARITY_NONE,
                     stopbits=serial.STOPBITS_ONE,

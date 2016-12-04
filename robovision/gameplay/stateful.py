@@ -21,8 +21,8 @@ def distance(point_a, point_b):
 
 config = ConfigManager("game")
 
-class Gameplay(ManagedThread): 
-    def __init__(self, *args, **kwargs):        
+class Gameplay(ManagedThread):
+    def __init__(self, *args, **kwargs):
         ManagedThread.__init__(self, *args)
         self.arduino = Arduino() # config read from ~/.robovision/pymata.conf
         self.state = Patrol(self)
@@ -30,24 +30,24 @@ class Gameplay(ManagedThread):
         self.closest_edges = []
         self.safe_distance_to_goals = 1.4
         self.config = config
-    
+
     @property
     def field_id(self):
         return self.config.get_option("global", "field_id", type=str, default='A').get_value()
-           
+
     @property
     def robot_id(self):
         return self.config.get_option("global", "robot_id", type=str, default='A').get_value()
-        
+
     @property
     def is_enabled(self):
         return self.config.get_option("global", "gameplay status", type=str, default='disabled').get_value() == 'enabled'
-    
+
     @property
     def config_goal(self):
         return self.config.get_option("global", "target goal color", type=str, default='blue').get_value()
-    
-        
+
+
     @property
     def balls(self):
         balls = []
@@ -81,20 +81,20 @@ class Gameplay(ManagedThread):
 
     @property
     def own_goal(self):
-        return self.recognition.goal_yellow if self.config_goal=='blue' else self.recognition.goal_blue 
+        return self.recognition.goal_yellow if self.config_goal=='blue' else self.recognition.goal_blue
     @property
     def target_goal(self):
-        return self.recognition.goal_blue if self.config_goal=='blue' else self.recognition.goal_yellow 
+        return self.recognition.goal_blue if self.config_goal=='blue' else self.recognition.goal_yellow
 
     @property
     def has_ball(self):
-        return self.arduino.board and not self.arduino.board.digital_read(13)
+        return self.arduino.has_ball
 
     @property
     def target_goal_detla(self):
         if self.target_goal:
             return self.target_goal.angle_deg
-    
+
     @property
     def target_goal_dist(self):
         if self.target_goal:
@@ -113,7 +113,7 @@ class Gameplay(ManagedThread):
         # TODO: inverse of this
         if self.target_goal:
             min_angle = 2 if not self.target_goal_dist or self.target_goal_dist>3 else 3
-            return abs(self.target_goal_detla) <= min_angle 
+            return abs(self.target_goal_detla) <= min_angle
 
     @property
     def focus_time(self):
@@ -122,11 +122,11 @@ class Gameplay(ManagedThread):
     @property
     def rest_time(self):
         return 0.1
-        
+
     @property
     def closest_edge(self):
         if not self.recognition.closest_edge:
-            return 
+            return
         self.closest_edges = self.closest_edges[1:10] + [self.recognition.closest_edge]
         x, y, = 0, 0
         for closest_edge in self.closest_edges:
@@ -134,15 +134,15 @@ class Gameplay(ManagedThread):
             y += closest_edge.y
         length = (x**2+y**2)**0.5
         return x/length, y/length, length
-         
+
     @property
     def field_center_angle(self):
         x, y = self.closest_edge[:2]
         angle = math.atan2(-x,-y)
         # logger.info("{:.1f} {:.1f} {:.1f}".format(x,y, angle))
-        
+
         return Point(-x, -y).angle_deg
-        
+
     @property
     def flank_is_alligned(self):
         # if self.balls and abs(self.balls[0][0].angle_deg) < 10:
@@ -180,7 +180,7 @@ class Gameplay(ManagedThread):
         if r < -180:
             r += 360
         return r
-    
+
     @property
     def to_close_to_edge(self):
         edge = self.closest_edge
@@ -196,17 +196,17 @@ class Gameplay(ManagedThread):
         if own or other:
             return min(distances)
         return 0
-        
+
     @property
     def danger_zone(self):
         edge = self.closest_edge
         return edge[2]< 1.1 or self.closest_goal_distance<1
-        
+
     @property
     def blind_spot_for_shoot(self):
-        return (not self.own_goal or self.own_goal.dist>3.0) and self.closest_edge[2]<1.2 
-    
-    
+        return (not self.own_goal or self.own_goal.dist>3.0) and self.closest_edge[2]<1.2
+
+
     def align_to_target_goal(self):
         if not self.target_goal:
             return
@@ -228,10 +228,10 @@ class Gameplay(ManagedThread):
         delta = degrees/360
         #TODO enable full rotating
         self.arduino.set_xyw(0, 0, -delta)
-        
+
     def drive_xy(self, x, y):
         self.arduino.set_xyw(y, x, 0)
-    
+
     def flank_vector(self):
         r = self.goal_to_ball_angle
         if not r:
@@ -259,7 +259,7 @@ class Gameplay(ManagedThread):
         flank = self.flank_vector()
         if not flank:
             return
-        
+
         x, y = flank
         min_speed = 0.80
         max_val = max([abs(x), abs(y)])
@@ -284,7 +284,7 @@ class Gameplay(ManagedThread):
     def drive_to_ball(self):
 
         if not self.balls:
-            return 
+            return
 
         ball = self.balls[0][0]
         # logger.info("%f" % ball.dist)
@@ -301,7 +301,7 @@ class Gameplay(ManagedThread):
 
         self.arduino.set_xyw(y, x, w)
 
-        
+
     def drive_away_from_goal(self):
 
         # logger.info(str([self.own_goal]))
@@ -317,9 +317,9 @@ class Gameplay(ManagedThread):
         if goal.dist < 1.5: #self.safe_distance_to_goals:
             x *= -1
             y *= -1
-        
+
         self.arduino.set_xyw(y, x, 0.5)
-  
+
     def drive_to_field_center(self):
 
         if not self.closest_edge:
@@ -340,12 +340,12 @@ class Gameplay(ManagedThread):
     def on_enabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('enabled')
         if self.arduino:
-            self.arduino.board.digital_write(12, 1)
+            self.arduino.set_grabber(True)
         pass
 
     def on_disabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('disabled')
-        self.arduino.board.digital_write(12, 0)
+        self.arduino.set_grabber(False)
         self.arduino.set_xyw(0, 0, 0)
 
     def start(self):
@@ -362,17 +362,17 @@ class StateNode:
         self.actor = actor
         self.time = time()
         self.timers = defaultdict(time)
-    
+
     @property
     def forced_recovery_time(self):
         logger.info("DEBUG forced_recovery_time: %f" % (time()-self.time))
         return self.time + min(self.recovery_counter*self.recovery_factor, 5)>time()
-    
-    
+
+
     def exctract_transistions(self):
         return [i for i in self.__class__.__dict__.items() if 'VEC' in i[0] ]
 
-    def transition(self):        
+    def transition(self):
         for name, vector in self.transitions.items():
             result = vector(self)
             if result:
@@ -383,18 +383,18 @@ class StateNode:
     def animate(self):
         print("I exist")
 
-    def tick(self):        
+    def tick(self):
         next_state = self.transition() or self
         if next_state != self:
             StateNode.recovery_counter+=next_state.is_recovery
             if self.actor.has_ball:
                 StateNode.recovery_counter = 0
             logger.info('StateNode.recovery_counter: %s'% str(StateNode.recovery_counter))
-            
+
             self.actor.stop_moving() # PRE EMPTIVE, should not cause any issues TM
             logger.info(str(next_state))
         else:  #  TODO: THis causes latency, maybe ?
-            self.animate() 
+            self.animate()
         return next_state
 
     def __str__(self):
@@ -404,12 +404,12 @@ class StateNode:
 class Patrol(StateNode):
     def animate(self):
         self.actor.drive_to_field_center()
- 
+
     def VEC_SEE_BALLS_AND_CAN_FLANK(self):
         if self.actor.balls and not self.actor.danger_zone:
             logger.info("Robot in %s VEC_SEE_BALLS_AND_CAN_FLANK" % str(self))
             return Flank(self.actor)
-            
+
     def VEC_SEE_BALLS_AND_SHOULD_DRIVE(self):
         if self.actor.balls and self.actor.danger_zone:
             logger.info("Robot in %s VEC_SEE_BALLS_AND_SHOULD_DRIVE" % str(self))
@@ -428,7 +428,7 @@ class Patrol(StateNode):
         if self.actor.to_close_to_edge:
             logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
             return OutOfBounds(self.actor)
-    
+
 class Flank(StateNode):
     def animate(self):
         # if not self.actor.flank_is_alligned:
@@ -454,12 +454,12 @@ class Flank(StateNode):
         if self.actor.too_close:
             logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
             return Penalty(self.actor)
-    
+
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
             logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
             return OutOfBounds(self.actor)
-            
+
     def VEC_IN_DANGER_ZONE(self):
         if self.actor.danger_zone and self.actor.balls:
             logger.info("Robot in %s VEC_IN_DANGER_ZONE" % str(self))
@@ -487,11 +487,11 @@ class Drive(StateNode):
         if self.actor.has_ball and self.actor.blind_spot_for_shoot:
             logger.info("Robot in %s VEC_HAS_BALL_IN_BLIND_SPOT" % str(self))
             return OutOfBounds(self.actor)
-                
+
     def VEC_HAS_BALL(self):
         if self.actor.has_ball and not self.actor.blind_spot_for_shoot:
             logger.info("Robot in %s VEC_HAS_BALL" % str(self))
-            return FindGoal(self.actor) 
+            return FindGoal(self.actor)
 
     def VEC_LOST_SIGHT(self):
         if not self.actor.has_ball and not self.actor.balls:
@@ -502,7 +502,7 @@ class Drive(StateNode):
         if self.actor.too_close:
             logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
             return Penalty(self.actor)
-    
+
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
             logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
@@ -516,11 +516,11 @@ class Escape(StateNode):
             self.escape_vector=-ball.x, -ball.y
         else:
             self.escape_vector = None
-        
+
     def animate(self):
         if self.escape_vector:
             self.actor.drive_xy(*self.escape_vector)
-            
+
 
 class FindGoal(StateNode):
     def animate(self):
@@ -536,7 +536,7 @@ class FindGoal(StateNode):
         if not self.actor.has_ball:
             logger.info("Robot in %s VEC_LOST_BALL" % str(self))
             return Patrol(self.actor)
-            
+
 class DriveToCenter(StateNode):
     def animate(self):
         self.actor.drive_to_field_center()
@@ -551,12 +551,12 @@ class DriveToCenter(StateNode):
         if self.time + 2 < time():
             logger.info("Robot in %s IN_CENTER" % str(self))
             return TargetGoal(self.actor)
-            
+
     def VEC_TOO_CLOSE(self):
         if self.actor.too_close:
             logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
             return Penalty(self.actor)
-    
+
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
             logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
@@ -566,7 +566,7 @@ class DriveToCenter(StateNode):
 
 class TargetGoal(StateNode):
     VISITS = []
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         TargetGoal.VISITS.append(time())
@@ -575,13 +575,13 @@ class TargetGoal(StateNode):
     def animate(self):
         self.actor.align_to_target_goal()
         #self.actor.drive_away_from_goal()
-    
+
     def VEC_TO_MUTCH_VISITS(self):
         # return
         if len(TargetGoal.VISITS) > 2:
             logger.info("Robot in %s VEC_TO_MUTCH_VISITS" % str(self))
             return DriveToCenter(self.actor)
-    
+
     def VEC_POINTED_AT_GOAL(self):
         # return
         if self.actor.alligned:
@@ -603,7 +603,7 @@ class TargetGoal(StateNode):
         if self.actor.too_close:
             logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
             return Penalty(self.actor)
-    
+
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
             logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
@@ -660,12 +660,12 @@ class OutOfBounds (StateNode):
             self.actor.rotate(self.actor.field_center_angle)
         else:
             self.actor.drive_to_field_center()
-    
+
     def VEC_DONE_CENTERING(self):
         _, _, length = self.actor.closest_edge
         if length > 1.2 and not self.forced_recovery_time:
             return Patrol(self.actor)
-        
+
 
 class Penalty(StateNode):
 
@@ -686,9 +686,8 @@ class Penalty(StateNode):
         if (not own or own.dist >= safe_dist) and (not other or other.dist >= safe_dist) and not self.forced_recovery_time:
             logger.info("Robot in %s VEC_ENOUGH_FAR" % str(self))
             return Patrol(self.actor)
-    
+
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
             logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
             return OutOfBounds(self.actor)
-

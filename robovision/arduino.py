@@ -246,6 +246,13 @@ class Arduino(Thread):
         logger.info("KICK {}, {}".format(time(), time()-self.last_kick))
         self.last_kick = time()
 
+    @property
+    def has_ball(self):
+        return False
+
+    def set_grabber(self, value):
+        self.grabber = value
+
 if __name__ == "__main__":
     logger.addHandler(logging.StreamHandler())
     logger.setLevel(logging.DEBUG)
