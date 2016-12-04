@@ -24,6 +24,13 @@ class Arduino(Thread):
             cp.readfp(open(os.path.expanduser("~/.robovision/pymata.conf")))
             device =  cp.get("global", "path")
             self.path = os.path.join("/dev/serial/by-path", device)
+            from grabber import observer as observer
+            from grabber import CaptureHotplugHandler as CaptureHotplugHandler
+
+            if observer:
+                observer.schedule(CaptureHotplugHandler(self), "/dev/serial/by-path", recursive=False)
+            else:
+                logger.warn("Hotplug disabled for %s", self.path)
             #self.kicker = cp.getint("global", "kicker")
             #self.pwm = [cp.getint("motor%d" % j, "pwm") for j in indexes]
             #self.en = [cp.getint("motor%d" % j, "en") for j in indexes]
@@ -121,18 +128,18 @@ class Arduino(Thread):
                 self._checksum = 0
                 self.alive = True
                 if self._packet[6]:
-                    self._has_ball = True
-                else:
                     self._has_ball = False
+                else:
+                    self._has_ball = True
                 del self._packet[:]
                 return
             else:
-                print("SERR <", ' '.join('{:02x}'.format(x) for x in self._packet))
+                logger.debug("SERR <" + (' '.join('{:02x}'.format(x) for x in self._packet)))
                 self._checksum = 0
                 del self._packet[:]
                 return
         else:
-            logger.info("Arduino packet error")
+            logger.debug("Arduino wrong start bit packet error")
             self._checksum = 0
             del self._packet[:]
             return
@@ -160,6 +167,9 @@ class Arduino(Thread):
         #print(">", ' '.join('{:02x}'.format(x) for x in packet))
         final = struct.pack("7B", *packet)
         #sprint(" ".join("{:02x}".format(c) for c in final))
+        if not self.board:
+            logger.debug("Tried to write to a arduino board that is None")
+            return
         try:
             self.board.write(final)
             self.board.flush()
@@ -185,18 +195,21 @@ class Arduino(Thread):
             if not self.board:
                 if not os.path.exists(self.path):
                     logger.info("No Arduino, waiting for %s to become available", self.path)
+                    sleep(0.1)
                     self.wake.wait()
+                    self.wake.clear()
                 if not self.running:
                     break
                 logger.info("Trying to connect to a Arduino at "+self.path)
-                board = serial.Serial(self.path, 9600,
+                try:
+                    board = serial.Serial(self.path, 9600,
                                     bytesize=serial.EIGHTBITS,
                                     parity=serial.PARITY_NONE,
                                     stopbits=serial.STOPBITS_ONE,
                                     timeout=1,
                                     xonxoff=0,
                                     rtscts=0)
-                try:
+
                     logger.info("Waing for arduino to start talking to me")
                     self.restart_arduino(board)
                     while not board.inWaiting():
@@ -219,7 +232,12 @@ class Arduino(Thread):
             except (serial.serialutil.SerialException, OSError):
                 logger.info("Arduino disconnected at %s", self.path)
                 self.alive = False
+                try:
+                    self.board.close()
+                except:
+                    pass
                 self.board = None
+                continue
 
 
             if not self.running:
