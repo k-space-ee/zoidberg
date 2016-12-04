@@ -45,6 +45,7 @@ class Arduino(Thread):
         self.last_kick = time()
         self.grabber = False
         self.kicker = False
+        self._has_ball = False
 
     def clean_up(self):
         if self.board:
@@ -118,6 +119,10 @@ class Arduino(Thread):
                 #print("<", ' '.join('{:02x}'.format(x) for x in self._packet))
                 self._checksum = 0
                 self.alive = True
+                if self._packet[6]:
+                    self._has_ball = True
+                else:
+                    self._has_ball = False
                 del self._packet[:]
                 return
             else:
@@ -248,7 +253,7 @@ class Arduino(Thread):
 
     @property
     def has_ball(self):
-        return False
+        return self._has_ball
 
     def set_grabber(self, value):
         self.grabber = value
