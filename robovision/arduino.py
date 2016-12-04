@@ -211,10 +211,15 @@ class Arduino(Thread):
                     self.board = board
                     self.grabber = True
 
-            if self.board.inWaiting() > 0:
-                data = self.board.read(self.board.inWaiting())
-                for byte in data:
-                    self.parse(byte)
+            try:
+                if self.board.inWaiting() > 0:
+                    data = self.board.read(self.board.inWaiting())
+                    for byte in data:
+                        self.parse(byte)
+            except serial.serialutil.SerialException:
+                logger.info("Arduino disconnected at %s", self.path)
+                self.alive = False
+                self.board = None
 
 
             if not self.running:
@@ -227,22 +232,6 @@ class Arduino(Thread):
 
         self.set_abc(0,0,0)
         self.write()
-
-    """
-    def write(self):
-        try:
-            for speed, pwm_pin, en_pin, rev_pin in zip(self.speed, self.pwm, self.en, self.rev):
-                self.board.digital_write(en_pin, 1) #speed != 0)
-                self.board.digital_write(rev_pin, speed < 0)
-                speed = 24 + abs(int(float(speed) * 205))
-                self.board.analog_write(pwm_pin, speed) # Set duty cycle
-                # logger.info(str(speed))
-
-        except serial.serialutil.SerialException:
-            logger.info("Arduino disconnected at %s", self.path)
-            self.alive = False
-            self.board = None
-    """
 
     def set_kicker(self, value):
         self.kicker = value
