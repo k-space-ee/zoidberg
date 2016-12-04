@@ -3,6 +3,7 @@ import cv2
 import os
 from managed_threading import ManagedThread
 
+
 def left_top(args):
     y,x  = args
     return x-4, y*2-4
@@ -96,6 +97,8 @@ class Visualizer(ManagedThread):
 
         # Visualize field mask
         field_mask = np.swapaxes(np.repeat(r.field_mask, 2, axis=1), 0, 1)
+        #print("DEBUG Visualize %s"%str(type(field_mask)))
+        #print("DEBUG Visualize %s"%str((field_mask.shape)))
         field_cutout = cv2.bitwise_and(converted, converted, mask=field_mask)
         cv2.line(field_cutout, (0,0), (5000,0), (255,255,255), 2)
         cv2.putText(field_cutout, "field detection", (80, field_cutout.shape[0] >> 1), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)

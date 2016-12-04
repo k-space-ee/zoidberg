@@ -13,11 +13,11 @@ class State(Enum):
 
 
 class RemoteRF(Thread):
-    def __init__(self, gameplay, dev, field_id='A', robot_id='A'):
+    def __init__(self, gameplay, dev):
         Thread.__init__(self)
         self.ser = serial.Serial(dev, timeout=1)
-        self.field_id = field_id
-        self.robot_id = robot_id
+        self.field_id = gameplay.field_id
+        self.robot_id = gameplay.robot_id
         self.daemon = True
         self._stop = False
         self._fight = False
@@ -72,12 +72,14 @@ class RemoteRF(Thread):
                 cmd = c + cmd
                 resp = state == State.command
                 if cmd == "START":
+                    print('remoterf start')
                     if not self._fight:
                         self.gameplay.enable()
                     self._fight = True
                     if resp:
                         self.ser.write(ack_packet)
                 elif cmd == "STOP-":
+                    print('remoterf stop')
                     if self._fight:
                         self.gameplay.disable()
                     self._fight = False
@@ -85,6 +87,7 @@ class RemoteRF(Thread):
                         self.ser.write(ack_packet)
                         print("ack", end=" ")
                 elif cmd == "PING-":
+                    print('remoterf ping')
                     self.ser.write(ack_packet)
                 state = State.start
                 self.ser.read(4) # read end of the packet

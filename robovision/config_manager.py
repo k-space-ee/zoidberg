@@ -1,6 +1,7 @@
 import os
 import atexit
 from configparser import ConfigParser
+from collections import OrderedDict
 
 class ConfigOption(object):
     """
@@ -38,7 +39,7 @@ class ConfigOption(object):
             self.manager.cp.add_section(self.section)
         if self.manager.cp.has_option(self.section, self.option):
             current_value = self.manager.cp.get(self.section, self.option)
-            if current_value != new_value:
+            if current_value == new_value:
                 return self
         self.manager.cp.set(self.section, self.option, new_value)
         if self.manager.defer:
@@ -48,7 +49,13 @@ class ConfigOption(object):
         return self
 
 class ConfigManager(object):
+    INSTANCE_MAP = {}
+
+    IGNORE = ["camera mount"]
+
     def __init__(self, basename, defer=True):
+        print(basename, "was initilized")
+        print("\n"*3)
         self.path = os.path.expanduser("~/.robovision/%s.conf" % basename)
         self.cp = ConfigParser()
         try:
@@ -56,11 +63,56 @@ class ConfigManager(object):
         except FileNotFoundError:
             pass
         self.defer = defer
-        self.refs = {}
+        self.refs = OrderedDict()
         self.dirty = False
 
         if self.defer:
             atexit.register(self.term_handler)
+
+        ConfigManager.INSTANCE_MAP[basename] = self
+
+        self.as_dict().items()
+
+        for section, options in self.as_dict().items():
+            for option, value in options.items():
+                try:
+                    config_type = type(eval(value))
+                except:
+                    config_type = str
+
+                self.get_option(section, option, type=config_type)
+
+    def as_dict(self):
+        d = dict(self.cp._sections)
+        for k in d:
+            d[k] = dict(self.cp._defaults, **d[k])
+            d[k].pop('__name__', None)
+        return d 
+
+    @staticmethod
+    def instance(basename):      
+        return ConfigManager.INSTANCE_MAP.get(basename)
+
+    @staticmethod
+    def as_list(basename):
+        instance = ConfigManager.INSTANCE_MAP.get(basename)
+        if instance:
+            result = []
+            for k,v in instance.refs.items():
+                if k[0] not in ConfigManager.IGNORE and k[1] not in ConfigManager.IGNORE:
+                    value = (basename+"|"+"|".join(k),v.get_value())
+                    result.append(value)
+            return result
+        return []
+
+    @staticmethod
+    def set_config_value(key, value):
+        basename, section, option = key.split("|")
+        instance = ConfigManager.INSTANCE_MAP.get(basename)
+        if instance:
+            option = instance.get_option(section, option)
+            option.set_value(value)
+            instance.save()
 
     def term_handler(self):
         if self.dirty:

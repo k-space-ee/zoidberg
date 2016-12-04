@@ -160,7 +160,7 @@ $(document).ready(function() {
 
         switch(msg.action) {
             case "log-entry":
-                console[msg.severity].apply(this, [msg.message]);
+                // console[msg.severity].apply(this, [msg.message]);
                 $("#log").prepend("<li class=\"" + msg.severity + "\">" + msg.uptime + ": " + msg.message + "</li>");
 
                 break
@@ -168,18 +168,100 @@ $(document).ready(function() {
                 onSensorStatsReceived(msg.values, msg.units);
                 break
             case "position-robot":
-                console.log(msg);
+                // console.log(msg);
                 var imgX = 960;
                 var imgY = 660;
                 var y = (1 - (msg.y + 1.55) / 3.1) * imgY + 60;
                 var x = (msg.x /  4.6) * imgX + 30;
                 $( "#marker" ).css( "top", y);
                 $( "#marker" ).css( "left", x);
-                console.log(x, y);
+                // console.log(x, y);
 
                 break
+            case "settings-packet":
+                console.log(msg.sliders, msg.options);
+                createSomething(msg);
+                break;
             default:
                 console.info("Unhandled message type", msg.type, "data:", msg);
         }
     }
+
+    function setColor(values) {
+        var channel = this.target.dataset.channel;
+        var query = {[channel]: values[1]};
+        socket.send(JSON.stringify({"action": "set_settings", [channel]: values[1]}));
+    }
+
+    function createSomething(msg){
+
+        var element = document.getElementById("slider-be-here");
+        var sliders = "";
+
+        var spawn_radio = function(index, values){
+            var name = values[0];
+            var value_A = values[1][1];
+            var value_B = values[1][2];
+            var enabled_A = value_A === values[1][0] ? "checked" : "";
+            var enabled_B = value_B === values[1][0] ? "checked" : "";
+            var radio_A = "<input type='radio' name='"+name+"' value='"+value_A+"'"+enabled_A+"> "+name+" "+value_A+"<br>";
+            var radio_B = "<input type='radio' name='"+name+"' value='"+value_B+"'"+enabled_B+"> "+name+" "+value_B+"<br>";
+            sliders += "<h4>"+name+"</h4><br><div>";
+            sliders += radio_A;
+            sliders += radio_B;
+            sliders += "</div>";
+        }
+
+        $.each(msg.options, spawn_radio);
+
+        var data = msg.sliders;
+
+        var spawn = function(index, values){
+            var key = values[0];
+            var val = values[1];
+            console.log(key, val);
+            sliders += "<h4>"+key+"</h4><div class='slider' data-channel='"+key+"' data-min='0' data-max='255' data-start='0' data-end='"+val+"'></div> <br>";
+        }
+
+        $.each(data, spawn);
+        element.innerHTML = sliders;
+        sliderInit();
+
+        $('input[type=radio]').change(function() {
+            socket.send(JSON.stringify({"action": "set_options", [this.name]: this.value}));
+        });
+    }
+
+    function sliderInit(){
+
+        var sliders = $(".slider");
+        console.log('sliders',sliders);
+        for (var i = 0; i < sliders.length; i++) {
+            var min = parseInt(sliders[i].getAttribute("data-min"));
+            var max = parseInt(sliders[i].getAttribute("data-max"));
+            var start = parseInt(sliders[i].getAttribute("data-start"));
+            var end = parseInt(sliders[i].getAttribute("data-end"));
+            noUiSlider.create(sliders[i], {
+                start: [start, end],
+                behaviour: 'drag',
+                animate: false,
+                step: 1,
+                connect: true,
+                tooltips: true,
+                range: {'min': min, 'max': max},
+                format: {
+                    to: function (value) {
+                        return Math.round(value);
+                    },
+                    from: function (value) {
+                        return value;
+                    }
+                }
+            });
+            sliders[i].noUiSlider.on('change', setColor);
+        }
+
+    }
+
+
 });

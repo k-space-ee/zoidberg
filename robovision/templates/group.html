@@ -23,15 +23,8 @@
         <h2>
             <span id="camera">Camera slider</span>
         </h2>
-        <div class="no-ui-slider">
-            <div class="slider" data-channel="H" data-min="0" data-max="180"
-                 data-start='{{ 0 }}' data-end='{{ 255 }}'></div>
-            <br>
-            <div class="slider" data-channel="S" data-min="0" data-max="255"
-                 data-start='{{ 0 }}' data-end='{{ 255 }}'></div>
-            <br>
-            <div class="slider" data-channel="V" data-min="0" data-max="255"
-                 data-start='{{ 0 }}' data-end='{{ 255 }}'></div>
+        <div id="slider-be-here" class="no-ui-slider">
+            Derp
         </div>
     </div>
 {#    <em>Unbelievable. No CAMERAS here so far</em>#}
@@ -43,6 +36,7 @@
         function resetStream() {
             $('#cameras').attr("src", "");
         }
+
         function showCamera() {
             resetStream();
             $('#cameras').attr("src", 'combined/video');
@@ -54,44 +48,6 @@
             resetStream();
             $('#cameras').attr("src", 'http://192.168.12.107:5000/stream');
             $('#cameras').css("width", 'inherit');
-        }
-
-        function setColor(values) {
-            var channel = this.target.dataset.channel;
-            var query = "LOWER=" + values[0] + "&UPPER=" + values[1] + "&channel=" + channel;
-            console.log(query);
-            $.ajax({
-                url: "/config/camera/", // + this.target.id
-                type: 'POST',
-                data: query
-            });
-        }
-
-        var sliders = $(".slider");
-        console.log('sliders',sliders);
-        for (var i = 0; i < sliders.length; i++) {
-            var min = parseInt(sliders[i].getAttribute("data-min"));
-            var max = parseInt(sliders[i].getAttribute("data-max"));
-            var start = parseInt(sliders[i].getAttribute("data-start"));
-            var end = parseInt(sliders[i].getAttribute("data-end"));
-            noUiSlider.create(sliders[i], {
-                start: [start, end],
-                behaviour: 'drag',
-                animate: false,
-                step: 1,
-                connect: true,
-                tooltips: true,
-                range: {'min': min, 'max': max},
-                format: {
-                    to: function (value) {
-                        return Math.round(value);
-                    },
-                    from: function (value) {
-                        return value;
-                    }
-                }
-            });
-            sliders[i].noUiSlider.on('change', setColor);
         }
 
 </script>
