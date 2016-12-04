@@ -28,7 +28,8 @@ class Arduino(Thread):
             #self.pwm = [cp.getint("motor%d" % j, "pwm") for j in indexes]
             #self.en = [cp.getint("motor%d" % j, "en") for j in indexes]
             #self.rev = [cp.getint("motor%d" % j, "rev") for j in indexes]
-        self.path = path
+        else:
+            self.path = path
 
         # X, Y, rotation to A, B, C transformation matrix
         self.matrix = np.linalg.inv([
