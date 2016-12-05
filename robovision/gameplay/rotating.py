@@ -92,7 +92,7 @@ class Gameplay(ManagedThread):
             print('repeat last move'+str(self.keep_state_counter))
             self.keep_state_counter -= 1
             state = self.state
-        elif self.arduino.board and not self.arduino.board.digital_read(13):
+        elif self.arduino.has_ball:
             if r.goal_blue:
                 min_angle=2 if not r.goal_blue.dist or r.goal_blue.dist>3 else 4
                 if abs(r.goal_blue.angle_deg) <= min_angle:
@@ -137,11 +137,11 @@ class Gameplay(ManagedThread):
             self.state = state
 
     def on_enabled(self, *args):
-        self.arduino.board.digital_write(12, 1)
+        self.arduino.set_grabber(True)
 
 
     def on_disabled(self, *args):
-        self.arduino.board.digital_write(12, 0)
+        self.arduino.set_grabber(False)
         self.arduino.set_xyw(0, 0, 0)
 
 
@@ -154,4 +154,3 @@ class Gameplay(ManagedThread):
     def start(self):
         self.arduino.start()
         ManagedThread.start(self)
-
