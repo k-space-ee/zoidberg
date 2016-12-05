@@ -2,7 +2,7 @@
 
 This is the source code repository of software stack used by the robots Zoidberg and Nibbler on Robotex 2016 football 1vs1 competition. The Zoidberg ranked 4th place and additionally was awarded by [Proekspert](https://www.proekspert.ee/) with most elegant source code prize.
 
-![https://cdn.meme.am/cache/instances/folder688/500x/73664688.jpg](Need a new robot software stack? Why not Zoidberg?)
+<img src="https://cdn.meme.am/cache/instances/folder688/500x/73664688.jpg">
 
 Besides two multithreading race condition bugs which were fixed mid-competition the robots performed well and lost to the top 3 robots mainly because of the speed. Most of the development was done with motor speeds capped at 40% of the maximum speed and bumping up the speed at the last minute would have broken down the gameplay logic.
 
