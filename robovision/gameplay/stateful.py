@@ -88,7 +88,8 @@ class Gameplay(ManagedThread):
 
     @property
     def has_ball(self):
-        return self.arduino.board and not self.arduino.board.digital_read(13)
+        board = self.arduino.board
+        return board and not board.digital_read(13)
 
     @property
     def target_goal_detla(self):
@@ -242,7 +243,7 @@ class Gameplay(ManagedThread):
 
         sign = [-1, 1][r>0]
 
-        delta_deg = 30 * sign / ball.dist
+        delta_deg = 40 * sign / ball.dist
 
         delta = math.radians(delta_deg)
 
@@ -339,13 +340,16 @@ class Gameplay(ManagedThread):
 
     def on_enabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('enabled')
-        if self.arduino:
-            self.arduino.board.digital_write(12, 1)
+        board = self.arduino.board
+        if board:
+            board.digital_write(12, 1)
         pass
 
     def on_disabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('disabled')
-        self.arduino.board.digital_write(12, 0)
+        board = self.arduino.board
+        if board:
+            board.digital_write(12, 0)
         self.arduino.set_xyw(0, 0, 0)
 
     def start(self):
@@ -538,6 +542,8 @@ class FindGoal(StateNode):
             return Patrol(self.actor)
             
 class DriveToCenter(StateNode):
+    is_recovery = True
+
     def animate(self):
         self.actor.drive_to_field_center()
 
@@ -546,9 +552,9 @@ class DriveToCenter(StateNode):
             logger.info("Robot in %s VEC_HAS_GOAL" % str(self))
             return Patrol(self.actor)
 
-    def IN_CENTER(self):
-        # logger.info("Robot in FindGoal BALL STATE {}".format(self.actor.has_ball))
-        if self.time + 2 < time():
+    def VEC_IN_CENTER(self):
+        logger.info("Robot in DriveToCenter time {} {}".format(self.time + 1.5, time()))
+        if self.time + 1.5 > time():
             logger.info("Robot in %s IN_CENTER" % str(self))
             return TargetGoal(self.actor)
             
@@ -570,7 +576,7 @@ class TargetGoal(StateNode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         TargetGoal.VISITS.append(time())
-        TargetGoal.VISITS = list(filter(lambda x: x + 2 > time(), TargetGoal.VISITS))
+        TargetGoal.VISITS = list(filter(lambda x: x + 0.5 > time(), TargetGoal.VISITS))
 
     def animate(self):
         self.actor.align_to_target_goal()
@@ -578,7 +584,7 @@ class TargetGoal(StateNode):
     
     def VEC_TO_MUTCH_VISITS(self):
         # return
-        if len(TargetGoal.VISITS) > 2:
+        if len(TargetGoal.VISITS) > 4:
             logger.info("Robot in %s VEC_TO_MUTCH_VISITS" % str(self))
             return DriveToCenter(self.actor)
     
@@ -656,7 +662,7 @@ class PostShoot(StateNode):
 class OutOfBounds (StateNode):
     is_recovery = True
     def animate(self):
-        if self.actor.has_ball and abs(self.actor.field_center_angle) > 15 or self.time + 0.5 > time():
+        if self.actor.has_ball and abs(self.actor.field_center_angle) > 15 and self.time + 0.5 > time():
             self.actor.rotate(self.actor.field_center_angle)
         else:
             self.actor.drive_to_field_center()

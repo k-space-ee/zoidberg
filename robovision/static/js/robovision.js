@@ -209,6 +209,12 @@ $(document).ready(function() {
             sliders += "<h4>"+name+"</h4><br><div>";
             sliders += radio_A;
             sliders += radio_B;
+            if (values[1].length > 3){
+                var value_C = values[1][3];
+                var enabled_C = value_C === values[1][0] ? "checked" : "";
+                var radio_C = "<input type='radio' name='"+name+"' value='"+value_C+"'"+enabled_C+"> "+name+" "+value_C+"<br>";
+                sliders += radio_C;
+            }
             sliders += "</div>";
         }
 

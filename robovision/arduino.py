@@ -41,12 +41,14 @@ class Arduino(Thread):
         self.last_kick = time()
 
     def clean_up(self):
-        if self.board:
+        board = self.board
+        if board:
             for pin in self.pwm:
-                self.board.analog_write(pin, 255)
+                board.analog_write(pin, 255)
             for pin in self.en + self.rev:
-                self.board.digital_write(pin, False)
-            self.board.digital_write(self.kicker, True) # should close with discharge
+                board.digital_write(pin, False)
+            board.digital_write(self.kicker, True) # should close with discharge
+
         self.running = False
 
     def set_yw(self, y, w):
@@ -94,7 +96,8 @@ class Arduino(Thread):
         else:
             self.running = True
             while self.running:
-                if not self.board:
+                board = self.board
+                if not board:
                     if not os.path.exists(self.path):
                         logger.info("No Arduino, waiting for %s to become available", self.path)
                         self.wake.wait()
@@ -126,7 +129,7 @@ class Arduino(Thread):
                         board.digital_write(self.kicker, False)
                         board.set_pin_mode(13, board.INPUT, board.DIGITAL)
                         board.set_pin_mode(12, board.OUTPUT, board.DIGITAL)
-                        board.digital_write(12, 0 )
+                        board.digital_write(12, 1 )
                     except serial.serialutil.SerialException:
                         logger.error("Failed to connect to Arduino")
                         continue # Try again
@@ -145,23 +148,28 @@ class Arduino(Thread):
 
             self.set_abc(0,0,0)
             self.write()
+        board.digital_write(12, 0 )
 
     def write(self):
+        board = self.board
+        if not board:
+            return
         try:
             for speed, pwm_pin, en_pin, rev_pin in zip(self.speed, self.pwm, self.en, self.rev):
-                self.board.digital_write(en_pin, 1) #speed != 0)
-                self.board.digital_write(rev_pin, speed < 0)
+                board.digital_write(en_pin, 1) #speed != 0)
+                board.digital_write(rev_pin, speed < 0)
                 speed = 24 + abs(int(float(speed) * 205))
-                self.board.analog_write(pwm_pin, speed) # Set duty cycle
+                board.analog_write(pwm_pin, speed) # Set duty cycle
                 # logger.info(str(speed))
-
         except serial.serialutil.SerialException:
             logger.info("Arduino disconnected at %s", self.path)
             self.alive = False
             self.board = None
 
     def set_kicker(self, value):
-        self.board.digital_write(self.kicker, value)
+        board = self.board
+        if board:
+            board.digital_write(self.kicker, value)
 
     def kick(self):
         if self.last_kick + 0.5 < time():

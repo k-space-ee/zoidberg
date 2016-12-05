@@ -99,7 +99,7 @@ def command(websocket):
 
     def get_game_options():
         return [
-            ("field_id", [game_config.get_value("global", "field_id"),"A","B"]),
+            ("field_id", [game_config.get_value("global", "field_id"),"A","B","Z"]),
             ("robot_id", [game_config.get_value("global", "robot_id"),"A","B"]),
             ("target goal color", [game_config.get_value("global", "target goal color"),"yellow","blue"]),
             ("gameplay status", [game_config.get_value("global", "gameplay status"),"disabled", "enabled"]),
@@ -255,8 +255,8 @@ def main():
     # Enable some threads
     image_recognizer.enable()
     visualizer.enable()
-    if gameplay.is_enabled:
-        gameplay.enable()
+    #if gameplay.is_enabled:
+        #gameplay.enable()
     server.serve_forever()
 
 if __name__ == '__main__':
