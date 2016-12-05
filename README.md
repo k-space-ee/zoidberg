@@ -6,6 +6,8 @@ This is the source code repository of software stack used by the robots Zoidberg
 
 Besides two multithreading race condition bugs which were fixed mid-competition the robots performed well and lost to the top 3 robots mainly because of the speed. Most of the development was done with motor speeds capped at 40% of the maximum speed and bumping up the speed at the last minute would have broken down the gameplay logic.
 
+<img src="doc/woopwoop.jpg"/>
+
 ##Teams
 
 Team Lord with robot Nibbler:
