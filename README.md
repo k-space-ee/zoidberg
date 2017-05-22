@@ -1,4 +1,4 @@
-#Woop-woop-woop
+# Woop-woop-woop
 
 This is the source code repository of software stack used by the robots Zoidberg and Nibbler on Robotex 2016 football 1vs1 competition. The Zoidberg ranked 4th place and additionally was awarded by [Proekspert](https://www.proekspert.ee/) with most elegant source code prize.
 
@@ -8,7 +8,7 @@ Besides two multithreading race condition bugs which were fixed mid-competition 
 
 <img src="doc/woopwoop.jpg"/>
 
-##Teams
+## Teams
 
 Team Lord with robot Nibbler:
 
@@ -46,7 +46,7 @@ Hardware diagram:
         \--------->    Nixie power supply
 ```
 
-##Software
+## Software
 
 It's written in Python, it makes use of OpenCV bindings for Python and it's neatly pipelined. We use 8pcs PS3 eye cameras stacked together along the narrow edges, thus we get 3840x640 (4k!!!) resolution. Due to USB 2.0 bandwidth limits we are capped at 30fps for the maximum resolution. Image recognition thread latency is 16-17ms on Skylake i7 BRIX which drops to about 20ms if visualization web interface is opened. There is a web interface for debugging output, logs are sent using websocket to the browser and arbitrary gamepads can be used to control the robot using HTML5 gamepad API.
 
@@ -73,7 +73,7 @@ In addition to the pipeline threads we also have:
 
 We have ManagedThread class which can be used to build the pipeline and it also features profiling: framerate and latency can be measured, choking threads can easily be identified.
 
-##Hardware assembly tips
+## Hardware assembly tips
 
 Old school mechanically commuted DC motors emit a lot of noise. This noise is picked up by the USB cables and cause cameras to go nuts. Reproducible test for us was powering a DC motor from power supply near the camera (10cm) and playing with the throttle. Cameras would either disconnect or cause garbage frames to be produced. Adding ~100nF capacitors between DC motor connectors mitigates the issue and shielding the DC motor wires completely fixed the issue. In the end we used brushless motors though.
 
