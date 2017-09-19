@@ -85,4 +85,79 @@ Electromagnetic impulse emitted by the kicker solenoid causes voltage to be indu
 
 Ground loops are your enemy. The voltage drop along the ground lanes causes voltage difference to grow between components. In our case the ground loop was formed between battery, Arduino and BRIX. Whenever load was put on the system (image recognition) the Arduino would disconnect. We measured more than 250mV voltage difference between Arduino's ground and BRIX-s ground. The easiest solution was to electrically decouple the Arduino from BRIX. We moved USB-UART bridge near the BRIX and placed 6N137 high-speed optocouplers on Arduino's shield.
 
+## Getting software stack running on your laptop
+
+First you need Python 3 and OpenCV 3, last year we used Ubuntu 16.04 with OpenCV 3 compiled from scratch.
+Fedora 25+ and Ubuntu 17.10 should work out of the box.
+
+Make directory for config file:
+```bash    
+mkdir ~/.robovision
+```
+
+Open the file in text editor:
+
+```bash
+gedit ~/.robovision/imgrec.conf
+```
+
+Paste contents:
+
+```ini
+[camera mount]
+kicker offset = 2160
+
+[green]
+luma lower = 64
+luma upper = 255
+chroma blue lower = 100
+chroma blue upper = 255
+chroma red lower = 0
+chroma red upper = 150
+
+[orange]
+luma lower = 60
+luma upper = 255
+chroma blue lower = 0
+chroma blue upper = 70
+chroma red lower = 180
+chroma red upper = 255
+
+[blue]
+luma lower = 128
+luma upper = 255
+chroma blue lower = 150
+chroma blue upper = 255
+chroma red lower = 0
+chroma red upper = 120
+
+[yellow]
+luma lower = 128
+luma upper = 255
+chroma blue lower = 0
+chroma blue upper = 120
+chroma red lower = 0
+chroma red upper = 150
+```
+
+Install depenencies:
+
+```bash
+dnf install opencv-python3
+apt install python3-opencv
+```
+
+Clone Git repo:
+```bash
+git clone https://github.com/eik-robo/zoidberg
+cd zoidberg
+```
+
+Run the image recognition program:
+
+```bash
+python3 robovision/image_recognition.py bot-201611* 
+```    
+    
+    
 
