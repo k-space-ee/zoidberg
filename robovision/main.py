@@ -104,7 +104,7 @@ def command(websocket):
             ("target goal color", [game_config.get_value("global", "target goal color"),"yellow","blue"]),
             ("gameplay status", [game_config.get_value("global", "gameplay status"),"disabled", "enabled"]),
         ]
-    
+
     game_options = get_game_options()
 
     settings_packet = json.dumps(dict(
@@ -135,15 +135,15 @@ def command(websocket):
 
         if action == "gamepad":
             controls = response.pop("data")
-            x = controls.pop("controller0.axis0", x) * 0.99
-            y = controls.pop("controller0.axis1", y) * 0.99
-            w = controls.pop("controller0.axis2", w) * 0.7
+            x = controls.pop("controller0.axis0", x) * 0.33
+            y = controls.pop("controller0.axis1", y) * 0.33
+            w = controls.pop("controller0.axis3", w) * 0.7
 
-            # Kick the ball
-            if controls.get("controller0.button7", None):
-                gameplay.arduino.kick()
+            # Throw the ball with button A on Logitech gamepad
+            if controls.get("controller0.button0", None):
+                gameplay.arduino.set_thrower(100)
 
-            # Toggle autonomy
+            # Toggle autonomy with button Y on Logitech gamepad
             if controls.get("controller0.button4", None):
                 gameplay.toggle()
 
