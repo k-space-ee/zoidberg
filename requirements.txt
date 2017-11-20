@@ -1,0 +1,9 @@
+numpy
+scipy
+pyserial
+matplotlib
+gevent
+flask
+flask_sockets
+humanize
+watchdog
