@@ -342,7 +342,7 @@ class Gameplay(ManagedThread):
             return
 
         self.recognition = recognition
-        # self.state = self.state.tick()
+        self.state = self.state.tick()
 
     def on_enabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('enabled')

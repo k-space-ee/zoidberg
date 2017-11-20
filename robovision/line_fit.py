@@ -14,7 +14,7 @@ def function_fit(func, X, Y):
         d = (f(_x) - _y)
         delta += abs(d)
 
-    print(tuple(constants), delta, delta / len(X), '\n')
+    print(", ".join(str(c) for c in constants), "average delta:", delta / len(X), '\n')
     return f
 
 
@@ -24,8 +24,6 @@ def interpolate(X, Y, kind='slinear', backup=inverse):
     if backup:
         constants, _ = scipy.optimize.curve_fit(backup, np.array(X), np.array(Y))
         approximate = lambda x: backup(x, *constants)
-        # maximum = max(X)
-        # minimum = min(X)
 
         def dual(x):
             try:
@@ -108,31 +106,32 @@ pwm_distance = [
     (82, 310),
     (90, 360),
 ]
+
 # distance
-X=[dist for pwm, dist in pwm_distance]
+X = [dist for pwm, dist in pwm_distance]
 # pwm
-Y=[pwm for pwm, dist  in pwm_distance]
-print("dist_function_fit")
-backup = lambda x, a, c, b: a * x ** 4  + b * x ** 2 + c
+Y = [pwm for pwm, dist in pwm_distance]
+
+throw_function = lambda x, a, b, c: a * (b + x / 100) ** 3 + c
 dist_to_pwm = function_fit(
-    backup,
+    throw_function,
     X,
     Y,
 )
 
-dist_to_pwm2 = interpolate(
+dist_to_pwm_interpolated = interpolate(
     X,
     Y,
-    backup=backup,
+    backup=throw_function,
 )
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    xp = np.linspace(round(1), round(500), 300)
+    xp = np.linspace(round(min(X)), round(max(X) * 1.5), 300)
     plt.plot(X, Y, '.', )
     plt.plot(xp, dist_to_pwm(xp), '-')
-    plt.plot(xp, dist_to_pwm2(xp), '--')
+    plt.plot(xp, dist_to_pwm_interpolated(xp), '--')
     plt.show()
 
     exit()
@@ -183,7 +182,7 @@ if __name__ == '__main__':
     plt.plot(xp, f(xp), '-')
     plt.show()
 
-    inv = lambda x, a, b, c: a / x + b / x ** 4 + c
+    inv = lambda x, a, b, c: b / x ** 4 + c
 
     Y = list(range(40, 360, 20))
     Xa = [

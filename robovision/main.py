@@ -140,7 +140,6 @@ def command(websocket):
             y = controls.pop("controller0.axis1", y) * 0.33
             w = controls.pop("controller0.axis3", w) * 0.7
 
-
             # Throw the ball with button A on Logitech gamepad
             delta = -controls.pop("controller0.axis4", 0)
             if delta:
