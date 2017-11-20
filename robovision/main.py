@@ -54,6 +54,7 @@ grabber = PanoramaGrabber() # config read from ~/.robovision/grabber.conf
 image_recognizer = ImageRecognizer(grabber)
 gameplay = Gameplay(image_recognizer)
 rf = RemoteRF(gameplay, "/dev/ttyACM0")
+# TODO: should also get gameplay?
 visualizer = Visualizer(image_recognizer, framedrop=1)
 recorder = Recorder(grabber)
 
@@ -114,6 +115,7 @@ def command(websocket):
     ))
     websocket.send(settings_packet)
 
+    pwm = 50
     while not websocket.closed:
         websockets.add(websocket)
 
@@ -132,16 +134,24 @@ def command(websocket):
             logger.info("Unknown action")
             continue
 
-
         if action == "gamepad":
             controls = response.pop("data")
             x = controls.pop("controller0.axis0", x) * 0.33
             y = controls.pop("controller0.axis1", y) * 0.33
             w = controls.pop("controller0.axis3", w) * 0.7
 
+
             # Throw the ball with button A on Logitech gamepad
+            delta = -controls.pop("controller0.axis4", 0)
+            if delta:
+                pwm = max(40, min(pwm + delta, 100))
+                print("PWM: ", pwm)
             if controls.get("controller0.button0", None):
-                gameplay.arduino.set_thrower(100)
+                print("PWM: ", pwm)
+                gameplay.arduino.set_thrower(pwm)
+
+            if controls.get("controller0.button1", None):
+                gameplay.kick()
 
             # Toggle autonomy with button Y on Logitech gamepad
             if controls.get("controller0.button4", None):

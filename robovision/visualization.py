@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
-import os
+
+from line_fit import dist_to_pwm
 from managed_threading import ManagedThread
 
 
@@ -33,6 +34,12 @@ class Visualizer(ManagedThread):
         center_x = r.deg_to_x(r.field_center.angle_deg)
         cv2.line(frame, (center_x,0), (center_x,480), (255,255,255), 3)
         cv2.putText(frame, "cnt %.1fdeg %.2fm" % (r.field_center.angle_deg, r.field_center.dist), (center_x, 450), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+
+        if r.goal_yellow:
+            dist = r.goal_yellow.dist * 100
+            pwm = dist_to_pwm(dist)
+            cv2.putText(frame, "DIST %.0f" % (dist), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+            cv2.putText(frame, "PWM %.0f" % (pwm), (100, 150), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
 
         # Visualize field edges
         points = []
@@ -100,7 +107,7 @@ class Visualizer(ManagedThread):
         field_mask = np.hstack([field_mask, field_mask[:,:480]])
         #print("DEBUG Visualize %s"%str(type(field_mask)))
         #print("DEBUG Visualize %s"%str((field_mask.shape)))
-        
+
         print("converted:", converted.shape, "mask:", field_mask.shape)
         field_cutout = cv2.bitwise_and(converted, converted, mask=field_mask)
         cv2.line(field_cutout, (0,0), (5000,0), (255,255,255), 2)
