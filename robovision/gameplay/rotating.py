@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger("gameplay")
 from managed_threading import ManagedThread
 from image_recognition import ImageRecognition
-from arduino import Arduino
+from controller import Controller
 import math
 import time
 
@@ -148,7 +148,7 @@ class Gameplay(ManagedThread):
     def __init__(self, *args):
         self.keep_state_counter = 0
         ManagedThread.__init__(self, *args)
-        self.arduino = Arduino() # config read from ~/.robovision/pymata.conf
+        self.arduino = Controller() # config read from ~/.robovision/pymata.conf
         self.state = None
 
     def start(self):
