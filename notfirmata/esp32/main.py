@@ -166,44 +166,52 @@ sleep_ms(2000)
 oled.text("booting....", 10, 10)
 oled.show()
 
+ESCON_MIN = 96
+ESCON_WIDTH = 824
 ESC_IDLE = 40
 
-def halt_motors(t):
-    motor1_speed.duty(102)
-    motor2_speed.duty(102)
-    motor3_speed.duty(102)
-    oled.text("M1 halted", 10, 10)
-    oled.text("M2 halted", 10, 20)
-    oled.text("M3 halted", 10, 30)
+def redraw(t):
+    oled.fill(0)
+    for i, m in enumerate([motor1_speed, motor2_speed, motor3_speed]):
+        d = m.duty()
+        if d == ESCON_MIN:
+            oled.text("M%d  halted" % (i+1), 10, i*10)
+        else:
+            oled.text("M%d:" % (i+1), 10, i*10)
+            oled.rect(39, i*10, int(ESCON_WIDTH/10)+2, 9, 1)
+            oled.fill_rect(40, i*10+1, int((d-ESCON_MIN)/10), 7, 1)
+
+    d = esc.duty()
+    if d == ESC_IDLE:
+      oled.text("ESC halted", 10, 40)
+    else:
+      oled.text("ESC: %d" % d, 10, 40)
     oled.show()
+
+def halt_motors(t):
+    motor1_speed.duty(ESCON_MIN)
+    motor2_speed.duty(ESCON_MIN)
+    motor3_speed.duty(ESCON_MIN)
 
 def halt_thrower(t):
     esc.duty(ESC_IDLE)
-    oled.text("ESC halted", 10, 40)
-    oled.show()
 
 def set_abc(a,b,c):
     assert -1 <= a <= 1,  "M1 speed out of range -1.0 ... 1.0"
     assert -1 <= b <= 1,  "M2 speed out of range -1.0 ... 1.0"
     assert -1 <= c <= 1,  "M3 speed out of range -1.0 ... 1.0"
-    motor1_speed.duty(96 + abs(int(a * 824)))
-    motor2_speed.duty(96 + abs(int(b * 824)))
-    motor3_speed.duty(96 + abs(int(c * 824)))
+    motor1_speed.duty(ESCON_MIN + abs(int(a * ESCON_WIDTH)))
+    motor2_speed.duty(ESCON_MIN + abs(int(b * ESCON_WIDTH)))
+    motor3_speed.duty(ESCON_MIN + abs(int(c * ESCON_WIDTH)))
     motor1_reverse.value(a < 0)
     motor2_reverse.value(b < 0)
     motor3_reverse.value(c < 0)
     timer_motors.init(period=300, mode=Timer.ONE_SHOT, callback=halt_motors)
-    oled.text("M1:  %d%%" % (100*a), 10, 10)
-    oled.text("M2:  %d%%" % (100*b), 10, 20)
-    oled.text("M3:  %d%%" % (100*c), 10, 30)
-    oled.show()
 
 def set_thrower(e):
     assert 40 <= e <= 110, "ESC speed out of range"
-    esc.duty(e) # duty vahemik on 0-1023 ehk siis 100 oleks nagu peaaaegu 10%
+    esc.duty(e)
     timer_thrower.init(period=3000, mode=Timer.ONE_SHOT, callback=halt_thrower)
-    oled.text("ESC: %d" % e, 10, 40)
-    oled.show()
 
 def set_abce(a,b,c,e):
     set_abc(a,b,c)
@@ -236,4 +244,7 @@ set_abce(0,0,0,60)
 oled.text("booting.....", 10, 10)
 oled.show()
 
+
+timer_redraw = Timer(3)
+timer_redraw.init(period=100, mode=Timer.PERIODIC, callback=redraw)
 
