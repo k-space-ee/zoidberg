@@ -278,10 +278,8 @@ class Gameplay(ManagedThread):
         self.arduino.set_xyw(y, x, delta)
 
     def kick(self):
-        print("kick")
         if self.target_goal:
             pwm = dist_to_pwm(self.target_goal.dist * 100)
-            print(pwm)
             return self.arduino.set_thrower(pwm)
         else:
             print("derp")
@@ -343,6 +341,7 @@ class Gameplay(ManagedThread):
 
         self.recognition = recognition
         self.state = self.state.tick()
+        self.arduino.apply()
 
     def on_enabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('enabled')
@@ -427,13 +426,15 @@ class Patrol(StateNode):
 
     def VEC_TOO_CLOSE(self):
         if self.actor.too_close:
-            logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
-            return Penalty(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
+            # TODO: return Penalty(self.actor)
 
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
-            logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            return OutOfBounds(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
+            #return OutOfBounds(self.actor)
 
 
 class Flank(StateNode):
@@ -459,13 +460,15 @@ class Flank(StateNode):
 
     def VEC_TOO_CLOSE(self):
         if self.actor.too_close:
-            logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
-            return Penalty(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
+            # TODO: return Penalty(self.actor)
 
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
-            logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            return OutOfBounds(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
+            #return OutOfBounds(self.actor)
 
     def VEC_IN_DANGER_ZONE(self):
         if self.actor.danger_zone and self.actor.balls:
@@ -486,11 +489,13 @@ class Flank(StateNode):
 class Drive(StateNode):
     def animate(self):
         self.actor.drive_to_ball()
+        self.actor.kick()
 
     def VEC_HAS_BALL_IN_BLIND_SPOT(self):
         if self.actor.has_ball and self.actor.blind_spot_for_shoot:
-            logger.info("Robot in %s VEC_HAS_BALL_IN_BLIND_SPOT" % str(self))
-            return OutOfBounds(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_HAS_BALL_IN_BLIND_SPOT" % str(self))
+            #return OutOfBounds(self.actor)
 
     def VEC_HAS_BALL(self):
         if self.actor.has_ball and not self.actor.blind_spot_for_shoot:
@@ -504,13 +509,15 @@ class Drive(StateNode):
 
     def VEC_TOO_CLOSE(self):
         if self.actor.too_close:
-            logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
-            return Penalty(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
+            # TODO: return Penalty(self.actor)
 
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
-            logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            return OutOfBounds(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
+            #return OutOfBounds(self.actor)
 
 
 class Escape(StateNode):
@@ -562,13 +569,15 @@ class DriveToCenter(StateNode):
 
     def VEC_TOO_CLOSE(self):
         if self.actor.too_close:
-            logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
-            return Penalty(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
+            # TODO: return Penalty(self.actor)
 
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
-            logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            return OutOfBounds(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
+            #return OutOfBounds(self.actor)
 
 
 class TargetGoal(StateNode):
@@ -609,13 +618,15 @@ class TargetGoal(StateNode):
 
     def VEC_TOO_CLOSE(self):
         if self.actor.too_close:
-            logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
-            return Penalty(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
+            # TODO: return Penalty(self.actor)
 
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
-            logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            return OutOfBounds(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
+            #return OutOfBounds(self.actor)
 
 
 class Focus(StateNode):
@@ -696,5 +707,6 @@ class Penalty(StateNode):
 
     def VEC_TO_CLOSE_TO_EDGE(self):
         if self.actor.to_close_to_edge:
-            logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            return OutOfBounds(self.actor)
+            pass
+            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
+            #return OutOfBounds(self.actor)

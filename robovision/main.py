@@ -148,17 +148,23 @@ def command(websocket):
             if controls.get("controller0.button0", None):
                 print("PWM: ", pwm)
                 gameplay.arduino.set_thrower(pwm)
+            else:
+                gameplay.arduino.set_thrower(0)
 
             if controls.get("controller0.button1", None):
                 gameplay.kick()
 
             # Toggle autonomy with button Y on Logitech gamepad
             if controls.get("controller0.button4", None):
-                gameplay.toggle()
+                not gameplay.alive and gameplay.enable()
+            else:
+                gameplay.alive and gameplay.disable()
 
             # Manual control of the robot
             if not gameplay.alive:
                 gameplay.arduino.set_xyw(x,-y,-w)
+
+            gameplay.arduino.apply()
 
         # TODO: slders
         elif action == "record_toggle":

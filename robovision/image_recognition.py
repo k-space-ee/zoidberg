@@ -122,6 +122,7 @@ class ImageRecognition:
     def update(self, frame):
         self.frame = frame
         self._recognize_markers()
+        # print([ (id, round(dist))for id, dist in self.markers.items()])
 
         self.field_mask, self.field_contours = self._recognize_field(self.FIELD_LOWER, self.FIELD_UPPER)
 
@@ -133,7 +134,7 @@ class ImageRecognition:
         self.goal_yellow_mask, \
         self.goal_yellow, \
         self.goal_yellow_rect, \
-        self.goal_yellow_width_deg = self._recognize_goal(self.YELLOW_LOWER, self.YELLOW_UPPER, ids=[10])
+        self.goal_yellow_width_deg = self._recognize_goal(self.YELLOW_LOWER, self.YELLOW_UPPER, ids=[10, 11])
 
         self.robot, self.orientation = self._position_robot()  # Calculate x and y coords on the field and angle to grid
 
@@ -255,8 +256,6 @@ class ImageRecognition:
         return mask, hulls
 
     def _recognize_markers(self):
-        """ should cut out only first 3 cameras """
-        start = time()
         self.markers = {}
 
         factor = 1
@@ -281,8 +280,8 @@ class ImageRecognition:
                 height = (d1 + d2) / 2
                 dist_a = height_to_dist(height / factor)
                 dist_b = vertical_to_dist(vertical / factor)
-                self.markers[marker_ids[0]] = dist_a
-        # print(time() - start, "woop")
+                # print(dist_a, dist_b)
+                self.markers[marker_ids[0]] = (dist_a + 2 * dist_b) / 3
 
     def _recognize_goal(self, lower, upper, overlap=4, ids=[]):
         # Recognize goal

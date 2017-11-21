@@ -18,8 +18,8 @@ function visualizeGamepads(values) {
     }
 }
 
+var data = {};
 function streamGamepad() {
-    var data = {};
     var state = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
     for (var j = 0; j < state.length; j++) {
         if (!state[j]) continue;
@@ -44,20 +44,11 @@ function streamGamepad() {
         }
     }
 
-
-    if (socket.readyState == 1) {
-        // WTF?!
-        for (j in data) {
-            console.info("Sending:", data);
-            socket.send(JSON.stringify({"action": "gamepad", "data": data}));
-            break;
-        }
-        // visualizeGamepads(controllers);
-
-        // TODO: remove this when serial write speed has been fixed 
-        setTimeout(streamGamepad, 30);
-        // requestAnimationFrame(streamGamepad);
-    }
+    console.info("Sending:", data);
+    socket.send(JSON.stringify({"action": "gamepad", "data": data}));
+    // TODO: remove this when serial write speed has been fixed
+    setTimeout(streamGamepad, 30);
+    // requestAnimationFrame(streamGamepad);
 }
 
 function scriptSaveAs(filename) {

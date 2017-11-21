@@ -198,3 +198,5 @@ Temporary Items
 .apdisk
 
 venv/
+
+.idea/

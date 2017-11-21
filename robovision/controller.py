@@ -1,3 +1,5 @@
+from time import time
+
 import serial
 import logging
 
@@ -7,14 +9,22 @@ logger = logging.getLogger("esp32")
 class Controller:
     def __init__(self, factor=0.2, maximum=0.02, path=None):
         logger.info("Opening /dev/ttyUSB0")
-        self.ser = serial.Serial(port="/dev/ttyUSB0", baudrate=115200)
+        self.ser = serial.Serial(
+            port="/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.4:1.0-port0",
+            baudrate=115200, xonxoff=True)
         self._has_ball = False
         self.factor = factor
         self.maximum = maximum
+        self.state = [0,0,0,40]
+        self.time = time()
 
     def start(self):
-        # pass
-        self.ser.write(b"set_abce(0,0,0,50)\n\r")
+        self.ser.write(b"set_abce(0,0,0,70)\n\r")
+
+    def apply(self):
+        s = self.ser
+        speed = [str(round(s,3)) for s in self.state[:-1]] + self.state[-1:]
+        s.write(("set_abce(%s,%s,%s,%d)\n\r" % tuple(speed)).encode("ascii"))
 
     def set_abc(self, *speed):  # Ctrl-C doesn't work well,  Lauri tested b"\x03" +
         # print("before:", speed)
@@ -23,10 +33,10 @@ class Controller:
             j * (min(self.maximum, abs(j)) / abs(j)) if j else j
             for j in speed
         )
-        self.ser.write(("set_abc(%.4f,%.4f,%.4f)\n\r" % speed).encode("ascii"))
+        self.state = list(speed) + self.state[-1:]
 
     def set_thrower(self, speed):
-        self.ser.write(("set_thrower(%d)\n\r" % speed).encode("ascii"))
+        self.state = self.state[:-1] + [speed]
 
     def set_yw(self, y, w):
         """
