@@ -23,7 +23,7 @@ class Controller:
 
     def apply(self):
         s = self.ser
-        speed = [str(round(s,3)) for s in self.state[:-1]] + self.state[-1:]
+        speed = [str(round(s,3)) for s in self.state[:-1]] + [max(40, min(self.state[-1], 100))]
         s.write(("set_abce(%s,%s,%s,%d)\n\r" % tuple(speed)).encode("ascii"))
 
     def set_abc(self, *speed):  # Ctrl-C doesn't work well,  Lauri tested b"\x03" +

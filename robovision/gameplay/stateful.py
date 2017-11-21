@@ -42,7 +42,8 @@ class Gameplay(ManagedThread):
 
     @property
     def is_enabled(self):
-        return self.config.get_option("global", "gameplay status", type=str, default='disabled').get_value() == 'enabled'
+        return self.config.get_option("global", "gameplay status", type=str,
+                                      default='disabled').get_value() == 'enabled'
 
     @property
     def config_goal(self):
@@ -183,7 +184,7 @@ class Gameplay(ManagedThread):
         return r
 
     @property
-    def to_close_to_edge(self):
+    def too_close_to_edge(self):
         edge = self.closest_edge
         return edge[2] < 0.4
 
@@ -288,7 +289,6 @@ class Gameplay(ManagedThread):
         self.arduino.set_abc(0, 0, 0)
 
     def drive_to_ball(self):
-
         if not self.balls:
             return
 
@@ -362,7 +362,7 @@ class StateNode:
     recovery_counter = 0
     recovery_factor = 0.5
 
-    def __init__(self, actor):
+    def __init__(self, actor: Gameplay):
         self.transitions = dict(self.exctract_transistions())
         self.actor = actor
         self.time = time()
@@ -380,7 +380,7 @@ class StateNode:
         for name, vector in self.transitions.items():
             result = vector(self)
             if result:
-                logger.info("\n%s -> %s" % (name, result.__class__.__name__))
+                logger.info("\n%s --> %s" % (name, result.__class__.__name__))
                 return result
         return self
 
@@ -391,12 +391,8 @@ class StateNode:
         next_state = self.transition() or self
         if next_state != self:
             StateNode.recovery_counter += next_state.is_recovery
-            if self.actor.has_ball:
-                StateNode.recovery_counter = 0
-            logger.info('StateNode.recovery_counter: %s' % str(StateNode.recovery_counter))
-
-            self.actor.stop_moving()  # PRE EMPTIVE, should not cause any issues TM
-            logger.info(str(next_state))
+            # self.actor.stop_moving()  # PRE EMPTIVE, should not cause any issues TM
+            # logger.info(str(next_state))
         else:  # TODO: THis causes latency, maybe ?
             self.animate()
         return next_state
@@ -405,74 +401,55 @@ class StateNode:
         return str(self.__class__.__name__)
 
 
-class Patrol(StateNode):
+class RetreatMixin(StateNode):
+    def VEC_TOO_CLOSE(self):
+        return
+        if self.actor.too_close:
+            return Penalty(self.actor)
+
+    def VEC_TOO_CLOSE_TO_EDGE(self):
+        return
+        if self.actor.too_close_to_edge:
+            return OutOfBounds(self.actor)
+
+
+class DangerZoneMixin(StateNode):
+    def VEC_IN_DANGER_ZONE(self):
+        if self.actor.danger_zone and self.actor.balls:
+            return Drive(self.actor)
+
+
+class HasBallMixin(StateNode):
+    def VEC_HAS_BALL(self):
+        if self.actor.has_ball:
+            return FindGoal(self.actor)
+
+
+class Patrol(RetreatMixin, HasBallMixin, StateNode):
     def animate(self):
         self.actor.drive_to_field_center()
 
     def VEC_SEE_BALLS_AND_CAN_FLANK(self):
         if self.actor.balls and not self.actor.danger_zone:
-            logger.info("Robot in %s VEC_SEE_BALLS_AND_CAN_FLANK" % str(self))
             return Flank(self.actor)
 
     def VEC_SEE_BALLS_AND_SHOULD_DRIVE(self):
         if self.actor.balls and self.actor.danger_zone:
-            logger.info("Robot in %s VEC_SEE_BALLS_AND_SHOULD_DRIVE" % str(self))
             return Flank(self.actor)
 
-    def VEC_HAS_BALL(self):
-        if self.actor.has_ball:
-            logger.info("Robot in %s VEC_HAS_BALL" % str(self))
-            return FindGoal(self.actor)
 
-    def VEC_TOO_CLOSE(self):
-        if self.actor.too_close:
-            pass
-            #logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
-            # TODO: return Penalty(self.actor)
-
-    def VEC_TO_CLOSE_TO_EDGE(self):
-        if self.actor.to_close_to_edge:
-            pass
-            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            #return OutOfBounds(self.actor)
-
-
-class Flank(StateNode):
+class Flank(HasBallMixin, RetreatMixin, DangerZoneMixin, StateNode):
     def animate(self):
         # if not self.actor.flank_is_alligned:
         self.actor.flank()
         # logger.info(self.actor.balls)
 
-    def VEC_HAS_BALL(self):
-        if self.actor.has_ball:
-            logger.info("Robot in %s VEC_HAS_BALL" % str(self))
-            return FindGoal(self.actor)
-
     def VEC_LOST_SIGHT(self):
         if not self.actor.balls:
-            logger.info("Robot in %s VEC_LOST_SIGHT" % str(self))
             return Patrol(self.actor)
 
     def VEC_LOST_GOAL(self):
         if not self.actor.target_goal:
-            logger.info("Robot in %s VEC_LOST_GOAL" % str(self))
-            return Drive(self.actor)
-
-    def VEC_TOO_CLOSE(self):
-        if self.actor.too_close:
-            pass
-            #logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
-            # TODO: return Penalty(self.actor)
-
-    def VEC_TO_CLOSE_TO_EDGE(self):
-        if self.actor.to_close_to_edge:
-            pass
-            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            #return OutOfBounds(self.actor)
-
-    def VEC_IN_DANGER_ZONE(self):
-        if self.actor.danger_zone and self.actor.balls:
-            logger.info("Robot in %s VEC_IN_DANGER_ZONE" % str(self))
             return Drive(self.actor)
 
     def VEC_FLANK_DONE(self):
@@ -480,13 +457,12 @@ class Flank(StateNode):
             if "VEC_FLANK_DONE" not in self.timers:
                 self.timers["VEC_FLANK_DONE"] = time()
             elif time() > self.timers["VEC_FLANK_DONE"] + 0.3:
-                logger.info("Robot in %s VEC_FLANK_DONE" % str(self))
                 return Drive(self.actor)
         else:
             self.timers.pop('VEC_FLANK_DONE', None)
 
 
-class Drive(StateNode):
+class Drive(HasBallMixin, RetreatMixin, StateNode):
     def animate(self):
         self.actor.drive_to_ball()
         self.actor.kick()
@@ -494,44 +470,11 @@ class Drive(StateNode):
     def VEC_HAS_BALL_IN_BLIND_SPOT(self):
         if self.actor.has_ball and self.actor.blind_spot_for_shoot:
             pass
-            #logger.info("Robot in %s VEC_HAS_BALL_IN_BLIND_SPOT" % str(self))
-            #return OutOfBounds(self.actor)
-
-    def VEC_HAS_BALL(self):
-        if self.actor.has_ball and not self.actor.blind_spot_for_shoot:
-            logger.info("Robot in %s VEC_HAS_BALL" % str(self))
-            return FindGoal(self.actor)
+            # return OutOfBounds(self.actor)
 
     def VEC_LOST_SIGHT(self):
         if not self.actor.has_ball and not self.actor.balls:
-            logger.info("Robot in %s VEC_LOST_SIGHT" % str(self))
             return Patrol(self.actor)
-
-    def VEC_TOO_CLOSE(self):
-        if self.actor.too_close:
-            pass
-            #logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
-            # TODO: return Penalty(self.actor)
-
-    def VEC_TO_CLOSE_TO_EDGE(self):
-        if self.actor.to_close_to_edge:
-            pass
-            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            #return OutOfBounds(self.actor)
-
-
-class Escape(StateNode):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.actor.balls:
-            ball = self.actor.balls[0][0]
-            self.escape_vector = -ball.x, -ball.y
-        else:
-            self.escape_vector = None
-
-    def animate(self):
-        if self.escape_vector:
-            self.actor.drive_xy(*self.escape_vector)
 
 
 class FindGoal(StateNode):
@@ -540,17 +483,14 @@ class FindGoal(StateNode):
 
     def VEC_HAS_GOAL(self):
         if self.actor.target_goal:
-            logger.info("Robot in %s VEC_HAS_GOAL" % str(self))
             return TargetGoal(self.actor)
 
     def VEC_LOST_BALL(self):
-        # logger.info("Robot in FindGoal BALL STATE {}".format(self.actor.has_ball))
         if not self.actor.has_ball:
-            logger.info("Robot in %s VEC_LOST_BALL" % str(self))
             return Patrol(self.actor)
 
 
-class DriveToCenter(StateNode):
+class DriveToCenter(RetreatMixin, StateNode):
     is_recovery = True
 
     def animate(self):
@@ -558,29 +498,14 @@ class DriveToCenter(StateNode):
 
     def VEC_LOST_BALL(self):
         if not self.actor.has_ball:
-            logger.info("Robot in %s VEC_HAS_GOAL" % str(self))
             return Patrol(self.actor)
 
     def VEC_IN_CENTER(self):
-        logger.info("Robot in DriveToCenter time {} {}".format(self.time + 1.5, time()))
         if self.time + 1.5 > time():
-            logger.info("Robot in %s IN_CENTER" % str(self))
             return TargetGoal(self.actor)
 
-    def VEC_TOO_CLOSE(self):
-        if self.actor.too_close:
-            pass
-            #logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
-            # TODO: return Penalty(self.actor)
 
-    def VEC_TO_CLOSE_TO_EDGE(self):
-        if self.actor.to_close_to_edge:
-            pass
-            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            #return OutOfBounds(self.actor)
-
-
-class TargetGoal(StateNode):
+class TargetGoal(RetreatMixin, StateNode):
     VISITS = []
 
     def __init__(self, *args, **kwargs):
@@ -593,40 +518,23 @@ class TargetGoal(StateNode):
         self.actor.kick()
         # self.actor.drive_away_from_goal()
 
-    def VEC_TO_MUTCH_VISITS(self):
+    def VEC_TOO_MANY_VISITS(self):
         # return
         if len(TargetGoal.VISITS) > 4:
-            logger.info("Robot in %s VEC_TO_MUTCH_VISITS" % str(self))
             return DriveToCenter(self.actor)
 
     def VEC_POINTED_AT_GOAL(self):
         # return
         if self.actor.alligned:
-            logger.info("Robot in %s VEC_POINTED_AT_GOAL" % str(self))
             return Focus(self.actor)
 
     def VEC_LOST_BALL(self):
         if not self.actor.has_ball:
-            logger.info("Robot in %s VEC_LOST_BALL" % str(self))
             return Patrol(self.actor)
 
     def VEC_LOST_GOAL(self):
-        # logger.info("Robot in FindGoal BALL STATE {}".format(self.actor.has_ball))
         if not self.actor.target_goal:
-            logger.info("Robot in %s VEC_LOST_GOAL" % str(self))
             return FindGoal(self.actor)
-
-    def VEC_TOO_CLOSE(self):
-        if self.actor.too_close:
-            pass
-            #logger.info("Robot in %s VEC_TOO_CLOSE" % str(self))
-            # TODO: return Penalty(self.actor)
-
-    def VEC_TO_CLOSE_TO_EDGE(self):
-        if self.actor.to_close_to_edge:
-            pass
-            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            #return OutOfBounds(self.actor)
 
 
 class Focus(StateNode):
@@ -636,38 +544,11 @@ class Focus(StateNode):
 
     def VEC_NOT_ALLIGNED(self):
         if not self.actor.alligned:
-            logger.info("Robot in %s VEC_NOT_ALLIGNED" % str(self))
             return TargetGoal(self.actor)
 
-    def VEC_LOST_BALL(self):
-        if not self.actor.has_ball:
-            logger.info("Robot in %s VEC_LOST_BALL" % str(self))
-            return Patrol(self.actor)
-
     def VEC_READY_TO_SHOOT(self):
-        if self.actor.alligned and self.actor.has_ball and self.time + self.actor.focus_time < time():
-            logger.info("Robot in %s VEC_READY_TO_SHOOT" % str(self))
-            return Shoot(self.actor)
-
-
-class Shoot(StateNode):
-    def animate(self):
-        self.actor.kick()
-
-    def VEC_DONE_SHOOTING(self):
-        if not self.actor.has_ball:
-            logger.info("Robot in %s VEC_DONE_SHOOTING" % str(self))
-            return PostShoot(self.actor)
-
-
-class PostShoot(StateNode):
-    def animate(self):
-        pass
-
-    def VEC_DONE_LOLLYGAGGING(self):
-        if self.time + self.actor.focus_time < time():
-            logger.info("Robot in %s VEC_DONE_LOLLYGAGGING" % str(self))
-            return Patrol(self.actor)
+        if self.actor.alligned:
+            return Drive(self.actor)
 
 
 class OutOfBounds(StateNode):
@@ -702,11 +583,8 @@ class Penalty(StateNode):
         safe_dist = self.actor.safe_distance_to_goals
         if (not own or own.dist >= safe_dist) and (
                     not other or other.dist >= safe_dist) and not self.forced_recovery_time:
-            logger.info("Robot in %s VEC_ENOUGH_FAR" % str(self))
             return Patrol(self.actor)
 
-    def VEC_TO_CLOSE_TO_EDGE(self):
-        if self.actor.to_close_to_edge:
-            pass
-            #logger.info("Robot in %s VEC_TO_CLOSE_TO_EDGE" % str(self))
-            #return OutOfBounds(self.actor)
+    def VEC_TOO_CLOSE_TO_EDGE(self):
+        if self.actor.too_close_to_edge:
+            return OutOfBounds(self.actor)
