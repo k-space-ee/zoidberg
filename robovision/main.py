@@ -136,24 +136,6 @@ def command(websocket):
 
         if action == "gamepad":
             controls = response.pop("data")
-            x = controls.pop("controller0.axis0", x) * 0.33
-            y = controls.pop("controller0.axis1", y) * 0.33
-            w = controls.pop("controller0.axis3", w) * 0.7
-
-            # Throw the ball with button A on Logitech gamepad
-            delta = -controls.pop("controller0.axis4", 0)
-            if delta:
-                pwm = max(40, min(pwm + delta, 100))
-                print("PWM: ", pwm)
-            if controls.get("controller0.button0", None):
-                print("PWM: ", pwm)
-                gameplay.arduino.set_thrower(pwm)
-            else:
-                gameplay.arduino.set_thrower(0)
-
-            if controls.get("controller0.button1", None):
-                gameplay.kick()
-
             # Toggle autonomy with button Y on Logitech gamepad
             if controls.get("controller0.button4", None):
                 not gameplay.alive and gameplay.enable()
@@ -162,9 +144,26 @@ def command(websocket):
 
             # Manual control of the robot
             if not gameplay.alive:
-                gameplay.arduino.set_xyw(x,-y,-w)
+                x = controls.pop("controller0.axis0", x) * 0.33
+                y = controls.pop("controller0.axis1", y) * 0.33
+                w = controls.pop("controller0.axis3", w) * 0.7
 
-            gameplay.arduino.apply()
+                # Throw the ball with button A on Logitech gamepad
+                delta = -controls.pop("controller0.axis4", 0)
+                if delta:
+                    pwm = max(40, min(pwm + delta, 100))
+                    print("PWM: ", pwm)
+                if controls.get("controller0.button0", None):
+                    print("PWM: ", pwm)
+                    gameplay.arduino.set_thrower(pwm)
+                else:
+                    gameplay.arduino.set_thrower(0)
+
+                if controls.get("controller0.button1", None):
+                    gameplay.kick()
+
+                gameplay.arduino.set_xyw(x,-y,-w)
+                gameplay.arduino.apply()
 
         # TODO: slders
         elif action == "record_toggle":

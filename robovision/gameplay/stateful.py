@@ -298,6 +298,7 @@ class Gameplay(ManagedThread):
     def kick(self, update=True):
         if update:
             self.last_kick = time()
+
         if self.target_goal_distance and self.continue_to_kick:
             pwm = dist_to_pwm(self.target_goal_distance)
             return self.arduino.set_thrower(pwm)
@@ -367,8 +368,8 @@ class Gameplay(ManagedThread):
 
         self.state.tick()
 
-        self.arduino.apply()
         self.kick(update=False)
+        self.arduino.apply()
 
     def on_enabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('enabled')
