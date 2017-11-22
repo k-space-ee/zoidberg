@@ -97,7 +97,7 @@ class Gameplay(ManagedThread):
         return self.arduino.has_ball
 
     @property
-    def target_goal_detla(self):
+    def target_goal_angle(self):
         if self.target_goal:
             return self.target_goal.angle_deg
 
@@ -119,7 +119,7 @@ class Gameplay(ManagedThread):
         # TODO: inverse of this
         if self.target_goal:
             min_angle = 2 if not self.target_goal_dist or self.target_goal_dist > 3 else 3
-            return abs(self.target_goal_detla) <= min_angle
+            return abs(self.target_goal_angle) <= min_angle
 
     @property
     def focus_time(self):
@@ -209,23 +209,11 @@ class Gameplay(ManagedThread):
     def blind_spot_for_shoot(self):
         return (not self.own_goal or self.own_goal.dist > 3.0) and self.closest_edge[2] < 1.2
 
-    def align_to_target_goal(self):
-        if not self.target_goal:
-            return
-        if self.target_goal.dist > 0.5:
-            for relative, _, _, _, _ in self.balls[1:]:
-                if abs(relative.dist * math.sin(relative.angle_rad)) < 0.08 and abs(relative.angle_deg) < 60 and abs(
-                                relative.dist - self.target_goal.dist):
-                    self.arduino.set_xyw([1, -1][relative.angle_rad > 0] * 0.60, 0.0, 0.0)
-                    return
-
-        sign = [1, -1][self.target_goal_detla > 0]
-        angle = abs(self.target_goal_detla)
-        delta = sign * (0.8 if angle > 20 else 0.5 if angle > 5 else 0.2)
-        if delta < 0:
-            self.arduino.set_abc(delta * 0.05, delta * 0.1, delta * 0.8)
-        elif delta > 0:
-            self.arduino.set_abc(delta * 0.1, delta * 0.05, delta * 0.8)
+    def drive_towards_target_goal(self):
+        rotation = self.rotation_for_goal() or 0
+        angle = self.target_goal_angle
+        factor = abs(math.tanh(angle / 12))
+        return self.arduino.set_xyw(0, 0.1, rotation * (factor * 2))
 
     def rotate(self, degrees):
         delta = degrees / 360
@@ -263,19 +251,20 @@ class Gameplay(ManagedThread):
         return round(x,4), round(y, 4)
 
     def rotation_for_goal(self):
-        goal_angle = self.target_goal_detla
-        maximum = 50
-        angle = min(goal_angle, maximum)
-        factor = abs(math.tanh(angle / 30))
-        rotate = -angle * factor / maximum
-        rotate = max(0.05, abs(rotate)) * [-1, 1][rotate > 0]
-        # print('rotate %.02f %.02f %.02f' % (angle, factor, rotate))
-        return rotate
+        goal_angle = self.target_goal_angle
+        if goal_angle is not None:
+            maximum = 50
+            angle = min(goal_angle, maximum)
+            factor = abs(math.tanh(angle / 30))
+            rotate = -angle * factor / maximum
+            rotate = max(0.05, abs(rotate)) * [-1, 1][rotate > 0]
+            # print('rotate %.02f %.02f %.02f' % (angle, factor, rotate))
+            return rotate
 
     def flank(self):
-        rotation = self.rotation_for_goal()
+        rotation = self.rotation_for_goal() or 0
 
-        goal_angle = self.target_goal_detla
+        goal_angle = self.target_goal_angle
         shooting_angle = self.goal_to_ball_angle
 
         if abs(goal_angle) > max(abs(shooting_angle * 3), 10):
@@ -289,7 +278,7 @@ class Gameplay(ManagedThread):
             return
         x, y = flank
 
-        self.arduino.set_xyw(y, x, rotation  / 2)
+        self.arduino.set_xyw(y, x, rotation  / 1.4)
 
     @property
     def continue_to_kick(self):
@@ -366,7 +355,7 @@ class Gameplay(ManagedThread):
             self.target_goal_distances = [self.target_goal.dist * 100] + self.target_goal_distances[:10]
             self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
 
-        self.state.tick()
+        self.state = self.state.tick()
 
         self.kick(update=False)
         self.arduino.apply()
@@ -396,6 +385,10 @@ class StateNode:
         self.actor = actor
         self.time = time()
         self.timers = defaultdict(time)
+
+    @property
+    def elapsed(self):
+        return time() - self.time
 
     @property
     def forced_recovery_time(self):
@@ -474,21 +467,20 @@ class Flank(HasBallMixin, RetreatMixin, DangerZoneMixin, StateNode):
 
     def VEC_LOST_SIGHT(self):
         if not self.actor.balls:
-            return Patrol(self.actor)
+            return Shoot(self.actor)
 
     def VEC_LOST_GOAL(self):
         if not self.actor.target_goal:
-            return Drive(self.actor)
+            return Patrol(self.actor)
 
-    def VEC_FLANK_DONE(self):
-        return  # TODO
-        if self.actor.flank_is_alligned:
-            if "VEC_FLANK_DONE" not in self.timers:
-                self.timers["VEC_FLANK_DONE"] = time()
-            elif time() > self.timers["VEC_FLANK_DONE"] + 0.3:
-                return Drive(self.actor)
-        else:
-            self.timers.pop('VEC_FLANK_DONE', None)
+
+class Shoot(StateNode):
+    def animate(self):
+        self.actor.drive_towards_target_goal()
+
+    def VEC_DONE_SHOOT(self):
+        if self.elapsed > 1:
+            return Flank(self.actor)
 
 
 class Drive(HasBallMixin, RetreatMixin, StateNode):
@@ -535,6 +527,8 @@ class DriveToCenter(RetreatMixin, StateNode):
 
 
 class TargetGoal(RetreatMixin, StateNode):
+    #instead drive infront of own goal to fuck around with opponnentos
+
     VISITS = []
 
     def __init__(self, *args, **kwargs):
@@ -543,7 +537,7 @@ class TargetGoal(RetreatMixin, StateNode):
         TargetGoal.VISITS = list(filter(lambda x: x + 0.5 > time(), TargetGoal.VISITS))
 
     def animate(self):
-        self.actor.align_to_target_goal()
+        self.actor.drive_towards_target_goal()
         self.actor.kick()
         # self.actor.drive_away_from_goal()
 
