@@ -38,8 +38,8 @@ class Visualizer(ManagedThread):
         if r.goal_yellow:
             dist = r.goal_yellow.dist * 100
             pwm = dist_to_pwm(dist)
-            cv2.putText(frame, "DIST %.0f" % (dist), (200, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0 ,0), 6)
-            cv2.putText(frame, "PWM %.0f" % (pwm), (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0 ,0), 6)
+            cv2.putText(frame, "DIST %.0f" % (dist), (200, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0 ,0), 20)
+            cv2.putText(frame, "PWM %.0f" % (pwm), (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0 ,0), 20)
 
         # Visualize field edges
         points = []
@@ -76,9 +76,9 @@ class Visualizer(ManagedThread):
             for delta in -3840, 0, 3840:
                 x = r.deg_to_x(r.goal_yellow.angle_deg) + delta
                 cv2.line(frame, (x,0), (x,r.GOAL_BOTTOM-120), (255,255,255), 3)
-                cv2.putText(frame, "%.1fdeg" % r.goal_yellow.angle_deg, (x, r.GOAL_BOTTOM-80), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
-                cv2.putText(frame, "%.2fm" % r.goal_yellow.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
-                cv2.putText(frame, "%.1fdeg wide" % r.goal_yellow_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+                cv2.putText(frame, "%.1fdeg" % r.goal_yellow.angle_deg, (x + 90, r.GOAL_BOTTOM + 120), cv2.FONT_HERSHEY_SIMPLEX, 4, (0,0,255), 20)
+                cv2.putText(frame, "%.2fm" % r.goal_yellow.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
+                cv2.putText(frame, "%.1fdeg wide" % r.goal_yellow_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
             for rect in r.goal_yellow_rect:
                 cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
 
@@ -86,9 +86,9 @@ class Visualizer(ManagedThread):
             for delta in -3840, 0, 3840:
                 x = r.deg_to_x(r.goal_blue.angle_deg) + delta
                 cv2.line(frame, (x,0), (x,r.GOAL_BOTTOM-120), (255,255,255), 3)
-                cv2.putText(frame, "%.1fdeg" % r.goal_blue.angle_deg, (x, r.GOAL_BOTTOM-80), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
-                cv2.putText(frame, "%.2fm" % r.goal_blue.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
-                cv2.putText(frame, "%.1fdeg wide" % r.goal_blue_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+                cv2.putText(frame, "%.1fdeg" % r.goal_blue.angle_deg, (x + 90, r.GOAL_BOTTOM + 120), cv2.FONT_HERSHEY_SIMPLEX, 4, (0,0,255), 20)
+                cv2.putText(frame, "%.2fm" % r.goal_blue.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
+                cv2.putText(frame, "%.1fdeg wide" % r.goal_blue_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
             for rect in r.goal_blue_rect:
                 cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
 
@@ -100,7 +100,6 @@ class Visualizer(ManagedThread):
             resized = frame
             self.produce(buf, resized, frame, r)
             return
-
 
         # Visualize field mask
         field_mask = np.swapaxes(np.repeat(r.field_mask, 2, axis=1), 0, 1)

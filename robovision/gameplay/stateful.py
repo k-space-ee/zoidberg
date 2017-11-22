@@ -32,7 +32,11 @@ class Gameplay(ManagedThread):
         self.safe_distance_to_goals = 1.4
         self.config = config
 
-    @property
+        self.target_goal_distances = [100]
+        self.target_goal_distance = 100
+
+        self.last_kick = time()
+
     def field_id(self):
         return self.config.get_option("global", "field_id", type=str, default='A').get_value()
 
@@ -153,35 +157,31 @@ class Gameplay(ManagedThread):
         in_line = self.goal_to_ball_angle
 
         if in_line and abs(in_line) < 13:
-            log_str = "B{:.1f} G{:.1f} | D{:.1f}".format(self.balls[0][0].angle_deg, self.target_goal.angle_deg, in_line)
-            #logger.info(log_str)
+            log_str = "B{:.1f} G{:.1f} | D{:.1f}".format(self.balls[0][0].angle_deg, self.target_goal.angle_deg,
+                                                         in_line)
+            # logger.info(log_str)
 
             return True
 
     @property
     def goal_to_ball_angle(self):
-        import math
-
         if not self.target_goal or not self.balls:
-            logger.info("goal_to_ball_angle {} {}".format(self.target_goal, self.balls))
+            logger.info("goal_to_ball_angle failed: {} {}".format(self.target_goal, self.balls))
             return
 
         ball = self.balls[0][0]
         goal = self.target_goal
 
-        v1 = goal
-        v2 = ball
+        vg = goal.angle_deg
+        vb = ball.angle_deg
 
-        v1_theta = math.atan2(v1.y, v1.x)
-        v2_theta = math.atan2(v2.y, v2.x)
-
-        r = (v2_theta - v1_theta) * (180.0 / 3.141)
+        r = vb - vg
 
         if r > 180:
             r -= 360
         if r < -180:
             r += 360
-        return r
+        return r  # degrees
 
     @property
     def too_close_to_edge(self):
@@ -236,53 +236,72 @@ class Gameplay(ManagedThread):
         self.arduino.set_xyw(y, x, 0)
 
     def flank_vector(self):
-        r = self.goal_to_ball_angle
-        if not r:
+        angle = self.goal_to_ball_angle
+        if angle is None:
             logger.info("not flank vector")
             return
 
         ball = self.balls[0][0]
 
-        sign = [-1, 1][r > 0]
+        sign = [-1, 1][angle > 0]
 
-        delta_deg = 40 * sign / ball.dist
+        factor = abs(math.tanh(angle / 30))
+        delta_deg = abs(angle) * 2 + angle**2 / 180 + 10
+
+        delta_deg += abs(angle) * factor
+
+        delta_deg = min(delta_deg, 80)
+        delta_deg *= sign
 
         delta = math.radians(delta_deg)
 
+        # rotate ball vector towards desired position
         bx, by = ball.x, ball.y
         x = bx * math.cos(delta) - by * math.sin(delta)
         y = bx * math.sin(delta) + by * math.cos(delta)
 
-        angle = math.degrees(math.atan2((y), (x)))
-        # logger.info("delta{} angle{} ball{} -> {}".format(round(delta_deg),round(r),round(ball.angle_deg), round(angle)))
+        return round(x,4), round(y, 4)
 
-        return x, y
+    def rotation_for_goal(self):
+        goal_angle = self.target_goal_detla
+        maximum = 50
+        angle = min(goal_angle, maximum)
+        factor = abs(math.tanh(angle / 30))
+        rotate = -angle * factor / maximum
+        rotate = max(0.05, abs(rotate)) * [-1, 1][rotate > 0]
+        # print('rotate %.02f %.02f %.02f' % (angle, factor, rotate))
+        return rotate
 
     def flank(self):
+        rotation = self.rotation_for_goal()
+
+        goal_angle = self.target_goal_detla
+        shooting_angle = self.goal_to_ball_angle
+
+        if abs(goal_angle) > max(abs(shooting_angle * 3), 10):
+            print("rotate", goal_angle, shooting_angle)
+            return self.arduino.set_xyw(0, 0, rotation)
+
         flank = self.flank_vector()
+
         if not flank:
+            print('flank', flank)
             return
-
         x, y = flank
-        min_speed = 0.80
-        max_val = max([abs(x), abs(y)])
-        if max_val < min_speed and max_val:
-            scaling = min_speed / max_val
-            x *= scaling
-            y *= scaling
 
-        rotating_sign = [1, -1][self.target_goal_detla > 0]
-        angle = min(abs(self.target_goal_detla), 30)
+        self.arduino.set_xyw(y, x, rotation  / 2)
 
-        delta = rotating_sign * 0.8 * angle / 30
+    @property
+    def continue_to_kick(self):
+        return time() - self.last_kick < 1
 
-        self.arduino.set_xyw(y, x, delta)
-
-    def kick(self):
-        if self.target_goal:
-            pwm = dist_to_pwm(self.target_goal.dist * 100)
+    def kick(self, update=True):
+        if update:
+            self.last_kick = time()
+        if self.target_goal_distance and self.continue_to_kick:
+            pwm = dist_to_pwm(self.target_goal_distance)
             return self.arduino.set_thrower(pwm)
-        else:
+        if not self.target_goal_distance:
             print("derp")
 
     def stop_moving(self):
@@ -336,12 +355,20 @@ class Gameplay(ManagedThread):
         self.arduino.set_xyw(-y, -x, 0)
 
     def step(self, recognition, *args):
+        self.arduino.set_abc(0, 0, 0)
         if not recognition:
             return
 
         self.recognition = recognition
-        self.state = self.state.tick()
+
+        if self.target_goal:
+            self.target_goal_distances = [self.target_goal.dist * 100] + self.target_goal_distances[:10]
+            self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
+
+        self.state.tick()
+
         self.arduino.apply()
+        self.kick(update=False)
 
     def on_enabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('enabled')
@@ -354,6 +381,7 @@ class Gameplay(ManagedThread):
 
     def start(self):
         self.arduino.start()
+        self.state = Flank(self)
         ManagedThread.start(self)
 
 
@@ -402,15 +430,15 @@ class StateNode:
 
 
 class RetreatMixin(StateNode):
-    def VEC_TOO_CLOSE(self):
-        return
-        if self.actor.too_close:
-            return Penalty(self.actor)
-
-    def VEC_TOO_CLOSE_TO_EDGE(self):
-        return
-        if self.actor.too_close_to_edge:
-            return OutOfBounds(self.actor)
+    pass
+    # TODO: enable once ready for battle
+    # def VEC_TOO_CLOSE(self):
+    #     if self.actor.too_close:
+    #         return Penalty(self.actor)
+    #
+    # def VEC_TOO_CLOSE_TO_EDGE(self):
+    #     if self.actor.too_close_to_edge:
+    #         return OutOfBounds(self.actor)
 
 
 class DangerZoneMixin(StateNode):
@@ -440,9 +468,8 @@ class Patrol(RetreatMixin, HasBallMixin, StateNode):
 
 class Flank(HasBallMixin, RetreatMixin, DangerZoneMixin, StateNode):
     def animate(self):
-        # if not self.actor.flank_is_alligned:
         self.actor.flank()
-        # logger.info(self.actor.balls)
+        self.actor.kick()
 
     def VEC_LOST_SIGHT(self):
         if not self.actor.balls:
@@ -453,6 +480,7 @@ class Flank(HasBallMixin, RetreatMixin, DangerZoneMixin, StateNode):
             return Drive(self.actor)
 
     def VEC_FLANK_DONE(self):
+        return  # TODO
         if self.actor.flank_is_alligned:
             if "VEC_FLANK_DONE" not in self.timers:
                 self.timers["VEC_FLANK_DONE"] = time()

@@ -7,7 +7,7 @@ logger = logging.getLogger("esp32")
 
 
 class Controller:
-    def __init__(self, factor=0.2, maximum=0.02, path=None):
+    def __init__(self, factor=0.2, maximum=0.05, path=None):
         logger.info("Opening /dev/ttyUSB0")
         self.ser = serial.Serial(
             port="/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.4:1.0-port0",
@@ -19,12 +19,14 @@ class Controller:
         self.time = time()
 
     def start(self):
-        self.ser.write(b"set_abce(0,0,0,70)\n\r")
+        self.ser.write(b"set_abce(0,0,0,47)\n\r")
 
     def apply(self):
         s = self.ser
         speed = [str(round(s,3)) for s in self.state[:-1]] + [max(40, min(self.state[-1], 100))]
-        s.write(("set_abce(%s,%s,%s,%d)\n\r" % tuple(speed)).encode("ascii"))
+        b,c,a,d = speed
+        #print(speed)
+        s.write(("set_abce(%s,%s,%s,%d)\n\r" % (a,b,c,d)).encode("ascii"))
 
     def set_abc(self, *speed):  # Ctrl-C doesn't work well,  Lauri tested b"\x03" +
         # print("before:", speed)

@@ -257,6 +257,7 @@ class ImageRecognition:
 
     def _recognize_markers(self):
         self.markers = {}
+        return
 
         factor = 1
         j = 4
@@ -361,6 +362,7 @@ class ImageRecognition:
             cx = x + (w >> 1)
             cy = (y << 1) + h  # bottom half is really bad seen and reflects field color (h >> 1)
 
+            # TODO: is this dependent on the size?
             relative = PolarPoint(self.x_to_rad(cx), self.y_to_dist(cy + radius))
 
             # TODO: most likely we dont need suspicious logic anymore, as balls are thrown in a basket.
@@ -385,7 +387,11 @@ class ImageRecognition:
             ball_coords = relative, absolute, cx, cy, radius
             balls.add(ball_coords)
         # TODO: better alghoritm to sort balls
-        # return mask, sorted(balls, key=lambda b:b[0].dist * abs( b[0].angle / 180) )
+        # return mask, sorted(
+        #     balls,
+        #     key=lambda b: b[0].dist + abs(b[0].angle_deg / 180) / 10,
+        # )
+
         return mask, sorted(balls, key=lambda b: b[0].dist)
 
     def dist_to_y(self, d):

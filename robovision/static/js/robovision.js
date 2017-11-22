@@ -141,9 +141,14 @@ $(document).ready(function () {
         }
     });
 
-
+    var firstLoad = true;
     socket = new ReconnectingWebSocket('ws:' + window.location.host);
     socket.onopen = function (event) {
+        if (!firstLoad) {
+            location.reload();
+        }
+        
+        firstLoad = false;
         console.log("WebSocket opened");
         window.controllers = {};
         requestAnimationFrame(streamGamepad);
