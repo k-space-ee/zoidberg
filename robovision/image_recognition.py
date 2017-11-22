@@ -67,6 +67,14 @@ class PolarPoint(Point):
         self.x = self.dist * math.cos(self.angle_rad)
         self.y = self.dist * math.sin(self.angle_rad)
 
+    @property
+    def angle_deg_abs(self):
+        return abs(self.angle_deg)
+
+    @property
+    def angle_rad_abs(self):
+        return abs(self.angle_rad)
+
 
 class ImageRecognition:
     GOAL_FIELD_DILATION = 50

@@ -58,8 +58,9 @@ rf = RemoteRF(gameplay, "/dev/ttyACM0")
 visualizer = Visualizer(image_recognizer, framedrop=1)
 recorder = Recorder(grabber)
 
-def generator():
+def generator(type_str):
     visualizer.enable()
+    visualizer.type_str = type_str
     queue = visualizer.get_queue()
     while True:
         try:
@@ -75,7 +76,7 @@ def generator():
 @app.route('/combined/<path:type_str>')
 def video_combined(type_str):
     TYPES = ['VIDEO', 'DEBUG', 'COMBO']
-    return Response(generator(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generator(type_str.upper()), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/')
 def group():
@@ -161,6 +162,9 @@ def command(websocket):
 
                 if controls.get("controller0.button1", None):
                     gameplay.kick()
+
+                if controls.get("controller0.button2", None):
+                    print(gameplay.state)
 
                 gameplay.arduino.set_xyw(x,-y,-w)
                 gameplay.arduino.apply()

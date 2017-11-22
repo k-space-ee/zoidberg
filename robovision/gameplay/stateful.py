@@ -4,7 +4,7 @@ from line_fit import dist_to_pwm
 
 logger = logging.getLogger("gameplay")
 from managed_threading import ManagedThread
-from image_recognition import Point
+from image_recognition import Point, PolarPoint
 from controller import Controller
 import math
 from time import time
@@ -36,6 +36,8 @@ class Gameplay(ManagedThread):
         self.target_goal_distance = 100
 
         self.last_kick = time()
+
+        self.recent_closest_balls = []
 
     def field_id(self):
         return self.config.get_option("global", "field_id", type=str, default='A').get_value()
@@ -166,7 +168,7 @@ class Gameplay(ManagedThread):
     @property
     def goal_to_ball_angle(self):
         if not self.target_goal or not self.balls:
-            logger.info("goal_to_ball_angle failed: {} {}".format(self.target_goal, self.balls))
+            logger.info("goal_to_ball_angle failed: GOAL:{} BAALS:{}".format(self.target_goal, self.balls))
             return
 
         ball = self.balls[0][0]
@@ -211,7 +213,7 @@ class Gameplay(ManagedThread):
 
     def drive_towards_target_goal(self):
         rotation = self.rotation_for_goal() or 0
-        angle = self.target_goal_angle
+        angle = self.target_goal_angle or 0
         factor = abs(math.tanh(angle / 12))
         return self.arduino.set_xyw(0, 0.1, rotation * (factor * 2))
 
@@ -265,7 +267,7 @@ class Gameplay(ManagedThread):
         rotation = self.rotation_for_goal() or 0
 
         goal_angle = self.target_goal_angle
-        shooting_angle = self.goal_to_ball_angle
+        shooting_angle = self.goal_to_ball_angle or 999
 
         if abs(goal_angle) > max(abs(shooting_angle * 3), 10):
             print("rotate", goal_angle, shooting_angle)
@@ -344,6 +346,34 @@ class Gameplay(ManagedThread):
         # logger.info("{} == {}?".format(self.field_center_angle, Point(-x, -y).angle_deg))
         self.arduino.set_xyw(-y, -x, 0)
 
+    @property
+    def last_closest_ball(self) -> PolarPoint:
+        return self.recent_closest_balls[0] if self.recent_closest_balls else None
+
+    def update_recent_closest_balls(self):
+        if self.closest_ball and self.closest_ball.dist < 0.5 and self.closest_ball.angle_deg_abs < 15:
+            self.recent_closest_balls = [self.closest_ball] + self.recent_closest_balls[:12]
+        else:
+            self.recent_closest_balls = self.recent_closest_balls[:-1]
+
+    @property
+    def closest_ball(self) -> PolarPoint:
+        if self.balls:
+            return self.balls[0][0]
+
+    @property
+    def average_closest_ball(self) -> PolarPoint:
+        if not self.recent_closest_balls:
+            return
+
+        A, D = [], []
+        for b in self.recent_closest_balls:
+            A.append(b.angle_rad)
+            D.append(b.dist)
+        a = sum(A) / len(A)
+        d = sum(D) / len(D)
+        return PolarPoint(a, d)
+
     def step(self, recognition, *args):
         self.arduino.set_abc(0, 0, 0)
         if not recognition:
@@ -358,6 +388,9 @@ class Gameplay(ManagedThread):
         self.state = self.state.tick()
 
         self.kick(update=False)
+
+        self.update_recent_closest_balls()
+
         self.arduino.apply()
 
     def on_enabled(self, *args):
@@ -466,8 +499,17 @@ class Flank(HasBallMixin, RetreatMixin, DangerZoneMixin, StateNode):
         self.actor.kick()
 
     def VEC_LOST_SIGHT(self):
-        if not self.actor.balls:
+        last_best_ball = self.actor.average_closest_ball
+        if not last_best_ball:
+            return
+
+        print(last_best_ball.angle_deg_abs, last_best_ball.dist)
+        if last_best_ball.angle_deg_abs < 9 and last_best_ball.dist < 0.2:
             return Shoot(self.actor)
+
+    def VEC_NO_BALLS(self):
+        if not self.actor.balls:
+            return Patrol(self.actor)
 
     def VEC_LOST_GOAL(self):
         if not self.actor.target_goal:
@@ -477,9 +519,10 @@ class Flank(HasBallMixin, RetreatMixin, DangerZoneMixin, StateNode):
 class Shoot(StateNode):
     def animate(self):
         self.actor.drive_towards_target_goal()
+        self.actor.kick()
 
     def VEC_DONE_SHOOT(self):
-        if self.elapsed > 1:
+        if self.elapsed > 2:
             return Flank(self.actor)
 
 

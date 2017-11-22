@@ -7,7 +7,9 @@ logger = logging.getLogger("esp32")
 
 
 class Controller:
-    def __init__(self, factor=0.2, maximum=0.05, path=None):
+
+    # safe values 0.2 0.05
+    def __init__(self, factor=0.2, maximum=0.2, path=None):
         logger.info("Opening /dev/ttyUSB0")
         self.ser = serial.Serial(
             port="/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.4:1.0-port0",

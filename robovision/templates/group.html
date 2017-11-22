@@ -5,7 +5,7 @@
     <div class="multiCameraWrapper">
         <div class="buttons">
             <button type="button" class="btn btn-primary" onclick='showCamera();'>Primary</button>
-            <button type="button" class="btn btn-info" onclick='showField();'>Field</button>
+            <button type="button" class="btn btn-warning" onclick='showDebug();'>Debug</button>
             <button type="button" class="btn btn-danger" onclick='resetStream();'>None</button>
             <button type="button" class="btn btn-info" id="toggle_recording">Record</button>
         </div>
@@ -44,10 +44,10 @@
 
         }
 
-        function showField() {
+        function showDebug() {
             resetStream();
-            $('#cameras').attr("src", 'http://192.168.12.107:5000/stream');
-            $('#cameras').css("width", 'inherit');
+            $('#cameras').attr("src", 'combined/debug');
+            $('#cameras').css("width", '100%');
         }
 
 </script>

@@ -15,7 +15,9 @@ def right_bottom(args):
 
 class Visualizer(ManagedThread):
     ZOOM = 0.5 # 0.2
-    DEBUG_MASK = False
+    DEBUG_MASK = True
+    type_str = None
+
     def step(self, r, grabber):
         frame = r.frame
         if frame.shape[0] == 3840:
@@ -61,8 +63,8 @@ class Visualizer(ManagedThread):
         for relative, absolute, x, y, radius in r.balls:
             cv2.circle(frame, (x,y), radius, (255,255,255) if index else (0,0,255), 3)
             x = r.deg_to_x(relative.angle_deg)
-            cv2.putText(frame, "%.1fdeg" % relative.angle_deg, (x + 20, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,192,255), 4)
-            cv2.putText(frame, "%.2fm" % relative.dist, (x + 20, y + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,192,255), 4)
+            cv2.putText(frame, "%.1fdeg" % relative.angle_deg, (x + 20, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 10)
+            cv2.putText(frame, "%.2fm" % relative.dist, (x + 20, y + 40), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 12)
             index += 1
             if index < 5:
                 point = x, y
@@ -93,7 +95,7 @@ class Visualizer(ManagedThread):
                 cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
 
 
-        if not self.DEBUG_MASK: # TODO: Read from config manager
+        if not self.DEBUG_MASK or self.type_str == 'VIDEO': # TODO: Read from config manager
             resized = cv2.resize(frame, (0,0), fx=self.ZOOM, fy=self.ZOOM)
             ret, jpeg = cv2.imencode('.jpg', frame, (cv2.IMWRITE_JPEG_QUALITY, 50))
             buf = jpeg.tostring()
