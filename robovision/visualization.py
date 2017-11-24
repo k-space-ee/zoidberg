@@ -16,7 +16,7 @@ def right_bottom(args):
 class Visualizer(ManagedThread):
     ZOOM = 0.5 # 0.2
     DEBUG_MASK = True
-    type_str = None
+    type_str = 'VIDEO'
 
     def step(self, r, grabber):
         frame = r.frame
@@ -40,8 +40,8 @@ class Visualizer(ManagedThread):
         if r.goal_yellow:
             dist = r.goal_yellow.dist * 100
             pwm = dist_to_pwm(dist)
-            cv2.putText(frame, "DIST %.0f" % (dist), (200, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0 ,0), 20)
-            cv2.putText(frame, "PWM %.0f" % (pwm), (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0 ,0), 20)
+            cv2.putText(frame, "DIST %.0f" % (dist), (200, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255 ,0), 20)
+            cv2.putText(frame, "PWM %.0f" % (pwm), (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255 ,0), 20)
 
         # Visualize field edges
         points = []

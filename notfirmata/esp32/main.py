@@ -210,7 +210,7 @@ def set_abc(a,b,c):
 
 def set_thrower(e):
     assert 40 <= e <= 110, "ESC speed out of range"
-    esc.duty(e)
+    esc.duty(e +  int((12 - battery_voltage()) / 0.2))
     timer_thrower.init(period=3000, mode=Timer.ONE_SHOT, callback=halt_thrower)
 
 def set_abce(a,b,c,e):
@@ -239,6 +239,56 @@ def sr(): # strafe right
 
 def sl(): # strafe left
     set_abce(0.1,0.1,-0.86,ESC_IDLE)
+
+
+
+nuffink=True
+
+def cb(p):
+    global nuffink
+    #print("Got it")
+    nuffink = False
+
+got = Pin(39, Pin.IN)
+got.irq(trigger=Pin.IRQ_FALLING, handler=cb)
+
+
+def grab():
+    global nuffink
+    nuffink = True
+    while nuffink:
+        set_abc(0, 0.02, -0.02)
+        esc.duty(75)
+        sleep_ms(80)
+        esc.duty(40)
+        sleep_ms(200)
+    print("got")
+    sleep_ms(2000)
+    print("throwing")
+    esc.duty(70)
+    sleep_ms(1000)
+    esc.duty(40)
+
+
+
+
+from machine import Pin, ADC
+adc = ADC(Pin(36, Pin.IN))
+adc.atten(ADC.ATTN_0DB)
+
+
+def battery_voltage():
+    for j in range(0,2): # skip garbage
+        adc.read()
+    s = 0
+    for j in range(0,3):
+        s += adc.read()
+    return s * 0.0041 / (j+1)
+
+
+
+
+    
 
 set_abce(0,0,0,60)
 oled.text("booting.....", 10, 10)

@@ -265,7 +265,6 @@ class ImageRecognition:
 
     def _recognize_markers(self):
         self.markers = {}
-        return
 
         factor = 1
         j = 4
@@ -290,7 +289,9 @@ class ImageRecognition:
                 dist_a = height_to_dist(height / factor)
                 dist_b = vertical_to_dist(vertical / factor)
                 # print(dist_a, dist_b)
-                self.markers[marker_ids[0]] = (dist_a + 2 * dist_b) / 3
+                self.markers[marker_ids[0]] = max(dist_a, dist_b)
+                # self.markers[marker_ids[0]] = dist_b
+            # print(self.markers)
 
     def _recognize_goal(self, lower, upper, overlap=4, ids=[]):
         # Recognize goal
@@ -443,12 +444,15 @@ class ImageRecognition:
 
 
 class ImageRecognizer(ManagedThread):
+    last_frame = None
+
     def step(self, frame):
         r = ImageRecognition(
             frame,
             kicker_offset=config.get_option("camera mount", "kicker offset", type=int).get_value()
         )
         self.produce(r, self.grabber)
+        self.last_frame = r
 
         # TODO: Put this in another sensible place, probably as a ImageRecognizer consumer
         # if hasattr(self, "websockets"):

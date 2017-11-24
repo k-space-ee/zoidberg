@@ -214,8 +214,10 @@ class Gameplay(ManagedThread):
     def drive_towards_target_goal(self):
         rotation = self.rotation_for_goal() or 0
         angle = self.target_goal_angle or 0
-        factor = abs(math.tanh(angle / 12))
-        return self.arduino.set_xyw(0, 0.1, rotation * (factor * 2))
+        if abs(angle) > 2:
+            return self.arduino.set_xyw(0, -0.16, 0)
+        factor = abs(math.tanh(angle / 18))
+        return self.arduino.set_xyw(0, 0.13, rotation * (factor * 2))
 
     def rotate(self, degrees):
         delta = degrees / 360
@@ -231,12 +233,20 @@ class Gameplay(ManagedThread):
             logger.info("not flank vector")
             return
 
-        ball = self.balls[0][0]
+        ball = self.average_closest_ball or self.balls[0][0]
+
+        dist = ball.dist
+
+        bx, by = ball.x / dist, ball.y / dist
+        if dist > 0.53:
+            return bx * 0.6, by * 0.6
 
         sign = [-1, 1][angle > 0]
 
         factor = abs(math.tanh(angle / 30))
-        delta_deg = abs(angle) * 2 + angle**2 / 180 + 10
+        print(factor)
+
+        delta_deg = abs(angle) * 2 + 10
 
         delta_deg += abs(angle) * factor
 
@@ -246,11 +256,12 @@ class Gameplay(ManagedThread):
         delta = math.radians(delta_deg)
 
         # rotate ball vector towards desired position
-        bx, by = ball.x, ball.y
         x = bx * math.cos(delta) - by * math.sin(delta)
         y = bx * math.sin(delta) + by * math.cos(delta)
 
-        return round(x,4), round(y, 4)
+        factor = abs(math.tanh(angle / 60)) + 0.2
+        # TODO: falloff when goal angle and dist decreases
+        return round(x * factor * 0.7, 6), round(y * factor * 0.7, 6)
 
     def rotation_for_goal(self):
         goal_angle = self.target_goal_angle
@@ -269,6 +280,9 @@ class Gameplay(ManagedThread):
         goal_angle = self.target_goal_angle
         shooting_angle = self.goal_to_ball_angle or 999
 
+        if goal_angle is None:
+            return
+
         if abs(goal_angle) > max(abs(shooting_angle * 3), 10):
             print("rotate", goal_angle, shooting_angle)
             return self.arduino.set_xyw(0, 0, rotation)
@@ -280,7 +294,7 @@ class Gameplay(ManagedThread):
             return
         x, y = flank
 
-        self.arduino.set_xyw(y, x, rotation  / 1.4)
+        self.arduino.set_xyw(y, x, rotation / 1.4)
 
     @property
     def continue_to_kick(self):
@@ -344,7 +358,7 @@ class Gameplay(ManagedThread):
         x, y, _ = self.closest_edge
 
         # logger.info("{} == {}?".format(self.field_center_angle, Point(-x, -y).angle_deg))
-        self.arduino.set_xyw(-y, -x, 0)
+        self.arduino.set_xyw(-y / 3, -x / 3, 0)
 
     @property
     def last_closest_ball(self) -> PolarPoint:
@@ -378,7 +392,6 @@ class Gameplay(ManagedThread):
         self.arduino.set_abc(0, 0, 0)
         if not recognition:
             return
-
         self.recognition = recognition
 
         if self.target_goal:
@@ -498,13 +511,17 @@ class Flank(HasBallMixin, RetreatMixin, DangerZoneMixin, StateNode):
         self.actor.flank()
         self.actor.kick()
 
-    def VEC_LOST_SIGHT(self):
+    def VEC_SHOULD_SHOOT(self):
         last_best_ball = self.actor.average_closest_ball
         if not last_best_ball:
             return
 
-        print(last_best_ball.angle_deg_abs, last_best_ball.dist)
-        if last_best_ball.angle_deg_abs < 9 and last_best_ball.dist < 0.2:
+        if last_best_ball.angle_deg_abs < 9 and last_best_ball.dist < 0.22:
+            print(self.actor.target_goal_distance)
+            return Shoot(self.actor)
+
+        if last_best_ball.angle_deg_abs < 4.5 and last_best_ball.dist < 0.3:
+            print(self.actor.target_goal_distance, 'w2')
             return Shoot(self.actor)
 
     def VEC_NO_BALLS(self):
@@ -570,7 +587,7 @@ class DriveToCenter(RetreatMixin, StateNode):
 
 
 class TargetGoal(RetreatMixin, StateNode):
-    #instead drive infront of own goal to fuck around with opponnentos
+    # instead drive infront of own goal to fuck around with opponnentos
 
     VISITS = []
 

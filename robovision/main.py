@@ -4,7 +4,7 @@ from gevent import monkey
 from gevent.queue import Queue, Empty
 from gevent.event import Event
 monkey.patch_all(thread=False)
-from time import sleep
+from time import sleep, time
 import json
 import cv2
 from threading import Thread, Event
@@ -53,7 +53,7 @@ sockets = Sockets(app)
 grabber = PanoramaGrabber() # config read from ~/.robovision/grabber.conf
 image_recognizer = ImageRecognizer(grabber)
 gameplay = Gameplay(image_recognizer)
-rf = RemoteRF(gameplay, "/dev/ttyACM0")
+rf = RemoteRF(gameplay, "/dev/serial/by-path/pci-0000:00:14.0-usb-0:4.1:1.0-port0")
 # TODO: should also get gameplay?
 visualizer = Visualizer(image_recognizer, framedrop=1)
 recorder = Recorder(grabber)
@@ -117,6 +117,7 @@ def command(websocket):
     websocket.send(settings_packet)
 
     pwm = 50
+    last_press = time()
     while not websocket.closed:
         websockets.add(websocket)
 
@@ -145,17 +146,24 @@ def command(websocket):
 
             # Manual control of the robot
             if not gameplay.alive:
+                gameplay.recognition = image_recognizer.last_frame
+
                 x = controls.pop("controller0.axis0", x) * 0.33
                 y = controls.pop("controller0.axis1", y) * 0.33
-                w = controls.pop("controller0.axis3", w) * 0.7
+                w = controls.pop("controller0.axis3", w) * 0.1
 
                 # Throw the ball with button A on Logitech gamepad
                 delta = -controls.pop("controller0.axis4", 0)
-                if delta:
+                if delta and time() - last_press > 0.1:
+                    last_press = time()
                     pwm = max(40, min(pwm + delta, 100))
-                    print("PWM: ", pwm)
+                    print("PWM+: ", pwm)
                 if controls.get("controller0.button0", None):
                     print("PWM: ", pwm)
+                    gameplay.arduino.set_thrower(pwm)
+                    y = -0.09
+
+                elif controls.get("controller0.button5", None):
                     gameplay.arduino.set_thrower(pwm)
                 else:
                     gameplay.arduino.set_thrower(0)
@@ -166,7 +174,14 @@ def command(websocket):
                 if controls.get("controller0.button2", None):
                     print(gameplay.state)
 
+                if controls.get("controller0.button3", None):
+                    y = 0.15
+
                 gameplay.arduino.set_xyw(x,-y,-w)
+
+                if controls.get("controller0.button6", None) and gameplay.recognition:
+                    gameplay.drive_to_field_center()
+
                 gameplay.arduino.apply()
 
         # TODO: slders

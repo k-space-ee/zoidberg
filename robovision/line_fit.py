@@ -84,6 +84,7 @@ Xb = [
 vertical_to_dist = function_fit(inv, Xa, Y)
 height_to_dist = function_fit(inv, Xb, Y)
 
+# 20 deg tuesday, low voltage
 pwm_distance = [
     (56, 1),
     (57, 50),
@@ -107,12 +108,32 @@ pwm_distance = [
     (90, 360),
 ]
 
+# 12.5 deg, ~13,1v
+pwm_distance = [
+    # (50, 1),
+    (50, 50),
+    (51, 50),
+    (52, 50),
+    (53, 100),
+    (54, 100),
+    (57, 150),
+    (58, 150),
+    (62, 200),
+    (63, 200),
+    (67, 250),
+    (68, 250),
+    (76, 300),
+    (77, 300),
+    (78, 300),
+]
+
+
 # distance
 X = [dist for pwm, dist in pwm_distance]
 # pwm
 Y = [pwm for pwm, dist in pwm_distance]
 
-throw_function = lambda x, a, b, c: a * (b + x / 100) ** 3 + c
+throw_function = lambda x, a, b: a * (b + x / 100) ** 2 + 50
 dist_to_pwm = function_fit(
     throw_function,
     X,
@@ -128,10 +149,10 @@ dist_to_pwm_interpolated = interpolate(
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    xp = np.linspace(round(min(X)), round(max(X) * 1.5), 300)
+    xp = np.linspace(round(min(X)-30), round(max(X) + 30), 300)
     plt.plot(X, Y, '.', )
     plt.plot(xp, dist_to_pwm(xp), '-')
-    plt.plot(xp, dist_to_pwm_interpolated(xp), '--')
+    # plt.plot(xp, dist_to_pwm_interpolated(xp), '--')
     plt.show()
 
     exit()
