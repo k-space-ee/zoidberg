@@ -344,7 +344,7 @@ class ImageRecognition:
             markers = [dist for id, dist in self.markers.items() if id in ids]
             if markers:
                 dist = sum(markers) / len(markers) / 100
-            return mask, PolarPoint(self.x_to_rad(x + w / 2.0), dist), rects, w * 360 / 3840.0
+            return mask, PolarPoint(self.x_to_rad(x + w / 2.0) + math.radians(1), dist), rects, w * 360 / 3840.0
         return mask, None, [], 0
 
     def _recognize_balls(self):

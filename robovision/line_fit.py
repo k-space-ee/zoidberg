@@ -126,6 +126,27 @@ pwm_distance = [
     (77, 300),
     (78, 300),
 ]
+throw_function = lambda x, a, b: a * (b + x / 100) ** 2 + 50
+
+# 12.5 deg, ~13,1v
+pwm_distance = [
+    (56, 20),
+    (57, 50),
+    (57, 50),
+    (58, 100),
+    (59, 100),
+    (61, 150),
+    (62, 150),
+    (64, 200),
+    (65, 200),
+    (66, 200),
+    (71, 250),
+    (72, 250),
+    (73, 250),
+    (77, 300),
+    (78, 300),
+    (79, 300),
+]
 
 
 # distance
@@ -133,7 +154,7 @@ X = [dist for pwm, dist in pwm_distance]
 # pwm
 Y = [pwm for pwm, dist in pwm_distance]
 
-throw_function = lambda x, a, b: a * (b + x / 100) ** 2 + 50
+throw_function = lambda x, a, b, c: a * (b + x / 100) ** 2 + 50 + c
 dist_to_pwm = function_fit(
     throw_function,
     X,

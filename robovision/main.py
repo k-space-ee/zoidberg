@@ -150,7 +150,12 @@ def command(websocket):
 
                 x = controls.pop("controller0.axis0", x) * 0.33
                 y = controls.pop("controller0.axis1", y) * 0.33
-                w = controls.pop("controller0.axis3", w) * 0.1
+                w = controls.pop("controller0.axis3", w) * 0.2
+
+                if controls.get("controller0.button3", None):
+                    y = 0.15
+
+                gameplay.arduino.set_xyw(x,-y,-w)
 
                 # Throw the ball with button A on Logitech gamepad
                 delta = -controls.pop("controller0.axis4", 0)
@@ -161,7 +166,7 @@ def command(websocket):
                 if controls.get("controller0.button0", None):
                     print("PWM: ", pwm)
                     gameplay.arduino.set_thrower(pwm)
-                    y = -0.09
+                    gameplay.drive_towards_target_goal(safety=False)
 
                 elif controls.get("controller0.button5", None):
                     gameplay.arduino.set_thrower(pwm)
@@ -171,16 +176,12 @@ def command(websocket):
                 if controls.get("controller0.button1", None):
                     gameplay.kick()
 
-                if controls.get("controller0.button2", None):
-                    print(gameplay.state)
-
-                if controls.get("controller0.button3", None):
-                    y = 0.15
-
-                gameplay.arduino.set_xyw(x,-y,-w)
-
                 if controls.get("controller0.button6", None) and gameplay.recognition:
                     gameplay.drive_to_field_center()
+
+                if controls.get("controller0.button2", None):
+                    gameplay.align_to_goal()
+                    logger.info(str(gameplay.state))
 
                 gameplay.arduino.apply()
 

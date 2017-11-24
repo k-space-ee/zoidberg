@@ -211,13 +211,15 @@ class Gameplay(ManagedThread):
     def blind_spot_for_shoot(self):
         return (not self.own_goal or self.own_goal.dist > 3.0) and self.closest_edge[2] < 1.2
 
-    def drive_towards_target_goal(self):
+    def drive_towards_target_goal(self, safety=True):
         rotation = self.rotation_for_goal() or 0
         angle = self.target_goal_angle or 0
-        if abs(angle) > 2:
+        if abs(angle) > 2 and safety:
             return self.arduino.set_xyw(0, -0.16, 0)
-        factor = abs(math.tanh(angle / 18))
-        return self.arduino.set_xyw(0, 0.13, rotation * (factor * 2))
+        factor = abs(math.tanh(angle / 5))
+        if factor > 0.4:
+            factor = 0.4
+        return self.arduino.set_xyw(0, 0.13, rotation * (factor))
 
     def rotate(self, degrees):
         delta = degrees / 360
@@ -226,6 +228,16 @@ class Gameplay(ManagedThread):
 
     def drive_xy(self, x, y):
         self.arduino.set_xyw(y, x, 0)
+
+    def drive_to_ball(self):
+        ball = self.average_closest_ball or self.balls[0][0]
+
+        if ball:
+            dist = ball.dist
+
+            bx, by = ball.x / dist, ball.y / dist
+            self.arduino.set_xyw(by, bx, 0)
+
 
     def flank_vector(self):
         angle = self.goal_to_ball_angle
@@ -273,6 +285,16 @@ class Gameplay(ManagedThread):
             rotate = max(0.05, abs(rotate)) * [-1, 1][rotate > 0]
             # print('rotate %.02f %.02f %.02f' % (angle, factor, rotate))
             return rotate
+
+    def align_to_goal(self):
+        rotation = self.rotation_for_goal() or 0
+        goal_angle = self.target_goal_angle
+        shooting_angle = self.goal_to_ball_angle or 999
+        # print("rotate", goal_angle, shooting_angle, rotation)
+
+        if abs(rotation) > 0.4:
+            rotation = rotation / abs(rotation) * 0.4
+        return self.arduino.set_xyw(0, 0, rotation)
 
     def flank(self):
         rotation = self.rotation_for_goal() or 0
@@ -390,6 +412,7 @@ class Gameplay(ManagedThread):
 
     def step(self, recognition, *args):
         self.arduino.set_abc(0, 0, 0)
+        self.arduino.set_thrower(0)
         if not recognition:
             return
         self.recognition = recognition
@@ -498,11 +521,11 @@ class Patrol(RetreatMixin, HasBallMixin, StateNode):
         self.actor.drive_to_field_center()
 
     def VEC_SEE_BALLS_AND_CAN_FLANK(self):
-        if self.actor.balls and not self.actor.danger_zone:
+        if self.actor.balls and not self.actor.danger_zone and self.actor.target_goal:
             return Flank(self.actor)
 
     def VEC_SEE_BALLS_AND_SHOULD_DRIVE(self):
-        if self.actor.balls and self.actor.danger_zone:
+        if self.actor.balls and self.actor.danger_zone and self.actor.target_goal:
             return Flank(self.actor)
 
 
