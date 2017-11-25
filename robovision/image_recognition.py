@@ -289,7 +289,8 @@ class ImageRecognition:
                 dist_a = height_to_dist(height / factor)
                 dist_b = vertical_to_dist(vertical / factor)
                 # print(dist_a, dist_b)
-                self.markers[marker_ids[0]] = max(dist_a, dist_b)
+                # self.markers[marker_ids[0]] = max(dist_a, dist_b)
+                self.markers[marker_ids[0]] = (dist_a  + dist_b) / 2
                 # self.markers[marker_ids[0]] = dist_b
             # print(self.markers)
 

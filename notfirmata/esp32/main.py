@@ -147,7 +147,7 @@ motor3_speed = PWM(Pin(15, mode=Pin.OUT), freq=6000, duty=102)
 motor1_reverse = Pin(0, mode=Pin.OUT)
 motor2_reverse = Pin(14, mode=Pin.OUT)
 motor3_reverse = Pin(13, mode=Pin.OUT)
-motors_enable.value(1)
+
 
 oled.text("booting..", 10, 10)
 oled.show()
@@ -166,7 +166,7 @@ sleep_ms(2000)
 oled.text("booting....", 10, 10)
 oled.show()
 
-ESCON_MIN = 96
+ESCON_MIN = 100
 ESCON_WIDTH = 824
 ESC_IDLE = 40
 
@@ -241,34 +241,49 @@ def sl(): # strafe left
     set_abce(0.1,0.1,-0.86,ESC_IDLE)
 
 
+from machine import reset
+grabbing = 0
+ball_sensed = False
+timer_suck = Timer(4)
 
-nuffink=True
+def got_callback(p):
+    global grabbing
+    global ball_sensed
+    grabbing = 0
+    ball_sensed = True
 
-def cb(p):
-    global nuffink
-    #print("Got it")
-    nuffink = False
+pin_sensor = Pin(39, Pin.IN)
+pin_sensor.irq(trigger=Pin.IRQ_FALLING, handler=got_callback)
 
-got = Pin(39, Pin.IN)
-got.irq(trigger=Pin.IRQ_FALLING, handler=cb)
-
-
-def grab():
-    global nuffink
-    nuffink = True
-    while nuffink:
+def stop(timer=None):
+    global grabbing
+    if grabbing:
         set_abc(0, 0.02, -0.02)
-        esc.duty(75)
-        sleep_ms(80)
-        esc.duty(40)
-        sleep_ms(200)
-    print("got")
-    sleep_ms(2000)
-    print("throwing")
-    esc.duty(70)
-    sleep_ms(1000)
-    esc.duty(40)
+        esc.duty(ESC_IDLE) # DONT READ BATTERY VOLTAGE!!!
+        timer_suck.init(period=60-20, mode=Timer.ONE_SHOT, callback=suck)
+    
+def suck(timer=None):
+    global grabbing
+    if grabbing:
+        grabbing -= 1
+        set_abc(0, 0.02, -0.02)
+        esc.duty(60)
+        timer_suck.init(period=170-70, mode=Timer.ONE_SHOT, callback=stop)
 
+def grab(tries=5):
+    global grabbing
+    global ball_sensed
+    if ball_sensed: # we have ball
+        ball_sensed = False
+        return 1
+    else:
+        grabbing = tries
+        suck()
+    return int(ball_sensed)
+    
+def abort_grab():
+    global grabbing
+    grabbing = 0
 
 
 
@@ -288,8 +303,8 @@ def battery_voltage():
 
 
 
-    
 
+motors_enable.value(1)
 set_abce(0,0,0,60)
 oled.text("booting.....", 10, 10)
 oled.show()
@@ -297,4 +312,3 @@ oled.show()
 
 timer_redraw = Timer(3)
 timer_redraw.init(period=100, mode=Timer.PERIODIC, callback=redraw)
-

@@ -53,7 +53,7 @@ sockets = Sockets(app)
 grabber = PanoramaGrabber() # config read from ~/.robovision/grabber.conf
 image_recognizer = ImageRecognizer(grabber)
 gameplay = Gameplay(image_recognizer)
-rf = RemoteRF(gameplay, "/dev/serial/by-path/pci-0000:00:14.0-usb-0:4.1:1.0-port0")
+#rf = RemoteRF(gameplay, "/dev/serial/by-path/pci-0000:00:14.0-usb-0:4.3:1.0-port0")
 # TODO: should also get gameplay?
 visualizer = Visualizer(image_recognizer, framedrop=1)
 recorder = Recorder(grabber)
@@ -166,7 +166,7 @@ def command(websocket):
                 if controls.get("controller0.button0", None):
                     print("PWM: ", pwm)
                     gameplay.arduino.set_thrower(pwm)
-                    gameplay.drive_towards_target_goal(safety=False)
+                    gameplay.drive_towards_target_goal() # safety=False means no backtrack
 
                 elif controls.get("controller0.button5", None):
                     gameplay.arduino.set_thrower(pwm)
@@ -274,7 +274,7 @@ def main():
     grabber.start()
     recorder.start()
     visualizer.start()
-    rf.start()
+    #rf.start()
 
     # Register threads for monitoring
     from managed_threading import ThreadManager

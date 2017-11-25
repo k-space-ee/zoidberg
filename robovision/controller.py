@@ -12,7 +12,7 @@ class Controller:
     def __init__(self, factor=0.2, maximum=0.2, path=None):
         logger.info("Opening /dev/ttyUSB0")
         self.ser = serial.Serial(
-            port="/dev/serial/by-path/pci-0000:00:14.0-usb-0:1.4:1.0-port0",
+            port="/dev/serial/by-path/pci-0000:00:14.0-usb-0:4.3:1.0-port0",
             baudrate=115200, xonxoff=True)
         self._has_ball = False
         self.factor = factor
@@ -26,7 +26,7 @@ class Controller:
     def apply(self):
         s = self.ser
         speed = [str(round(s,3)) for s in self.state[:-1]] + [max(40, min(self.state[-1], 100))]
-        b,c,a,d = speed
+        a,c,b,d = speed
         # print(speed)
         s.write(("set_abce(%s,%s,%s,%d)\n\r" % (a,b,c,d)).encode("ascii"))
 

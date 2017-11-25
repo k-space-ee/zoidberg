@@ -214,8 +214,9 @@ class Gameplay(ManagedThread):
     def drive_towards_target_goal(self, safety=True):
         rotation = self.rotation_for_goal() or 0
         angle = self.target_goal_angle or 0
-        if abs(angle) > 2 and safety:
+        if abs(angle) > 4 and safety:
             return self.arduino.set_xyw(0, -0.16, 0)
+
         factor = abs(math.tanh(angle / 5))
         if factor > 0.4:
             factor = 0.4
@@ -256,7 +257,6 @@ class Gameplay(ManagedThread):
         sign = [-1, 1][angle > 0]
 
         factor = abs(math.tanh(angle / 30))
-        print(factor)
 
         delta_deg = abs(angle) * 2 + 10
 
@@ -272,6 +272,7 @@ class Gameplay(ManagedThread):
         y = bx * math.sin(delta) + by * math.cos(delta)
 
         factor = abs(math.tanh(angle / 60)) + 0.2
+
         # TODO: falloff when goal angle and dist decreases
         return round(x * factor * 0.7, 6), round(y * factor * 0.7, 6)
 
