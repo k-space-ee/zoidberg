@@ -5,7 +5,7 @@ import numpy as np
 import math
 import logging
 
-from line_fit import height_to_dist, vertical_to_dist
+from line_fit import height_to_dist, vertical_to_dist, goal_to_dist
 from managed_threading import ManagedThread, ThreadManager
 
 logger = logging.getLogger("image_recognition")
@@ -137,12 +137,12 @@ class ImageRecognition:
         self.goal_blue_mask, \
         self.goal_blue, \
         self.goal_blue_rect, \
-        self.goal_blue_width_deg = self._recognize_goal(self.BLUE_LOWER, self.BLUE_UPPER)
+        self.goal_blue_width_deg = self._recognize_goal(self.BLUE_LOWER, self.BLUE_UPPER, ids=[10, 11])
 
         self.goal_yellow_mask, \
         self.goal_yellow, \
         self.goal_yellow_rect, \
-        self.goal_yellow_width_deg = self._recognize_goal(self.YELLOW_LOWER, self.YELLOW_UPPER, ids=[10, 11])
+        self.goal_yellow_width_deg = self._recognize_goal(self.YELLOW_LOWER, self.YELLOW_UPPER)
 
         self.robot, self.orientation = self._position_robot()  # Calculate x and y coords on the field and angle to grid
 
@@ -265,34 +265,34 @@ class ImageRecognition:
 
     def _recognize_markers(self):
         self.markers = {}
-
-        factor = 1
-        j = 4
-        d = 0
-        gray = self.frame.reshape(5529600)[::2].reshape((4320, 640, 1))
-        gray = gray[(j - d) * 480:(j + d) * 480 + 480:]
-        gray = np.rot90(gray, 3).copy()
-        gray = cv2.flip(gray, 1)
-
-        # factor = 0.5
-        # gray = cv2.resize(gray, None, fx=factor, fy=factor, interpolation=cv2.INTER_NEAREST)
-
-        corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict)
-        if ids is not None:
-            for marker_ids, marker in zip(ids, corners):
-                a, b, c, d = [corner for corner in marker[0]]
-                vertical = sum(corner[1] for corner in marker[0]) / 4
-                d1, d2 = a - d, b - c
-                dist = lambda D: (D[0] ** 2 + D[1] ** 2) ** 0.5
-                d1, d2 = dist(d1), dist(d2)
-                height = (d1 + d2) / 2
-                dist_a = height_to_dist(height / factor)
-                dist_b = vertical_to_dist(vertical / factor)
-                # print(dist_a, dist_b)
-                # self.markers[marker_ids[0]] = max(dist_a, dist_b)
-                self.markers[marker_ids[0]] = (dist_a  + dist_b) / 2
-                # self.markers[marker_ids[0]] = dist_b
-            # print(self.markers)
+        #
+        # factor = 1
+        # j = 4
+        # d = 0
+        # gray = self.frame.reshape(5529600)[::2].reshape((4320, 640, 1))
+        # gray = gray[(j - d) * 480:(j + d) * 480 + 480:]
+        # gray = np.rot90(gray, 3).copy()
+        # gray = cv2.flip(gray, 1)
+        #
+        # # factor = 0.5
+        # # gray = cv2.resize(gray, None, fx=factor, fy=factor, interpolation=cv2.INTER_NEAREST)
+        #
+        # corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict)
+        # if ids is not None:
+        #     for marker_ids, marker in zip(ids, corners):
+        #         a, b, c, d = [corner for corner in marker[0]]
+        #         vertical = sum(corner[1] for corner in marker[0]) / 4
+        #         d1, d2 = a - d, b - c
+        #         dist = lambda D: (D[0] ** 2 + D[1] ** 2) ** 0.5
+        #         d1, d2 = dist(d1), dist(d2)
+        #         height = (d1 + d2) / 2
+        #         dist_a = height_to_dist(height / factor)
+        #         dist_b = vertical_to_dist(vertical / factor)
+        #         # print(dist_a, dist_b)
+        #         # self.markers[marker_ids[0]] = max(dist_a, dist_b)
+        #         self.markers[marker_ids[0]] = (dist_a  + dist_b) / 2
+        #         self.markers[marker_ids[0]] = dist_b
+        #     print(self.markers)
 
     def _recognize_goal(self, lower, upper, overlap=4, ids=[]):
         # Recognize goal
@@ -341,10 +341,10 @@ class ImageRecognition:
         # print(time() - start, 'time')
         if maxwidth:
             x, y, w, h = rect  # done
-            dist = self.y_to_dist(y + h)
-            markers = [dist for id, dist in self.markers.items() if id in ids]
-            if markers:
-                dist = sum(markers) / len(markers) / 100
+            dist = goal_to_dist(y+h) / 100
+            # markers = [dist for id, dist in self.markers.items() if id in ids]
+            # if markers:
+            #     dist = sum(markers) / len(markers) / 100
             return mask, PolarPoint(self.x_to_rad(x + w / 2.0) + math.radians(1), dist), rects, w * 360 / 3840.0
         return mask, None, [], 0
 

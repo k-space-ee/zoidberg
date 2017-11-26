@@ -166,7 +166,7 @@ def command(websocket):
                 if controls.get("controller0.button0", None):
                     print("PWM: ", pwm)
                     gameplay.arduino.set_thrower(pwm)
-                    gameplay.drive_towards_target_goal() # safety=False means no backtrack
+                    gameplay.drive_towards_target_goal(safety=False) # safety=False means no backtrack
 
                 elif controls.get("controller0.button5", None):
                     logger.info(str(gameplay.state))

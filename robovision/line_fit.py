@@ -84,6 +84,20 @@ Xb = [
 vertical_to_dist = function_fit(inv, Xa, Y)
 height_to_dist = function_fit(inv, Xb, Y)
 
+goal_distance = [
+    (420, 50),
+    (178, 100),
+    (112, 150),
+    (80, 200),
+    (62, 250),
+    (50, 300),
+    (42, 350),
+]
+gX = [e[0] for e in goal_distance]
+gY = [e[1] for e in goal_distance]
+ginv = lambda x, a, b, c: a / x + b / x ** 2 + c
+goal_to_dist = function_fit(ginv, gX, gY)
+
 # 20 deg tuesday, low voltage
 pwm_distance = [
     (56, 1),
@@ -170,10 +184,15 @@ dist_to_pwm_interpolated = interpolate(
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    xp = np.linspace(round(min(X)-30), round(max(X) + 30), 300)
-    plt.plot(X, Y, '.', )
-    plt.plot(xp, dist_to_pwm(xp), '-')
-    # plt.plot(xp, dist_to_pwm_interpolated(xp), '--')
+    # xp = np.linspace(round(min(X)-30), round(max(X) + 30), 300)
+    # plt.plot(X, Y, '.', )
+    # plt.plot(xp, dist_to_pwm(xp), '-')
+    # # plt.plot(xp, dist_to_pwm_interpolated(xp), '--')
+    # plt.show()
+
+    xp = np.linspace(round(min(gX) - 30), round(max(gX) + 30), 300)
+    plt.plot(gX, gY, '.', )
+    plt.plot(xp, goal_to_dist(xp), '-')
     plt.show()
 
     exit()

@@ -88,8 +88,9 @@ class Visualizer(ManagedThread):
             for rect in r.goal_blue_rect:
                 cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
 
-        if r.goal_yellow:
-            dist = r.goal_yellow.dist * 100
+        target_goal = r.goal_blue
+        if target_goal:
+            dist = target_goal.dist * 100
             pwm = dist_to_pwm(dist)
             cv2.putText(frame, "DIST %.0f" % (dist), (200, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255 ,0), 20)
             cv2.putText(frame, "PWM %.0f" % (pwm), (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255 ,0), 20)
