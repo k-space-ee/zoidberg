@@ -1,7 +1,9 @@
-from time import time
+from time import time, sleep
 
 import serial
 import logging
+
+from serial.serialutil import SerialException
 
 logger = logging.getLogger("esp32")
 
@@ -13,7 +15,7 @@ class Controller:
         logger.info("Opening /dev/ttyUSB0")
         self.ser = serial.Serial(
             port="/dev/serial/by-path/pci-0000:00:14.0-usb-0:4.3:1.0-port0",
-            baudrate=115200, xonxoff=True)
+            baudrate=115200, xonxoff=True, timeout=0.01)
         self._has_ball = False
         self.factor = factor
         self.maximum = maximum
@@ -38,6 +40,20 @@ class Controller:
             for j in speed
         )
         self.state = list(speed) + self.state[-1:]
+
+    def grab(self):
+        self.ser.flushInput()
+        self.ser.write(b"grab(10, 40, 0.015)\n\r")
+        sleep(0.005)
+        output = None
+        try:
+            output = self.ser.readlines()
+        except Exception as e:
+            print('exception', e)
+        if output:
+            print(output[:10], len(output))
+            if b'1\r\n' in output:
+                print("GOT BALLL")
 
     def set_thrower(self, speed):
         self.state = self.state[:-1] + [speed]
@@ -66,10 +82,6 @@ class Controller:
 
     def kick(self):
         pass
-
-    @property
-    def has_ball(self):
-        return self._has_ball
 
     def set_grabber(self, value):
         self.grabber = value

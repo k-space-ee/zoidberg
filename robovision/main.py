@@ -169,21 +169,24 @@ def command(websocket):
                     gameplay.drive_towards_target_goal() # safety=False means no backtrack
 
                 elif controls.get("controller0.button5", None):
+                    logger.info(str(gameplay.state))
                     gameplay.arduino.set_thrower(pwm)
                 else:
                     gameplay.arduino.set_thrower(0)
 
                 if controls.get("controller0.button1", None):
+                    logger.info(str(gameplay.state))
                     gameplay.kick()
 
                 if controls.get("controller0.button6", None) and gameplay.recognition:
-                    gameplay.drive_to_field_center()
+                    gameplay.drive_to_ball()
 
                 if controls.get("controller0.button2", None):
                     gameplay.align_to_goal()
                     logger.info(str(gameplay.state))
 
                 gameplay.arduino.apply()
+                gameplay.arduino.ser.flushInput()
 
         # TODO: slders
         elif action == "record_toggle":

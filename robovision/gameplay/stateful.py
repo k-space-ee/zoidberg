@@ -38,6 +38,7 @@ class Gameplay(ManagedThread):
         self.last_kick = time()
 
         self.recent_closest_balls = []
+        self.has_ball = False
 
     def field_id(self):
         return self.config.get_option("global", "field_id", type=str, default='A').get_value()
@@ -93,10 +94,6 @@ class Gameplay(ManagedThread):
     @property
     def target_goal(self):
         return self.recognition.goal_blue if self.config_goal == 'blue' else self.recognition.goal_yellow
-
-    @property
-    def has_ball(self):
-        return self.arduino.has_ball
 
     @property
     def target_goal_angle(self):
@@ -205,7 +202,7 @@ class Gameplay(ManagedThread):
     @property
     def danger_zone(self):
         edge = self.closest_edge
-        return edge[2] < 1.1 or self.closest_goal_distance < 1
+        return edge[2] < 1.1 or self.closest_goal_distance < 1  # TODO: what is the actual distance?
 
     @property
     def blind_spot_for_shoot(self):
@@ -230,15 +227,18 @@ class Gameplay(ManagedThread):
     def drive_xy(self, x, y):
         self.arduino.set_xyw(y, x, 0)
 
-    def drive_to_ball(self):
+    def drive_to_ball(self, use_falloff):
         ball = self.average_closest_ball or self.balls[0][0]
 
         if ball:
             dist = ball.dist
-
             bx, by = ball.x / dist, ball.y / dist
-            self.arduino.set_xyw(by, bx, 0)
 
+            if use_falloff:
+                factor = max(math.tanh(dist), 0.08)
+                bx, by = bx * factor, by * factor
+
+            self.arduino.set_xyw(by, bx, 0)
 
     def flank_vector(self):
         angle = self.goal_to_ball_angle
@@ -457,7 +457,7 @@ class StateNode:
         self.timers = defaultdict(time)
 
     @property
-    def elapsed(self):
+    def elapsed_time(self):
         return time() - self.time
 
     @property
@@ -466,7 +466,11 @@ class StateNode:
         return self.time + min(self.recovery_counter * self.recovery_factor, 5) > time()
 
     def exctract_transistions(self):
-        return [i for i in self.__class__.__dict__.items() if 'VEC' in i[0]]
+        return [
+            (func, getattr(self.__class__, func))
+            for func in dir(self.__class__) if callable(getattr(self.__class__, func)) and 'VEC' in func
+        ]
+        # return [i for i in self.__class__.__dict__.items() if 'VEC' in i[0]]
 
     def transition(self):
         for name, vector in self.transitions.items():
@@ -483,14 +487,16 @@ class StateNode:
         next_state = self.transition() or self
         if next_state != self:
             StateNode.recovery_counter += next_state.is_recovery
-            # self.actor.stop_moving()  # PRE EMPTIVE, should not cause any issues TM
-            # logger.info(str(next_state))
         else:  # TODO: THis causes latency, maybe ?
             self.animate()
         return next_state
 
     def __str__(self):
         return str(self.__class__.__name__)
+
+    def VEC_TIMEOUT(self):
+        if self.elapsed_time > 10:
+            return ForceCenter(self.actor)
 
 
 class RetreatMixin(StateNode):
@@ -506,18 +512,28 @@ class RetreatMixin(StateNode):
 
 
 class DangerZoneMixin(StateNode):
-    def VEC_IN_DANGER_ZONE(self):
-        if self.actor.danger_zone and self.actor.balls:
-            return Drive(self.actor)
+    pass
+    # def VEC_IN_DANGER_ZONE(self):
+    #     if self.actor.danger_zone and self.actor.balls:
+    #         return Drive(self.actor)
 
 
-class HasBallMixin(StateNode):
-    def VEC_HAS_BALL(self):
-        if self.actor.has_ball:
-            return FindGoal(self.actor)
+class TimeoutMixin(StateNode):
+    def VEC_TIMEOUT(self):
+        if self.elapsed_time > 5:
+            return ForceCenter(self.actor)
 
 
-class Patrol(RetreatMixin, HasBallMixin, StateNode):
+class ForceCenter(StateNode):
+    def animate(self):
+        self.actor.drive_to_field_center()
+
+    def VEC_FORCE_CENTERED(self):
+        if self.elapsed_time > 4:
+            return Flank(self.actor)
+
+
+class Patrol(RetreatMixin, TimeoutMixin, StateNode):
     def animate(self):
         self.actor.drive_to_field_center()
 
@@ -527,10 +543,10 @@ class Patrol(RetreatMixin, HasBallMixin, StateNode):
 
     def VEC_SEE_BALLS_AND_SHOULD_DRIVE(self):
         if self.actor.balls and self.actor.danger_zone and self.actor.target_goal:
-            return Flank(self.actor)
+            return Drive(self.actor)
 
 
-class Flank(HasBallMixin, RetreatMixin, DangerZoneMixin, StateNode):
+class Flank(RetreatMixin, DangerZoneMixin, StateNode):
     def animate(self):
         self.actor.flank()
         self.actor.kick()
@@ -553,7 +569,7 @@ class Flank(HasBallMixin, RetreatMixin, DangerZoneMixin, StateNode):
             return Patrol(self.actor)
 
     def VEC_LOST_GOAL(self):
-        if not self.actor.target_goal:
+        if not self.actor.target_goal and not self.actor.target_goal_distances:
             return Patrol(self.actor)
 
 
@@ -563,23 +579,18 @@ class Shoot(StateNode):
         self.actor.kick()
 
     def VEC_DONE_SHOOT(self):
-        if self.elapsed > 2:
+        if self.elapsed_time > 2:
             return Flank(self.actor)
 
 
-class Drive(HasBallMixin, RetreatMixin, StateNode):
+class Drive(RetreatMixin, TimeoutMixin, StateNode):
     def animate(self):
         self.actor.drive_to_ball()
-        self.actor.kick()
 
-    def VEC_HAS_BALL_IN_BLIND_SPOT(self):
-        if self.actor.has_ball and self.actor.blind_spot_for_shoot:
-            pass
-            # return OutOfBounds(self.actor)
-
-    def VEC_LOST_SIGHT(self):
-        if not self.actor.has_ball and not self.actor.balls:
-            return Patrol(self.actor)
+    def VEC_CAN_PICK_BALL(self):
+        last_best_ball = self.actor.average_closest_ball
+        if last_best_ball and last_best_ball.dist < 0.7 and self.actor.target_goal:
+            return Flank(self.actor)
 
 
 class FindGoal(StateNode):
