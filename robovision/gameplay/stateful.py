@@ -165,7 +165,7 @@ class Gameplay(ManagedThread):
     @property
     def goal_to_ball_angle(self):
         if not self.target_goal or not self.balls:
-            logger.info("goal_to_ball_angle failed: GOAL:{} BAALS:{}".format(self.target_goal, self.balls))
+            # logger.info("goal_to_ball_angle failed: GOAL:{} BAALS:{}".format(self.target_goal, self.balls))
             return
 
         ball = self.balls[0][0]
@@ -307,13 +307,13 @@ class Gameplay(ManagedThread):
             return
 
         if abs(goal_angle) > max(abs(shooting_angle * 3), 10):
-            print("rotate", goal_angle, shooting_angle)
+            # print("rotate", goal_angle, shooting_angle)
             return self.arduino.set_xyw(0, 0, rotation)
 
         flank = self.flank_vector()
 
         if not flank:
-            print('flank', flank)
+            # print('flank', flank)
             return
         x, y = flank
 
@@ -330,8 +330,8 @@ class Gameplay(ManagedThread):
         if self.target_goal_distance and self.continue_to_kick:
             pwm = dist_to_pwm(self.target_goal_distance)
             return self.arduino.set_thrower(pwm)
-        if not self.target_goal_distance:
-            print("derp")
+        # if not self.target_goal_distance:
+        #     print("derp")
 
     def stop_moving(self):
         self.arduino.set_abc(0, 0, 0)
@@ -529,7 +529,7 @@ class ForceCenter(StateNode):
         self.actor.drive_to_field_center()
 
     def VEC_FORCE_CENTERED(self):
-        if self.elapsed_time > 4:
+        if self.elapsed_time > 1.5:
             return Flank(self.actor)
 
 
