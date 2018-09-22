@@ -198,3 +198,7 @@ Temporary Items
 .apdisk
 
 venv/
+
+# ansible setup stuff
+*.idea
+*.retry

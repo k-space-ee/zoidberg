@@ -1,0 +1,7 @@
+- name: Clone bitbucket repo
+  git:
+    repo: https://github.com/k-space-ee/zoidberg.git
+    dest: ~/zoidberg
+    version: master
+    accept_hostkey: yes
+  become_user: "{{ user }}"

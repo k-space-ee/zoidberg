@@ -1,0 +1,12 @@
+robot:
+  hosts:
+    virtual: # hostname for the machine, currently my virtualbox test subject
+      ansible_port: 2222
+      ansible_host: localhost
+    # add here yer own robot, for example
+    # zoidberg:
+      # ansible_host: http://172.21.100.104
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_user: user
+    ansible_connection: ssh

@@ -1,0 +1,31 @@
+# https://github.com/mattskone/ansible-opencv-python3/blob/master/roles/python/tasks/main.yml
+- name: Update and upgrade
+  become: true
+  # TODO: might want to upgrade also?
+  apt: update-cache=yes # upgrade=dist
+
+- apt: name=python3-pip state=installed
+  sudo: yes
+
+- pip: name=httplib2
+  sudo: yes
+
+- name: Install virtualenv and virtualenvwrapper
+  become: true
+  pip: name={{ item }} executable=pip3
+  with_items:
+    - virtualenv
+    - virtualenvwrapper
+
+- name: Update .bashrc with virtualenvwrapper
+  lineinfile:
+    backup=yes
+    create=true
+    dest=~/.bashrc
+    insertafter=EOF
+    line={{ item }}
+    state=present
+  with_items:
+    - export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
+    - export WORKON_HOME=~/.virtualenvs
+    - source /usr/local/bin/virtualenvwrapper.sh
