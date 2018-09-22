@@ -1,0 +1,183 @@
+---
+# FILE: https://github.com/mattskone/ansible-opencv-python3/blob/master/roles/opencv/tasks/main.yml
+# PKG: https://github.com/chrismeyersfsu/playbook-opencv/blob/master/roles/common/defaults/main.yml
+#  - build-essential
+#  - cmake
+#  - cmake-qt-gui
+#  - pkg-config
+#  - libpng12-0
+#  - libpng12-dev
+#  - libpng++-dev
+#  - libpng3
+#  - libpnglite-dev
+#  - zlib1g-dbg
+#  - zlib1g
+#  - zlib1g-dev
+#  - pngtools
+#  - libtiff4-dev
+#  - libtiff4
+#  - libtiffxx0c2
+#  - libtiff-tools
+#  - libjpeg8
+#  - libjpeg8-dev
+#  - libjpeg8-dbg
+#  - libjpeg-progs
+#  - ffmpeg
+#  - libavcodec-dev
+#  - libavcodec53
+#  - libavformat53
+#  - libavformat-dev
+#  - libgstreamer0.10-0-dbg
+#  - libgstreamer0.10-0
+#  - libgstreamer0.10-dev
+#  - libxine1-ffmpeg
+#  - libxine-dev
+#  - libxine1-bin
+#  - libunicap2
+#  - libunicap2-dev
+#  - libdc1394-22-dev
+#  - libdc1394-22
+#  - libdc1394-utils
+#  - swig
+#  - libv4l-0
+#  - libv4l-dev
+#  - python-numpy
+#  - libpython2.6
+#  - python-dev
+#  - python2.6-dev
+#  - libgtk2.0-dev
+#  - pkg-config
+
+- name: Add apt repostory, xenial-security main
+  apt_repository:
+    repo: deb http://security.ubuntu.com/ubuntu xenial-security main
+    state: present
+
+- name: Install developer and compile tools
+  become: true
+  apt: name={{ item }} state=present
+  with_items:
+    - build-essential
+    - cmake
+    - git
+    - pkg-config
+    - wget
+    - unzip
+    - python3-setuptools
+
+- name: Install libraries for various image formats
+  become: true
+  apt: name={{ item }} state=present
+  with_items:
+    - libjpeg8-dev
+    - libtiff5
+    - libtiff5-dev
+    - libjasper-dev  # TODO: might cause issues on newer OS versions
+    - libpng12-dev
+    # newer?
+    - libjpeg-dev
+    - libtiff5-dev
+
+- name: Install libraries for various video formats
+  become: true
+  apt: name={{ item }} state=present
+  with_items:
+    - libavcodec-dev
+    - libavformat-dev
+    - libswscale-dev
+    - libv4l-dev
+
+- name: Install GTK for OpenCV GUI
+  become: true
+  apt: name=libgtk-3-dev state=present
+
+- name: Install packages used for optimization in OpenCV
+  become: true
+  apt: name={{ item }}
+  with_items:
+    - libatlas-base-dev
+    - gfortran
+
+- name: Install Python3 headers and development files
+  become: true
+  apt: name={{ python_version }}-dev
+
+- name: Intsall numpy the fancy way
+  shell: CFLAGS="-pipe -O3 -march=native" pip3 install --upgrade numpy
+  args:
+    executable: /bin/bash
+
+- name: Check if temporary directory already exists
+  stat: path={{ download_dir }}
+  register: tmp
+
+- name: Create temporary download directory
+  file: name={{ download_dir }} state=directory
+  when: tmp.stat.exists == false
+
+# neat, download and unpack at the same time
+- name: Download and unzip opencv
+  unarchive: src=https://github.com/Itseez/opencv/archive/{{ opencv_version }}.zip dest={{ download_dir }} copy=no
+
+- name: Download and unzip opencv_contrib
+  unarchive: src=https://github.com/Itseez/opencv_contrib/archive/{{ opencv_version }}.zip dest={{ download_dir }} copy=no
+
+- name: Create build directory
+  file: name={{ download_dir }}/opencv-{{ opencv_version }}/build state=directory
+
+# TODO: should we use some of those flags
+# our: cmake -D INSTALL_PYTHON_EXAMPLES=ON -D WITH_XIMEA=BOOL:ON ..
+# CFLAGS="-pipe -O3 -march=native" cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D INSTALL_C_EXAMPLES=OFF -D INSTALL_PYTHON_EXAMPLES=ON -D OPENCV_EXTRA_MODULES_PATH={{ download_dir }}/opencv_contrib-{{ opencv_version }}/modules -D BUILD_EXAMPLES=ON -D WITH_XIMEA=BOOL:ON ..
+# cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D BUILD_NEW_PYTHON_SUPPORT=ON -D WITH_QT=ON -D WITH_OPENGL=ON {{ opencv_extra_cmake_options }} ..
+
+#  -D BUILD_TIFF=ON
+#  -D WITH_CUDA=OFF
+#  -D ENABLE_AVX=OFF
+#  -D WITH_OPENGL=OFF
+#  -D WITH_OPENCL=OFF
+#  -D WITH_IPP=OFF
+#  -D WITH_TBB=ON
+#  -D BUILD_TBB=ON
+#  -D WITH_EIGEN=OFF
+#  -D WITH_V4L=OFF
+#  -D WITH_VTK=OFF
+#  -D BUILD_TESTS=OFF
+#  -D BUILD_PERF_TESTS=OFF
+#  -D CMAKE_BUILD_TYPE=RELEASE
+#  -D CMAKE_INSTALL_PREFIX=/usr/local
+#  -D OPENCV_EXTRA_MODULES_PATH=/opt/opencv_contrib/modules /opt/opencv/
+
+# -D WITH_XIMEA=BOOL:ON
+# -D BUILD_NEW_PYTHON_SUPPORT=ON
+# -D WITH_QT=ON
+# -D WITH_OPENGL=ON
+
+# TODO: Observe the output of the last command and make sure CMake detected Python 3
+- name: Make the opencv build artifacts
+  shell: |
+    CFLAGS="-pipe -O3 -march=native" cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D INSTALL_C_EXAMPLES=OFF -D INSTALL_PYTHON_EXAMPLES=ON -D OPENCV_EXTRA_MODULES_PATH={{ download_dir }}/opencv_contrib-{{ opencv_version }}/modules -D BUILD_EXAMPLES=ON -D WITH_XIMEA=BOOL:ON .. > cmake_opencv.log
+  args:
+    chdir: "{{ download_dir }}/opencv-{{ opencv_version }}/build"
+    executable: /bin/bash
+
+- name: Compile opencv
+  shell: |
+    make -j{{ ansible_processor_vcpus * 2 }} > compile_opencv.log
+  args:
+    chdir: "{{ download_dir }}/opencv-{{ opencv_version }}/build"
+    executable: /bin/bash
+
+- name: Get full path of download directory ("~" varies by user)
+  shell: pwd
+  args:
+    chdir: "{{ download_dir }}"
+  register: pwd_result
+
+- name: Install opencv
+  become: true
+  shell: |
+    make install > install_opencv.log
+    ldconfig > ldconfig_opencv.log
+  args:
+    chdir: "{{ pwd_result.stdout }}/opencv-{{ opencv_version }}/build"
+    executable: /bin/bash

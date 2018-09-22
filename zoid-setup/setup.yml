@@ -1,0 +1,11 @@
+---
+- hosts: virtual  # change this to zoidberg
+  vars:
+    python_version: python3.6
+    opencv_version: 3.4.3
+    download_dir: ~/Downloads
+    user: user
+  roles:
+    - provision
+    - opencv
+    - zoidberg
