@@ -5,6 +5,8 @@ import logging
 
 from serial.serialutil import SerialException
 
+from kicker import CanBusMotor
+
 logger = logging.getLogger("esp32")
 
 
@@ -14,23 +16,31 @@ class Controller:
     def __init__(self, factor=0.2, maximum=0.2, path=None):
         logger.info("Opening /dev/ttyUSB0")
         self.ser = serial.Serial(
-            port="/dev/serial/by-path/pci-0000:00:14.0-usb-0:4.3:1.0-port0",
+            port="/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0",
             baudrate=115200, xonxoff=True, timeout=0.01)
         self._has_ball = False
         self.factor = factor
         self.maximum = maximum
-        self.state = [0,0,0,40]
+        self.state = [0, 0, 0, 40]
         self.time = time()
+        self.kicker = CanBusMotor()
 
     def start(self):
         self.ser.write(b"set_abce(0,0,0,47)\n\r")
 
     def apply(self):
         s = self.ser
-        speed = [str(round(s,3)) for s in self.state[:-1]] + [max(40, min(self.state[-1], 100))]
-        a,c,b,d = speed
-        # print(speed)
-        s.write(("set_abce(%s,%s,%s,%d)\n\r" % (a,b,c,d)).encode("ascii"))
+        speed = [str(round(s, 3)) for s in self.state[:-1]]
+        a, c, b = speed
+        s.write(("set_abce(%s,%s,%s,%d)\n\r" % (a, b, c, 40)).encode("ascii"))
+
+        d = max(0, min(self.state[-1], 10000))
+
+        if d < 100: # TODO: maybe gamelogic should be updated to the 0 - 10 000  range
+            d *= 100
+
+        print("SPEEEDO: ", d)
+        self.kicker.speed = d
 
     def set_abc(self, *speed):  # Ctrl-C doesn't work well,  Lauri tested b"\x03" +
         # print("before:", speed)
@@ -42,18 +52,7 @@ class Controller:
         self.state = list(speed) + self.state[-1:]
 
     def grab(self):
-        self.ser.flushInput()
-        self.ser.write(b"grab(10, 40, 0.015)\n\r")
-        sleep(0.005)
-        output = None
-        try:
-            output = self.ser.readlines()
-        except Exception as e:
-            print('exception', e)
-        if output:
-            print(output[:10], len(output))
-            if b'1\r\n' in output:
-                print("GOT BALLL")
+        pass
 
     def set_thrower(self, speed):
         self.state = self.state[:-1] + [speed]

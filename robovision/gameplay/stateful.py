@@ -7,7 +7,7 @@ from managed_threading import ManagedThread
 from image_recognition import Point, PolarPoint
 from controller import Controller
 import math
-from time import time
+from time import time, sleep
 
 from collections import defaultdict
 from config_manager import ConfigManager
@@ -40,6 +40,7 @@ class Gameplay(ManagedThread):
         self.recent_closest_balls = []
         self.has_ball = False
 
+    @property
     def field_id(self):
         return self.config.get_option("global", "field_id", type=str, default='A').get_value()
 
@@ -212,7 +213,7 @@ class Gameplay(ManagedThread):
         rotation = self.rotation_for_goal() or 0
         angle = self.target_goal_angle or 0
         if abs(angle) > 4 and safety:
-            return self.arduino.set_xyw(0, -0.16, 0)
+            return self.arduino.set_xyw(0, -0.09, 0)
 
         factor = abs(math.tanh(angle / 5))
         if factor > 0.4:
@@ -429,6 +430,7 @@ class Gameplay(ManagedThread):
         self.update_recent_closest_balls()
 
         self.arduino.apply()
+        #sleep(0.01)
 
     def on_enabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('enabled')
@@ -441,7 +443,7 @@ class Gameplay(ManagedThread):
 
     def start(self):
         self.arduino.start()
-        self.state = Flank(self)
+        self.state = ForceCenter(self)
         ManagedThread.start(self)
 
 
@@ -520,7 +522,7 @@ class DangerZoneMixin(StateNode):
 
 class TimeoutMixin(StateNode):
     def VEC_TIMEOUT(self):
-        if self.elapsed_time > 5:
+        if self.elapsed_time > 8:
             return ForceCenter(self.actor)
 
 
@@ -529,7 +531,7 @@ class ForceCenter(StateNode):
         self.actor.drive_to_field_center()
 
     def VEC_FORCE_CENTERED(self):
-        if self.elapsed_time > 1.5:
+        if self.elapsed_time > 2:
             return Flank(self.actor)
 
 
@@ -563,6 +565,11 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
         if last_best_ball.angle_deg_abs < 4.5 and last_best_ball.dist < 0.3:
             print(self.actor.target_goal_distance, 'w2')
             return Shoot(self.actor)
+
+    # def VEC_TOO_CLOSE(self):
+        # if self.actor.too_close or self.actor.too_close_to_edge:
+            # print("too close")  
+            # return ForceCenter(self.actor)
 
     def VEC_NO_BALLS(self):
         if not self.actor.balls:

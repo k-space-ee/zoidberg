@@ -53,7 +53,7 @@ sockets = Sockets(app)
 grabber = PanoramaGrabber() # config read from ~/.robovision/grabber.conf
 image_recognizer = ImageRecognizer(grabber)
 gameplay = Gameplay(image_recognizer)
-#rf = RemoteRF(gameplay, "/dev/serial/by-path/pci-0000:00:14.0-usb-0:4.3:1.0-port0")
+#rf = RemoteRF("/dev/serial/by-path/pci-0000:00:14.0-usb-0:2.1:1.0-port0", gameplay)
 # TODO: should also get gameplay?
 visualizer = Visualizer(image_recognizer, framedrop=1)
 recorder = Recorder(grabber)
@@ -138,11 +138,19 @@ def command(websocket):
 
         if action == "gamepad":
             controls = response.pop("data")
+
+            if (controls.get("controller0.button8", None) or controls.get("controller0.button11", None)) and time() - last_press > 0.5:
+                last_press = time()
+                if not gameplay.alive:
+                    gameplay.enable()
+                else:
+                    gameplay.disable()
+
             # Toggle autonomy with button Y on Logitech gamepad
-            if controls.get("controller0.button4", None):
-                not gameplay.alive and gameplay.enable()
-            else:
-                gameplay.alive and gameplay.disable()
+            # if controls.get("controller0.button4", None):
+            #     not gameplay.alive and gameplay.enable()
+            # else:
+            #     gameplay.alive and gameplay.disable()
 
             # Manual control of the robot
             if not gameplay.alive:
@@ -158,10 +166,12 @@ def command(websocket):
                 gameplay.arduino.set_xyw(x,-y,-w)
 
                 # Throw the ball with button A on Logitech gamepad
-                delta = -controls.pop("controller0.axis4", 0)
+                delta = controls.pop("controller0.button12", 0)
+                delta = delta or -controls.pop("controller0.button13", 0)
+
                 if delta and time() - last_press > 0.1:
                     last_press = time()
-                    pwm = max(40, min(pwm + delta, 100))
+                    pwm = max(0, min(pwm + delta * 200, 10000))
                     print("PWM+: ", pwm)
                 if controls.get("controller0.button0", None):
                     print("PWM: ", pwm)
@@ -179,14 +189,15 @@ def command(websocket):
                     gameplay.kick()
 
                 if controls.get("controller0.button6", None) and gameplay.recognition:
-                    gameplay.drive_to_ball()
+                    gameplay.drive_to_field_center()
+                    print("drive to center")
 
                 if controls.get("controller0.button2", None):
                     gameplay.align_to_goal()
                     logger.info(str(gameplay.state))
 
                 gameplay.arduino.apply()
-                gameplay.arduino.ser.flushInput()
+                # gameplay.arduino.ser.flushInput()
 
         # TODO: slders
         elif action == "record_toggle":

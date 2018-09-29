@@ -47,7 +47,7 @@ function streamGamepad() {
     console.info("Sending:", data);
     socket.send(JSON.stringify({"action": "gamepad", "data": data}));
     // TODO: remove this when serial write speed has been fixed
-    setTimeout(streamGamepad, 30);
+    setTimeout(streamGamepad, 60);
     // requestAnimationFrame(streamGamepad);
 }
 
