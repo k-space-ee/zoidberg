@@ -11,8 +11,14 @@ from datetime import datetime, timedelta
 
 from config_manager import ConfigManager
 
+import rospy
+from geometry_msgs.msg import Twist
+
 # TODO: hack, should fix this
 # config = ConfigManager("game")
+
+pub = rospy.Publisher('/movement', Twist, queue_size=10)
+rospy.init_node('talker', anonymous=True)
 
 monkey.patch_all(thread=False)
 logger = logging.getLogger("flask")
@@ -90,15 +96,20 @@ def command(websocket):
 
         if action == "gamepad":
             controls = response.get("data")
-            logger.info("Last press %.3f ago, %s", time() - last_press, str(controls))
-            last_press = time()
 
-            x = controls.pop("controller0.axis0") * 0.33
-            y = controls.pop("controller0.axis1") * 0.33
-            w = controls.pop("controller0.axis3") * 0.2
+            if controls:
+                x = controls.pop("controller0.axis0") * 0.33
+                y = controls.pop("controller0.axis1") * 0.33
+                w = controls.pop("controller0.axis3") * 0.2
 
-            # apply speeds
-            #  controller.set_abc('')
+                motion = Twist()
+                motion.linear.x = x
+                motion.linear.y = y
+                motion.angular.z = w
+
+                pub.publish(motion)
+                logger.info("Last press %.3f ago", time() - last_press)
+                last_press = time()
 
         elif action == "set_settings":
             for k, v in response.items():

@@ -30,6 +30,7 @@ def callback(data):
 
 def listener():
     rospy.init_node('listener', anonymous=True)
+    # receive here the speeds
     rospy.Subscriber("/movement", Twist, callback)
     rospy.spin()
 
