@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Slidershurrdurr</title>
+    {% block head %}
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='nouislider.css') }}">
+        <script type="text/javascript" src="{{ url_for('static',filename='nouislider.js') }}"></script>
+        <!-- <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/webpage.css') }}"> -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+
+
+        <script type="text/javascript" src="{{ url_for('static', filename='js/smoothie.js') }}"></script>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/codemirror.css') }}">
+        <script type="text/javascript" src="{{ url_for('static', filename='js/reconnecting-websocket.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/codemirror.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/nunjucks.min.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/robovision.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/javascript.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/htmlmixed.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/python.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+
+    {% endblock %}
+
+    <style type="text/css">
+        .CodeMirror {
+            display: none;
+        }
+        body {
+            background-color: black;
+            color: white;
+            font-size: 32px;
+        }
+    </style>
+</head>
+<body>
+
+<ul id="log"></ul>
+
+<textarea id="code" style="display: none;"></textarea>
+
+
+</body>
+</html>

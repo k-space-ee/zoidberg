@@ -1,0 +1,12 @@
+numpy
+scipy
+pyserial
+matplotlib
+gevent
+flask
+flask_sockets
+humanize
+watchdog
+uavcan
+# Gevent websocket patched for Python3
+git+https://gitlab.com/noppo/gevent-websocket

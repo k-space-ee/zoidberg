@@ -27,38 +27,7 @@
             Derp
         </div>
     </div>
-
-<pre class="text-left">
-# gameplay enable
-gameplay.enable = controller0.button8, controller0.button11
-
-# drive
-x = controller0.axis0 * 0.33
-y = controller0.axis1 * 0.33
-w = controller0.axis3 * 0.2
-
-# move forward slowly
-controller0.button3 -> y = 0.15
-
-# debug, set pwm
-delta = controller0.button12 or 0
-delta = delta or -controller0.button13
-pwm = max(0, min(pwm + delta * 200, 10000))
-
-# debug run pwm
-controller0.button0 -> set_thrower(pwm)
-
-# debug, repositon
-controller0.button6 -> drive_to_field_center()
-
-# debug, align
-controller0.button2 -> align_to_goal
-
-# debug ?
-controller0.button5
-controller0.button1
-</pre>
-
+{#    <em>Unbelievable. No CAMERAS here so far</em>#}
 </div>
 {% endblock %}
 

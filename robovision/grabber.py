@@ -106,7 +106,6 @@ class Grabber(Thread):
         fcntl.ioctl(vd, VIDIOC_QUERYCAP, cp)
         self.driver = "".join((chr(c) for c in cp.driver if c))
 
-
         logger.info("Disabling auto white balance for %s", self.path)
         ctrl = v4l2_control()
         ctrl.id = V4L2_CID_AUTO_WHITE_BALANCE

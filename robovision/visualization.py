@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
-import os
+
+from line_fit import dist_to_pwm
 from managed_threading import ManagedThread
 
 
@@ -14,7 +15,9 @@ def right_bottom(args):
 
 class Visualizer(ManagedThread):
     ZOOM = 0.5 # 0.2
-    DEBUG_MASK = False
+    DEBUG_MASK = True
+    type_str = 'VIDEO'
+
     def step(self, r, grabber):
         frame = r.frame
         if frame.shape[0] == 3840:
@@ -54,8 +57,8 @@ class Visualizer(ManagedThread):
         for relative, absolute, x, y, radius in r.balls:
             cv2.circle(frame, (x,y), radius, (255,255,255) if index else (0,0,255), 3)
             x = r.deg_to_x(relative.angle_deg)
-            cv2.putText(frame, "%.1fdeg" % relative.angle_deg, (x + 20, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,192,255), 4)
-            cv2.putText(frame, "%.2fm" % relative.dist, (x + 20, y + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,192,255), 4)
+            cv2.putText(frame, "%.1fdeg" % relative.angle_deg, (x + 20, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 10)
+            cv2.putText(frame, "%.2fm" % relative.dist, (x + 20, y + 40), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 12)
             index += 1
             if index < 5:
                 point = x, y
@@ -69,9 +72,9 @@ class Visualizer(ManagedThread):
             for delta in -3840, 0, 3840:
                 x = r.deg_to_x(r.goal_yellow.angle_deg) + delta
                 cv2.line(frame, (x,0), (x,r.GOAL_BOTTOM-120), (255,255,255), 3)
-                cv2.putText(frame, "%.1fdeg" % r.goal_yellow.angle_deg, (x, r.GOAL_BOTTOM-80), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
-                cv2.putText(frame, "%.2fm" % r.goal_yellow.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
-                cv2.putText(frame, "%.1fdeg wide" % r.goal_yellow_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+                cv2.putText(frame, "%.1fdeg" % r.goal_yellow.angle_deg, (x + 90, r.GOAL_BOTTOM + 120), cv2.FONT_HERSHEY_SIMPLEX, 4, (0,0,255), 20)
+                cv2.putText(frame, "%.2fm" % r.goal_yellow.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
+                cv2.putText(frame, "%.1fdeg wide" % r.goal_yellow_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
             for rect in r.goal_yellow_rect:
                 cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
 
@@ -79,14 +82,20 @@ class Visualizer(ManagedThread):
             for delta in -3840, 0, 3840:
                 x = r.deg_to_x(r.goal_blue.angle_deg) + delta
                 cv2.line(frame, (x,0), (x,r.GOAL_BOTTOM-120), (255,255,255), 3)
-                cv2.putText(frame, "%.1fdeg" % r.goal_blue.angle_deg, (x, r.GOAL_BOTTOM-80), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
-                cv2.putText(frame, "%.2fm" % r.goal_blue.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
-                cv2.putText(frame, "%.1fdeg wide" % r.goal_blue_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,0), 4)
+                cv2.putText(frame, "%.1fdeg" % r.goal_blue.angle_deg, (x + 90, r.GOAL_BOTTOM + 120), cv2.FONT_HERSHEY_SIMPLEX, 4, (0,0,255), 20)
+                cv2.putText(frame, "%.2fm" % r.goal_blue.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
+                cv2.putText(frame, "%.1fdeg wide" % r.goal_blue_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
             for rect in r.goal_blue_rect:
                 cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
 
+        target_goal = r.goal_blue
+        if target_goal:
+            dist = target_goal.dist * 100
+            pwm = dist_to_pwm(dist)
+            cv2.putText(frame, "DIST %.0f" % (dist), (200, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255 ,0), 20)
+            cv2.putText(frame, "PWM %.0f" % (pwm), (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255 ,0), 20)
 
-        if not self.DEBUG_MASK: # TODO: Read from config manager
+        if not self.DEBUG_MASK or self.type_str == 'VIDEO': # TODO: Read from config manager
             resized = cv2.resize(frame, (0,0), fx=self.ZOOM, fy=self.ZOOM)
             ret, jpeg = cv2.imencode('.jpg', frame, (cv2.IMWRITE_JPEG_QUALITY, 50))
             buf = jpeg.tostring()
@@ -94,13 +103,12 @@ class Visualizer(ManagedThread):
             self.produce(buf, resized, frame, r)
             return
 
-
         # Visualize field mask
         field_mask = np.swapaxes(np.repeat(r.field_mask, 2, axis=1), 0, 1)
         field_mask = np.hstack([field_mask, field_mask[:,:480]])
         #print("DEBUG Visualize %s"%str(type(field_mask)))
         #print("DEBUG Visualize %s"%str((field_mask.shape)))
-        
+
         print("converted:", converted.shape, "mask:", field_mask.shape)
         field_cutout = cv2.bitwise_and(converted, converted, mask=field_mask)
         cv2.line(field_cutout, (0,0), (5000,0), (255,255,255), 2)

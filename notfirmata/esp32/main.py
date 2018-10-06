@@ -147,7 +147,7 @@ motor3_speed = PWM(Pin(15, mode=Pin.OUT), freq=6000, duty=102)
 motor1_reverse = Pin(0, mode=Pin.OUT)
 motor2_reverse = Pin(14, mode=Pin.OUT)
 motor3_reverse = Pin(13, mode=Pin.OUT)
-motors_enable.value(1)
+
 
 oled.text("booting..", 10, 10)
 oled.show()
@@ -166,7 +166,7 @@ sleep_ms(2000)
 oled.text("booting....", 10, 10)
 oled.show()
 
-ESCON_MIN = 96
+ESCON_MIN = 100
 ESCON_WIDTH = 824
 ESC_IDLE = 40
 
@@ -197,6 +197,8 @@ def halt_thrower(t):
     esc.duty(ESC_IDLE)
 
 def set_abc(a,b,c):
+    global ball_sensed
+    ball_sensed = False
     assert -1 <= a <= 1,  "M1 speed out of range -1.0 ... 1.0"
     assert -1 <= b <= 1,  "M2 speed out of range -1.0 ... 1.0"
     assert -1 <= c <= 1,  "M3 speed out of range -1.0 ... 1.0"
@@ -206,11 +208,16 @@ def set_abc(a,b,c):
     motor1_reverse.value(a < 0)
     motor2_reverse.value(b < 0)
     motor3_reverse.value(c < 0)
-    timer_motors.init(period=300, mode=Timer.ONE_SHOT, callback=halt_motors)
+    timer_motors.init(period=500, mode=Timer.ONE_SHOT, callback=halt_motors)
 
 def set_thrower(e):
+    global ball_sensed
+    ball_sensed = False
     assert 40 <= e <= 110, "ESC speed out of range"
-    esc.duty(e)
+    if e == ESC_IDLE:
+        esc.duty(ESC_IDLE)
+    else:
+        esc.duty(e +  int((12 - battery_voltage()) / 0.2))
     timer_thrower.init(period=3000, mode=Timer.ONE_SHOT, callback=halt_thrower)
 
 def set_abce(a,b,c,e):
@@ -240,6 +247,81 @@ def sr(): # strafe right
 def sl(): # strafe left
     set_abce(0.1,0.1,-0.86,ESC_IDLE)
 
+
+from machine import reset
+grabbing = False
+ball_sensed = False
+timer_suck = Timer(4)
+grabbing_speed = None
+
+def got_callback(p):
+    global grabbing
+    global ball_sensed
+    timer_suck.deinit()
+    grabbing = False
+    ball_sensed = True
+    set_abc(0,0,0)
+    esc.duty(ESC_IDLE) # DONT READ BATTERY VOLTAGE!!!
+
+pin_sensor = Pin(39, Pin.IN)
+pin_sensor.irq(trigger=Pin.IRQ_FALLING, handler=got_callback)
+
+grabbing_pulse = 200
+grabbing_idle = 130
+
+def stop(timer=None):
+    esc.duty(ESC_IDLE) # DONT READ BATTERY VOLTAGE!!!
+    if grabbing and pin_sensor.value():
+        set_abc(grabbing_speed, 0, -grabbing_speed)
+        timer_suck.init(period=grabbing_pulse, mode=Timer.ONE_SHOT, callback=suck)
+    
+def suck(timer=None):
+    if grabbing and pin_sensor.value():
+        set_abc(grabbing_speed, 0, -grabbing_speed)
+        esc.duty(100)
+        timer_suck.init(period=grabbing_idle, mode=Timer.ONE_SHOT, callback=stop)
+    else:
+        esc.duty(ESC_IDLE) # DONT READ BATTERY VOLTAGE!!!
+
+# grab(200, 130, 0.01)
+def grab(pulse=200, idle=130, speed=0.01):
+    global grabbing
+    global ball_sensed
+    global grabbing_speed
+    global grabbing_pulse
+    global grabbing_idle
+    grabbing_pulse = pulse
+    grabbing_idle = idle
+    grabbing_speed = speed
+    if grabbing and ball_sensed: # we have ball
+        return "ball_sensed"
+    elif not grabbing:
+        grabbing = True
+        suck()
+        return "not_sensed"
+    else:
+        return "already_grabbing"
+
+
+
+from machine import Pin, ADC
+adc = ADC(Pin(36, Pin.IN))
+adc.atten(ADC.ATTN_0DB)
+
+
+def battery_voltage():
+    for j in range(0,2): # skip garbage
+        adc.read()
+    s = 0
+    for j in range(0,3):
+        s += adc.read()
+    return s * 0.0041 / (j+1)
+
+
+
+
+
+motors_enable.value(1)
 set_abce(0,0,0,60)
 oled.text("booting.....", 10, 10)
 oled.show()

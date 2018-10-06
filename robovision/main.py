@@ -4,7 +4,7 @@ from gevent import monkey
 from gevent.queue import Queue, Empty
 from gevent.event import Event
 monkey.patch_all(thread=False)
-from time import sleep
+from time import sleep, time
 import json
 import cv2
 from threading import Thread, Event
@@ -53,12 +53,14 @@ sockets = Sockets(app)
 grabber = PanoramaGrabber() # config read from ~/.robovision/grabber.conf
 image_recognizer = ImageRecognizer(grabber)
 gameplay = Gameplay(image_recognizer)
-rf = RemoteRF(gameplay, "/dev/ttyACM0")
+#rf = RemoteRF("/dev/serial/by-path/pci-0000:00:14.0-usb-0:2.1:1.0-port0", gameplay)
+# TODO: should also get gameplay?
 visualizer = Visualizer(image_recognizer, framedrop=1)
 recorder = Recorder(grabber)
 
-def generator():
+def generator(type_str):
     visualizer.enable()
+    visualizer.type_str = type_str
     queue = visualizer.get_queue()
     while True:
         try:
@@ -74,7 +76,7 @@ def generator():
 @app.route('/combined/<path:type_str>')
 def video_combined(type_str):
     TYPES = ['VIDEO', 'DEBUG', 'COMBO']
-    return Response(generator(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(generator(type_str.upper()), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/')
 def group():
@@ -114,6 +116,8 @@ def command(websocket):
     ))
     websocket.send(settings_packet)
 
+    pwm = 50
+    last_press = time()
     while not websocket.closed:
         websockets.add(websocket)
 
@@ -132,24 +136,68 @@ def command(websocket):
             logger.info("Unknown action")
             continue
 
-
         if action == "gamepad":
             controls = response.pop("data")
-            x = controls.pop("controller0.axis0", x) * 0.33
-            y = controls.pop("controller0.axis1", y) * 0.33
-            w = controls.pop("controller0.axis3", w) * 0.7
 
-            # Throw the ball with button A on Logitech gamepad
-            if controls.get("controller0.button0", None):
-                gameplay.arduino.set_thrower(100)
+            if (controls.get("controller0.button8", None) or controls.get("controller0.button11", None)) and time() - last_press > 0.5:
+                last_press = time()
+                if not gameplay.alive:
+                    gameplay.enable()
+                else:
+                    gameplay.disable()
 
             # Toggle autonomy with button Y on Logitech gamepad
-            if controls.get("controller0.button4", None):
-                gameplay.toggle()
+            # if controls.get("controller0.button4", None):
+            #     not gameplay.alive and gameplay.enable()
+            # else:
+            #     gameplay.alive and gameplay.disable()
 
             # Manual control of the robot
             if not gameplay.alive:
+                gameplay.recognition = image_recognizer.last_frame
+
+                x = controls.pop("controller0.axis0", x) * 0.33
+                y = controls.pop("controller0.axis1", y) * 0.33
+                w = controls.pop("controller0.axis3", w) * 0.2
+
+                if controls.get("controller0.button3", None):
+                    y = 0.15
+
                 gameplay.arduino.set_xyw(x,-y,-w)
+
+                # Throw the ball with button A on Logitech gamepad
+                delta = controls.pop("controller0.button12", 0)
+                delta = delta or -controls.pop("controller0.button13", 0)
+
+                if delta and time() - last_press > 0.1:
+                    last_press = time()
+                    pwm = max(0, min(pwm + delta * 200, 10000))
+                    print("PWM+: ", pwm)
+                if controls.get("controller0.button0", None):
+                    print("PWM: ", pwm)
+                    gameplay.arduino.set_thrower(pwm)
+                    gameplay.drive_towards_target_goal(safety=False) # safety=False means no backtrack
+
+                elif controls.get("controller0.button5", None):
+                    logger.info(str(gameplay.state))
+                    gameplay.arduino.set_thrower(pwm)
+                else:
+                    gameplay.arduino.set_thrower(0)
+
+                if controls.get("controller0.button1", None):
+                    logger.info(str(gameplay.state))
+                    gameplay.kick()
+
+                if controls.get("controller0.button6", None) and gameplay.recognition:
+                    gameplay.drive_to_field_center()
+                    print("drive to center")
+
+                if controls.get("controller0.button2", None):
+                    gameplay.align_to_goal()
+                    logger.info(str(gameplay.state))
+
+                gameplay.arduino.apply()
+                # gameplay.arduino.ser.flushInput()
 
         # TODO: slders
         elif action == "record_toggle":
@@ -240,7 +288,7 @@ def main():
     grabber.start()
     recorder.start()
     visualizer.start()
-    rf.start()
+    #rf.start()
 
     # Register threads for monitoring
     from managed_threading import ThreadManager
