@@ -1,11 +1,21 @@
 ---
 - hosts: virtual  # change this to zoidberg
   vars:
+    user: robot
+    download_dir: ~/Downloads
+
     python_version: python3.6
     opencv_version: 3.4.3
-    download_dir: ~/Downloads
-    user: user
+
+    ros_release: "melodic"
+    ros_package: "desktop-full"
+
+    # Optionally use a mirror for the ROS packages
+    ros_apt_uri: "http://packages.ros.org/ros/ubuntu"
+    ros_apt_key: "https://raw.githubusercontent.com/ros/rosdistro/master/ros.key"
+
   roles:
     - provision
     - opencv
     - zoidberg
+    - ros
