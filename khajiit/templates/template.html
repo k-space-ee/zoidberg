@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Slidershurrdurr</title>
+    {% block head %}
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='nouislider.css') }}">
+        <script type="text/javascript" src="{{ url_for('static',filename='nouislider.js') }}"></script>
+        <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css">
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/webpage.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+
+
+        <script type="text/javascript" src="{{ url_for('static', filename='js/smoothie.js') }}"></script>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/codemirror.css') }}">
+        <script type="text/javascript" src="{{ url_for('static', filename='js/reconnecting-websocket.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/codemirror.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/nunjucks.min.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/robovision.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/javascript.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/htmlmixed.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='js/python.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+
+    {% endblock %}
+</head>
+<body>
+
+<div class="home-menu pure-menu pure-menu-horizontal pure-menu-fixed">
+
+    <div class="row">
+        <div class="col-xs-4">
+            <a class="pure-menu-heading" href="">Ministry of silly robots</a>
+        </div>
+        <div class="col-xs-6 col-xs-offset-2">
+            <ul class="pure-menu-list">
+                <li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
+                    <a href="#" class="pure-menu-link">
+                        Cameras <i class="fa fa-camera"> <sup>{{ camera_list|length }}</sup></i>
+                    </a>
+                    <ul class="pure-menu-children">
+                        <li class="pure-menu-item">
+                            <a href="/group" class="pure-menu-link">Group photo <i class="fa fa-map"></i></a>
+                        </li>
+                    </ul>
+                </li>
+
+                <li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
+                    <a href="#" id="menuLink1" class="pure-menu-link">Status <i class="fa fa-battery-quarter"></i> </a>
+                    <ul class="pure-menu-children">
+                        <li class="pure-menu-item"><a href="#" class="pure-menu-link">Battery 25% <i
+                            class="fa fa-battery-quarter"></i></a></li>
+                        <li class="pure-menu-item"><a href="#" class="pure-menu-link">CPU Load 35%
+                            <i class="fa fa-cog fa-spin"></i></a></li>
+                        <li class="pure-menu-item"><a href="#" class="pure-menu-link">Compassion 0% <i
+                            class="fa fa-heart"></i>
+                        </a></li>
+                    </ul>
+                </li>
+
+                <li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
+                    <a href="#" id="menuLink1" class="pure-menu-link">Halp <i class="fa fa-beer"></i></i> </a>
+                    <ul class="pure-menu-children">
+                        <li class="pure-menu-item"><a href="#" class="pure-menu-link">Colors update after release</a>
+                        </li>
+                        <li class="pure-menu-item"><a href="#" class="pure-menu-link">You can drag from the middle</a>
+                        </li>
+                        <li class="pure-menu-item"><a href="#" class="pure-menu-link">Dong anger the robots</a></li>
+                        <li class="pure-menu-item"><a href="#" class="pure-menu-link">They smell fear</a></li>
+                    </ul>
+                </li>
+
+                <li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
+                    <a href="#" id="menuLink1" class="pure-menu-link">GitHub <i class="fa fa-github"></i> </a>
+                    <ul class="pure-menu-children">
+                        <li class="pure-menu-item"><a href="https://github.com/vegetablejuiceftw/pyrobovision"
+                                                      class="pure-menu-link">Vegetable
+                            <i class="fa fa-heart"></i></a></li>
+                        <li class="pure-menu-item"><a href="https://github.com/laurivosandi/pyrobovision"
+                                                      class="pure-menu-link">laurivosandi master<i
+                            class="fa fa-heart"></i></a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+
+>
+
+
+<div id="sensors">
+</div>
+
+{% block content %}
+    Is content
+{% endblock %}
+
+<ul id="log">
+</ul>
+
+<span style="display: none;">
+    
+<button class="save">Save</button>
+<button class="save_as">Save as ...</button>
+<button class="run">Run</button>
+<button class="stop">Stop</button>
+<select id="file">
+</select>
+<textarea id="code"></textarea>
+</span>
+
+
+<script type="text/javascript">
+
+</script>
+
+
+{% block extra_scripts %}
+{% endblock %}
+
+</body>
+</html>
