@@ -13,7 +13,7 @@ logger = logging.getLogger("esp32")
 class Controller:
 
     # safe values 0.2 0.05
-    def __init__(self, factor=0.2, maximum=0.2, path=None):
+    def __init__(self, factor=0.2, maximum=0.1, path=None):
         logger.info("Opening /dev/ttyUSB0")
         self.ser = serial.Serial(
             port="/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0",
@@ -39,8 +39,10 @@ class Controller:
         if d < 100: # TODO: maybe gamelogic should be updated to the 0 - 10 000  range
             d *= 100
 
-        print("SPEEEDO: ", d)
-        self.kicker.speed = d
+        d = int(d)
+        if d:
+            self.kicker.speed = d // 2
+            self.kicker.update()
 
     def set_abc(self, *speed):  # Ctrl-C doesn't work well,  Lauri tested b"\x03" +
         # print("before:", speed)
@@ -50,9 +52,6 @@ class Controller:
             for j in speed
         )
         self.state = list(speed) + self.state[-1:]
-
-    def grab(self):
-        pass
 
     def set_thrower(self, speed):
         self.state = self.state[:-1] + [speed]

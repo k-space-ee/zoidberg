@@ -3,7 +3,7 @@ from geometry_msgs.msg import Twist
 
 from time import time
 
-from .controller import Controller
+from controller import Controller
 
 last_callback = time()
 

@@ -190,7 +190,7 @@ def command(websocket):
 
                 if controls.get("controller0.button6", None) and gameplay.recognition:
                     gameplay.drive_to_field_center()
-                    print("drive to center")
+                    print("button6: drive to center")
 
                 if controls.get("controller0.button2", None):
                     gameplay.align_to_goal()
