@@ -215,16 +215,16 @@ $(document).ready(function () {
             var enabled_B = value_B === values[1][0] ? "checked" : "";
             var radio_A = "<input type='radio' name='" + name + "' value='" + value_A + "'" + enabled_A + "> " + name + " " + value_A + "<br>";
             var radio_B = "<input type='radio' name='" + name + "' value='" + value_B + "'" + enabled_B + "> " + name + " " + value_B + "<br>";
-            sliders += "<h4>" + name + "</h4><br><div>";
-            sliders += radio_A;
-            sliders += radio_B;
-            if (values[1].length > 3) {
-                var value_C = values[1][3];
-                var enabled_C = value_C === values[1][0] ? "checked" : "";
-                var radio_C = "<input type='radio' name='" + name + "' value='" + value_C + "'" + enabled_C + "> " + name + " " + value_C + "<br>";
-                sliders += radio_C;
-            }
-            sliders += "</div>";
+            // sliders += "<h4>" + name + "</h4><br><div>";
+            // sliders += radio_A;
+            // sliders += radio_B;
+            // if (values[1].length > 3) {
+            //     var value_C = values[1][3];
+            //     var enabled_C = value_C === values[1][0] ? "checked" : "";
+            //     var radio_C = "<input type='radio' name='" + name + "' value='" + value_C + "'" + enabled_C + "> " + name + " " + value_C + "<br>";
+            //     sliders += radio_C;
+            // }
+            // sliders += "</div>";
         }
 
         $.each(msg.options, spawn_radio);
@@ -235,7 +235,7 @@ $(document).ready(function () {
             var key = values[0];
             var val = values[1];
             console.log(key, val);
-            sliders += "<h4>" + key + "</h4><div class='slider' data-channel='" + key + "' data-min='0' data-max='255' data-start='0' data-end='" + val + "'></div> <br>";
+            sliders += "<div class='col-sm-4'><h4>" + key + "</h4><div class='slider' data-channel='" + key + "' data-min='0' data-max='255' data-start='0' data-end='" + val + "'></div> <br></div>";
         }
 
         $.each(data, spawn);

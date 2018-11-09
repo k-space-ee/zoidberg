@@ -13,7 +13,7 @@ logger = logging.getLogger("esp32")
 class Controller:
 
     # safe values 0.2 0.05
-    def __init__(self, factor=0.2, maximum=0.1, path=None):
+    def __init__(self, factor=0.17, maximum=0.07, path=None):
         logger.info("Opening /dev/ttyUSB0")
         self.ser = serial.Serial(
             port="/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0",

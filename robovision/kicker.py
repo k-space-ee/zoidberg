@@ -4,6 +4,8 @@ from time import time
 
 
 # TODO: this has the ability to not constantly update the speed, we should use that
+import yaml
+
 
 class CanBusMotor:
 
@@ -11,6 +13,9 @@ class CanBusMotor:
         super().__init__()
      
         self.last_message = ""
+        self.last_msg = {}
+        self.last_rpm = 0
+        self.rpm = []
         self._speed = 0
         self.last_edit = time()
 
@@ -44,14 +49,28 @@ class CanBusMotor:
         self.last_edit = time()
 
     def update(self):
-        if time() - self.last_edit > 2:
+        if time() - self.last_edit > 0.8:
+            if self._speed:
+                print(self.last_message)
             self._speed = 0
 
         message = uavcan.equipment.esc.RawCommand(cmd=[self._speed])
         self.node.broadcast(message)
 
     def listen(self, msg):
+        """
+        Transfer(
+            id=4, source_node_id=125, dest_node_id=None, transfer_priority=7,
+            payload=uavcan.equipment.esc.Status(
+                error_count=0, voltage=12.9296875, current=-0.0, temperature=307.0, rpm=0, power_rating_pct=0, esc_index=0))
+                Transfer(id=4, source_node_id=125, dest_node_id=None, transfer_priority=7, payload=uavcan.equipment.esc.Status(error_count=0, voltage=12.9296875, current=-0.0, temperature=307.0, rpm=0, power_rating_pct=0, esc_index=0))
+
+        """
+
         self.last_message = uavcan.to_yaml(msg)
+        self.last_msg = yaml.load(self.last_message)
+        self.rpm = (self.rpm + [self.last_msg.get('rpm', 0)])[-10:]
+        self.last_rpm = round(sum(self.rpm) / len(self.rpm))
 
 
 if __name__ == '__main__':

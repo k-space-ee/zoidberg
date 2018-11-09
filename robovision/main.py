@@ -116,7 +116,7 @@ def command(websocket):
     ))
     websocket.send(settings_packet)
 
-    pwm = 50
+    rpm = 6500
     last_press = time()
     while not websocket.closed:
         websockets.add(websocket)
@@ -171,16 +171,16 @@ def command(websocket):
 
                 if delta and time() - last_press > 0.1:
                     last_press = time()
-                    pwm = max(0, min(pwm + delta * 200, 10000))
-                    print("PWM+: ", pwm)
+                    rpm = max(0, min(rpm + delta * 100, 10000))
+                    print("PWM+: ", rpm)
                 if controls.get("controller0.button0", None):
-                    print("PWM: ", pwm)
-                    gameplay.arduino.set_thrower(pwm)
-                    gameplay.drive_towards_target_goal(safety=False) # safety=False means no backtrack
+                    print(f"drive_towards_target_goal: {round(gameplay.target_goal_angle or 0)} pwm:{rpm} speed:{gameplay.arduino.kicker.last_rpm}")
+                    gameplay.arduino.set_thrower(rpm)
+                    gameplay.drive_towards_target_goal(backtrack=False, speed_factor=0.5)  # no driving backwards when angle error
 
                 elif controls.get("controller0.button5", None):
-                    logger.info(str(gameplay.state))
-                    gameplay.arduino.set_thrower(pwm)
+                    print(f"button5: {round(gameplay.target_goal_angle or 0)} pwm:{rpm} speed:{gameplay.arduino.kicker.last_rpm}")
+                    gameplay.arduino.set_thrower(rpm)
                 else:
                     gameplay.arduino.set_thrower(0)
 
@@ -193,8 +193,11 @@ def command(websocket):
                     print("button6: drive to center")
 
                 if controls.get("controller0.button2", None):
-                    gameplay.align_to_goal()
-                    logger.info(str(gameplay.state))
+                    gameplay.drive_towards_target_goal(backtrack=False, speed_factor=0.5)
+                    gameplay.kick()
+                    print(f"button2: {round(gameplay.target_goal_angle or 0)} speed:{gameplay.arduino.kicker.last_rpm}")
+
+                    # logger.info(str(gameplay.state))
 
                 gameplay.arduino.apply()
                 # gameplay.arduino.ser.flushInput()

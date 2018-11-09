@@ -341,7 +341,8 @@ class ImageRecognition:
         # print(time() - start, 'time')
         if maxwidth:
             x, y, w, h = rect  # done
-            dist = goal_to_dist(y+h) / 100
+            dist = goal_to_dist(y + h) / 100
+
             # markers = [dist for id, dist in self.markers.items() if id in ids]
             # if markers:
             #     dist = sum(markers) / len(markers) / 100

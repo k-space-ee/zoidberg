@@ -1,7 +1,8 @@
 import numpy as np
 import cv2
 
-from line_fit import dist_to_pwm
+from image_recognition import ImageRecognition
+from line_fit import dist_to_pwm, dist_to_rpm
 from managed_threading import ManagedThread
 
 
@@ -18,7 +19,7 @@ class Visualizer(ManagedThread):
     DEBUG_MASK = True
     type_str = 'VIDEO'
 
-    def step(self, r, grabber):
+    def step(self, r: ImageRecognition, grabber):
         frame = r.frame
         if frame.shape[0] == 3840:
             frame = np.vstack([frame, frame[:480]])
@@ -74,7 +75,7 @@ class Visualizer(ManagedThread):
                 cv2.line(frame, (x,0), (x,r.GOAL_BOTTOM-120), (255,255,255), 3)
                 cv2.putText(frame, "%.1fdeg" % r.goal_yellow.angle_deg, (x + 90, r.GOAL_BOTTOM + 120), cv2.FONT_HERSHEY_SIMPLEX, 4, (0,0,255), 20)
                 cv2.putText(frame, "%.2fm" % r.goal_yellow.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
-                cv2.putText(frame, "%.1fdeg wide" % r.goal_yellow_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
+                # cv2.putText(frame, "%.1fdeg wide" % r.goal_yellow_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
             for rect in r.goal_yellow_rect:
                 cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
 
@@ -84,16 +85,21 @@ class Visualizer(ManagedThread):
                 cv2.line(frame, (x,0), (x,r.GOAL_BOTTOM-120), (255,255,255), 3)
                 cv2.putText(frame, "%.1fdeg" % r.goal_blue.angle_deg, (x + 90, r.GOAL_BOTTOM + 120), cv2.FONT_HERSHEY_SIMPLEX, 4, (0,0,255), 20)
                 cv2.putText(frame, "%.2fm" % r.goal_blue.dist, (x, r.GOAL_BOTTOM-30), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
-                cv2.putText(frame, "%.1fdeg wide" % r.goal_blue_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
+                # cv2.putText(frame, "%.1fdeg wide" % r.goal_blue_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
             for rect in r.goal_blue_rect:
                 cv2.rectangle(frame, (rect[0], rect[1]), (rect[2]+rect[0], rect[3]+rect[1]), (255,255,255), 4)
 
         target_goal = r.goal_blue
         if target_goal:
             dist = target_goal.dist * 100
-            pwm = dist_to_pwm(dist)
+            pwm = dist_to_rpm(dist)
+            angle = r.goal_blue.angle_deg
+            y = sum(y + h for x, y, w, h in r.goal_blue_rect) / len(r.goal_blue_rect)
+
             cv2.putText(frame, "DIST %.0f" % (dist), (200, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255 ,0), 20)
             cv2.putText(frame, "PWM %.0f" % (pwm), (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255 ,0), 20)
+            cv2.putText(frame, "ANG %.0f" % (angle), (200, 300), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255 ,0), 20)
+            cv2.putText(frame, "Y %.0f" % (y), (200, 400), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255 ,0), 20)
 
         if not self.DEBUG_MASK or self.type_str == 'VIDEO': # TODO: Read from config manager
             resized = cv2.resize(frame, (0,0), fx=self.ZOOM, fy=self.ZOOM)

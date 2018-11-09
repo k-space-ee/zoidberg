@@ -1,6 +1,6 @@
 import logging
 
-from line_fit import dist_to_pwm
+from line_fit import dist_to_pwm, dist_to_rpm
 
 logger = logging.getLogger("gameplay")
 from managed_threading import ManagedThread
@@ -209,16 +209,18 @@ class Gameplay(ManagedThread):
     def blind_spot_for_shoot(self):
         return (not self.own_goal or self.own_goal.dist > 3.0) and self.closest_edge[2] < 1.2
 
-    def drive_towards_target_goal(self, safety=True):
+    def drive_towards_target_goal(self, backtrack=True, speed_factor=1):
         rotation = self.rotation_for_goal() or 0
         angle = self.target_goal_angle or 0
-        if abs(angle) > 4 and safety:
+
+        # TODO: stupid backtrack, when angle wrong, drive back and try again
+        if abs(angle) > 4 and backtrack:
             return self.arduino.set_xyw(0, -0.09, 0)
 
         factor = abs(math.tanh(angle / 5))
-        if factor > 0.4:
-            factor = 0.4
-        return self.arduino.set_xyw(0, 0.13, rotation * (factor))
+        factor = min(factor, 0.4)
+
+        return self.arduino.set_xyw(0, 0.13 * speed_factor, rotation * factor)
 
     def rotate(self, degrees):
         delta = degrees / 360
@@ -278,6 +280,7 @@ class Gameplay(ManagedThread):
         return round(x * factor * 0.7, 6), round(y * factor * 0.7, 6)
 
     def rotation_for_goal(self):
+        """ The rotation needed to align with the goal """
         goal_angle = self.target_goal_angle
         if goal_angle is not None:
             maximum = 50
@@ -288,7 +291,7 @@ class Gameplay(ManagedThread):
             # print('rotate %.02f %.02f %.02f' % (angle, factor, rotate))
             return rotate
 
-    def align_to_goal(self):
+    def align_to_goal(self, factor=1):
         rotation = self.rotation_for_goal() or 0
         goal_angle = self.target_goal_angle
         shooting_angle = self.goal_to_ball_angle or 999
@@ -296,7 +299,7 @@ class Gameplay(ManagedThread):
 
         if abs(rotation) > 0.4:
             rotation = rotation / abs(rotation) * 0.4
-        return self.arduino.set_xyw(0, 0, rotation)
+        return self.arduino.set_xyw(0, 0, rotation * factor)
 
     def flank(self):
         rotation = self.rotation_for_goal() or 0
@@ -328,11 +331,11 @@ class Gameplay(ManagedThread):
         if update:
             self.last_kick = time()
 
-        if self.target_goal_distance and self.continue_to_kick:
-            pwm = dist_to_pwm(self.target_goal_distance)
-            return self.arduino.set_thrower(pwm)
-        # if not self.target_goal_distance:
-        #     print("derp")
+        distance = self.get_target_goal_distance()
+        if distance and self.continue_to_kick:
+            speed = dist_to_rpm(distance)
+            # print(distance, speed, self.target_goal.angle)
+            return self.arduino.set_thrower(speed)
 
     def stop_moving(self):
         self.arduino.set_abc(0, 0, 0)
@@ -411,6 +414,12 @@ class Gameplay(ManagedThread):
         a = sum(A) / len(A)
         d = sum(D) / len(D)
         return PolarPoint(a, d)
+
+    def get_target_goal_distance(self):
+        if self.target_goal:
+            self.target_goal_distances = [self.target_goal.dist * 100] + self.target_goal_distances[:10]
+            self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
+        return self.target_goal_distance
 
     def step(self, recognition, *args):
         self.arduino.set_abc(0, 0, 0)

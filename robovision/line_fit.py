@@ -96,6 +96,8 @@ goal_distance = [
 gX = [e[0] for e in goal_distance]
 gY = [e[1] for e in goal_distance]
 ginv = lambda x, a, b, c: a / x + b / x ** 2 + c
+# ginv = lambda x, a, b, c, d: ((b + (800 - x)) * (d + (800 - x))) / (c * (b + (800 - x)) + a * (d + (800 - x)))
+print("goal_to_dist")
 goal_to_dist = function_fit(ginv, gX, gY)
 
 # 20 deg tuesday, low voltage
@@ -181,19 +183,50 @@ dist_to_pwm_interpolated = interpolate(
     backup=throw_function,
 )
 
+rpm_distance = [
+    (5550, 60),
+    (5600, 70),
+    (5650, 80),
+    (5750, 90),
+    (5850, 100),
+    (6000, 110),
+    (6100, 120),
+    (6300, 130),
+    (6450, 140),
+    (7350, 175),
+    (7600, 190),
+    (8750, 255),
+    (9050, 280),
+]
+
+
+# distance
+X = [dist for rpm, dist in rpm_distance]
+# rpm
+Y = [rpm for rpm, dist in rpm_distance]
+
+rpm_throw_function = lambda x, a, b, c, d: a * x + b * x ** 2 + d * x ** 3 + c
+print("DIST to RPM")
+dist_to_rpm = function_fit(
+    rpm_throw_function,
+    X,
+    Y,
+)
+
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    # xp = np.linspace(round(min(X)-30), round(max(X) + 30), 300)
-    # plt.plot(X, Y, '.', )
-    # plt.plot(xp, dist_to_pwm(xp), '-')
-    # # plt.plot(xp, dist_to_pwm_interpolated(xp), '--')
-    # plt.show()
-
-    xp = np.linspace(round(min(gX) - 30), round(max(gX) + 30), 300)
-    plt.plot(gX, gY, '.', )
-    plt.plot(xp, goal_to_dist(xp), '-')
+    xp = np.linspace(round(min(X)-30), round(max(X) + 30), 300)
+    plt.plot(X, Y, '.', )
+    plt.plot(xp, dist_to_rpm(xp), '-')
+    # plt.plot(xp, dist_to_pwm_interpolated(xp), '--')
     plt.show()
+
+    # xp = np.linspace(round(min(gX) - 30), round(max(gX) + 30), 300)
+    # plt.plot(gX, gY, '.', )
+    # plt.plot(xp, goal_to_dist(xp), '-')
+    # plt.show()
 
     exit()
 
