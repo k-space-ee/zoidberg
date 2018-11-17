@@ -1,0 +1,7 @@
+numpy
+scipy
+matplotlib
+
+# windows install:
+opencv-python
+opencv-contrib-python
