@@ -27,9 +27,9 @@ class ControllerNode(messenger.Node):
             self.controller.set_xyw(x, y, az)
             self.controller.apply()
 
-        self.logger(
-            ["speeds", [x, y, az]],
-        )
+        # self.logger(
+        #     ["speeds", [x, y, az]],
+        # )
 
 
 if __name__ == '__main__':

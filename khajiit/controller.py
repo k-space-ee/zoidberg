@@ -28,11 +28,11 @@ class Controller:
     def assert_config(self):
         speeds, shooter = self.state[:-1], self.state[-1]
 
-        if min(speeds) < 0 or max(speeds) > 1:
-            logger.error("speeds out of range %s", str(speeds))
+        if max(map(abs, speeds)) > 1:
+            logger.error("speeds out of range %s", str(speeds), max(map(abs, speeds)))
             return False
 
-        if shooter < 0 or shooter > 12000:
+        if shooter < 0 or shooter > 15000:
             logger.error("shooter speed out of range %f", shooter)
             return False
 
