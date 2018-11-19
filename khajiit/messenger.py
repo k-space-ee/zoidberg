@@ -7,8 +7,21 @@ from std_msgs.msg import String, Int32
 from time import time, sleep
 
 
+class TwistWrapper:
+    message = Twist
+
+    def __init__(self, x=0, y=0, z=0, ax=0, ay=0, az=0) -> None:
+        self.msg = self.message()
+        self.msg.linear.x = x
+        self.msg.linear.y = y
+        self.msg.linear.z = z
+        self.msg.angular.x = ax
+        self.msg.angular.y = ay
+        self.msg.angular.z = az
+
+
 class Messages:
-    motion = Twist
+    motion = TwistWrapper
     string = String
     integer = Int32
 
@@ -20,6 +33,8 @@ class Reader:
         self.last_reading = None
         self.last_reading_time = 0
         self.callback = callback
+
+        msg = getattr(msg, 'message', msg)
         self.subscriber = rospy.Subscriber(topic, msg, self.recieve, queue_size=10)
 
     def recieve(self, data):
@@ -35,10 +50,13 @@ class Publisher:
         self.msg = msg
         self.last_reading = None
         self.last_reading_time = 0
+        msg = getattr(msg, 'message', msg)
         self.publisher = rospy.Publisher(topic, msg, queue_size=10)
 
     def publish(self, *args, **kwargs):
-        self.publisher.publish(self.msg(*args, **kwargs))
+        message = self.msg(*args, **kwargs)
+        msg = getattr(message, 'msg', message)
+        self.publisher.publish(msg)
 
 
 class Node:
@@ -84,6 +102,11 @@ def test():
     print("ROSTOPIC")
     print(os.popen("rostopic list").read())
     print("END")
+
+
+def core():
+    import os
+    os.system('roscore')  # lives and dies with this process
 
 
 if __name__ == '__main__':

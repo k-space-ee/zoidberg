@@ -27,7 +27,7 @@ class ControllerNode(messenger.Node):
             self.controller.set_xyw(y, x, az)
             self.controller.apply()
 
-        self.node.logger(
+        self.logger(
             ["linear", [x, y, z], "angular", [ax, ay, az]],
         )
 

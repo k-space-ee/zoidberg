@@ -1,14 +1,11 @@
 # ROS setup before gevent
-import rospy
-from geometry_msgs.msg import Twist
-
-pub = rospy.Publisher('/movement', Twist, queue_size=10)
-rospy.init_node('websocket', anonymous=True)
+import messenger
+publisher = messenger.Publisher('/movement', messenger.Messages.motion)
+node = messenger.Node('websocket')
 
 # thread fixes
 import gevent
 from gevent import monkey
-from gevent.queue import Empty
 
 monkey.patch_all(thread=False)
 
@@ -111,12 +108,7 @@ def command(websocket):
                 y = controls.pop("controller0.axis1") * 0.33
                 w = controls.pop("controller0.axis3") * 0.2
 
-                motion = Twist()
-                motion.linear.x = x
-                motion.linear.y = y
-                motion.angular.z = w
-
-                pub.publish(motion)
+                publisher.publish(x=x, y=y, az=w)
 
                 last_press_history = [*last_press_history, time() - last_press][-30:]
                 last_press = time()

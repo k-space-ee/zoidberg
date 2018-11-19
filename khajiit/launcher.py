@@ -1,5 +1,6 @@
 from multiprocessing import Process
 
+import messenger
 from controller_node import ControllerNode
 from kicker_node import KickerNode
 
@@ -25,8 +26,16 @@ class Launcher:
         print("Game over!")
 
 
+def server():
+    import io_server
+    io_server.main()
+
+
 launcer = Launcher()
 
+launcer.launch(messenger.core)
+launcer.launch(server)
 launcer.launch(ControllerNode, mock=True)
 launcer.launch(KickerNode, mock=True)
+
 launcer.spin()

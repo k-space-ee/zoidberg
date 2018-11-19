@@ -23,7 +23,7 @@ class KickerNode(messenger.Node):
             self.controller.speed = speed
             self.publisher.publish(self.controller.last_raw)
 
-        self.node.logger(
+        self.logger(
             ["speed", speed],
         )
 
