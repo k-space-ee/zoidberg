@@ -18,9 +18,13 @@ function visualizeGamepads(values) {
     }
 }
 
-var data = {};
+var controllers = {};
+var previous = "";
 
 function streamGamepad() {
+    var data = {};
+    var anyMotion = 0;
+
     var state = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
     for (var j = 0; j < state.length; j++) {
         if (!state[j]) continue;
@@ -32,21 +36,29 @@ function streamGamepad() {
                 pressed = val.pressed;
                 val = val.value;
             }
-            if (controllers["controller" + state[j].index + ".button" + i] != pressed) {
-                data["controller" + state[j].index + ".button" + i] = pressed;
+            var buttonKey = "controller" + state[j].index + ".button" + i;
+            if (controllers[buttonKey] != pressed) {
+                data[buttonKey] = pressed;
             }
-            controllers["controller" + state[j].index + ".button" + i] = pressed;
+            controllers[buttonKey] = pressed;
         }
         for (var i = 0; i < state[j].axes.length; i++) {
-            if (controllers["controller" + state[j].index + ".axis" + i] != state[j].axes[i]) {
-                data["controller" + state[j].index + ".axis" + i] = state[j].axes[i];
+            var axisKey = "controller" + state[j].index + ".axis" + i;
+            var motion = Math.round(state[j].axes[i] * 6);
+            anyMotion += motion;
+            if (controllers[axisKey] != state[j].axes[i] || motion) {
+                data[axisKey] = state[j].axes[i];
             }
-            controllers["controller" + state[j].index + ".axis" + i] = state[j].axes[i];
+            controllers[axisKey] = state[j].axes[i];
         }
     }
-
-    // console.info("Sending:", data);
-    socket.send(JSON.stringify({"action": "gamepad", "data": data}));
+    var newPackage = JSON.stringify({"action": "gamepad", "data": data});
+    if (Object.keys(data).length || anyMotion){
+        socket.send(newPackage);
+        previous = newPackage;
+    } else {
+         socket.send(JSON.stringify({"action": "gamepad"}));
+    }
     // TODO: remove this when serial write speed has been fixed
     setTimeout(streamGamepad, 30);
     // requestAnimationFrame(streamGamepad);
@@ -151,7 +163,6 @@ $(document).ready(function () {
 
         firstLoad = false;
         console.log("WebSocket opened");
-        window.controllers = {};
         requestAnimationFrame(streamGamepad);
     };
 

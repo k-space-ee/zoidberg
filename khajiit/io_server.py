@@ -84,6 +84,7 @@ def command(websocket):
     last_press_history = []
 
     counter = 0
+    rpm = 6500
     while not websocket.closed:
         counter += 1
         websockets.add(websocket)
@@ -98,22 +99,70 @@ def command(websocket):
             break
 
         response = json.loads(msg)
+
         action = response.pop("action", None)
 
         if action == "gamepad":
             controls = response.get("data")
 
             if controls:
-                x = controls.pop("controller0.axis0") * 0.33
-                y = controls.pop("controller0.axis1") * 0.33
-                w = controls.pop("controller0.axis3") * 0.2
+                toggle_gameplay = controls.get("controller0.button8") or controls.get("controller0.button11")
+                gameplay = False
+                target_goal_angle = round(0)
+                last_rpm = 0
 
-                publisher.publish(x=x, y=-y, az=-w)
+                if toggle_gameplay:
+                    gameplay = True
+
+                if not gameplay:
+                    # # Manual control of the robot
+                    x = controls.pop("controller0.axis0", 0) * 0.33
+                    y = controls.pop("controller0.axis1", 0) * 0.33
+                    w = controls.pop("controller0.axis3", 0) * 0.2
+
+                    if controls.get("controller0.button3"):
+                        y = 0.15
+
+                    if x or y or w:
+                        publisher.publish(x=x, y=-y, az=-w)
+
+                    delta = controls.pop("controller0.button12", 0)
+                    delta = delta or -controls.pop("controller0.button13", 0)
+
+                    if delta:
+                        rpm = max(0, min(rpm + delta * 50, 15000))
+                        logger.info("PWM+: %.0f", rpm)
+
+                    if controls.get("controller0.button0", None):
+                        logger.info(f"drive_towards_target_goal: {target_goal_angle} rpm:{rpm} speed:{last_rpm}")
+                        # gameplay.arduino.set_thrower(rpm)
+                        # no driving backwards when angle error
+                        # gameplay.drive_towards_target_goal(
+                        #     backtrack=False,
+                        #     speed_factor=0.5)
+
+                    elif controls.get("controller0.button5", None):
+                        logger.info(f"set_thrower: {target_goal_angle} rpm:{rpm} speed:{last_rpm}")
+                        # gameplay.arduino.set_thrower(rpm)
+
+                    if controls.get("controller0.button1", None):
+                        logger.info(f"kick: {target_goal_angle} rpm:{rpm} speed:{last_rpm}")
+                        # gameplay.kick()
+
+                    if controls.get("controller0.button6", None):
+                        # gameplay.drive_to_field_center()
+                        logger.info("Drive to center")
+
+                    if controls.get("controller0.button2", None):
+                        # gameplay.drive_towards_target_goal(backtrack=False, speed_factor=0.5)
+                        # gameplay.kick()
+                        logger.info(f"drive_towards_target_goal: {target_goal_angle} speed:{last_rpm}")
 
                 last_press_history = [*last_press_history, time() - last_press][-30:]
                 last_press = time()
-                if counter % 120 == 1:
-                    logger.info("Last press %.3f ago on average", sum(last_press_history) / len(last_press_history))
+                if counter % 30 == 1:
+                    average = sum(last_press_history) / len(last_press_history)
+                    logger.info("Last press %.3f ago on average", average)
 
         elif action == "set_settings":
             for k, v in response.items():
@@ -160,7 +209,6 @@ class WebsocketLogHandler(logging.Handler):
 
 
 def main():
-    import os
     from gevent import pywsgi
     from geventwebsocket.handler import WebSocketHandler
 
@@ -181,8 +229,9 @@ def main():
         logging.getLogger(facility).setLevel(logging.DEBUG)
 
     ip, port = ('0.0.0.0', 5000)
-    if os.getuid() == 0:
-        port = 80
+    # TODO: maybe useful
+    # if os.getuid() == 0:
+    #     port = 80
 
     server = pywsgi.WSGIServer((ip, port), app, handler_class=WebSocketHandler)
     logger.info("Started server at http://{}:{}".format(ip, port))
