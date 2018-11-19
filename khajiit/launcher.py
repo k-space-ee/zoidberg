@@ -1,4 +1,5 @@
 from multiprocessing import Process
+from typing import List
 
 import messenger
 from controller_node import ControllerNode
@@ -13,7 +14,7 @@ args = parser.parse_args()
 
 class Launcher:
     def __init__(self) -> None:
-        self.nodes = []
+        self.nodes: List[Process] = []
 
     def launch(self, node, *args, **kwargs):
         p = Process(target=node, args=args, kwargs=kwargs)
@@ -28,6 +29,9 @@ class Launcher:
                 process.join()
         except KeyboardInterrupt:
             print("\nKeyboard interrupt")
+
+        for process in self.nodes:
+            process.terminate()
 
         print("Game over!")
 

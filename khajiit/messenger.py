@@ -61,7 +61,8 @@ class Publisher:
 
 class Node:
     def __init__(self, name: str) -> None:
-        self.node = rospy.init_node(name, anonymous=True)
+        # TODO: disabled signals so that the damn rosnodes would die peacefully
+        self.node = rospy.init_node(name, anonymous=True, disable_signals=True)
         self.logger = rospy.loginfo
 
     @staticmethod
