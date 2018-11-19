@@ -1,7 +1,6 @@
-from time import time
+import logging
 
 import serial
-import logging
 
 logger = logging.getLogger("esp32")
 
@@ -9,21 +8,22 @@ logger = logging.getLogger("esp32")
 class Controller:
     SERIAL = "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0"
 
-    MOTOR_SERIAL = serial.Serial(
-        port=SERIAL,
-        baudrate=115200, xonxoff=True, timeout=0.01)
-
     # Ctrl-C doesn't work well,  Lauri tested b"\x03" +
     # safe values 0.2 0.05
-    def __init__(self, factor=0.1, maximum=0.1, motor_serial=None):
-        logger.info("Opening /dev/ttyUSB0")
+    def __init__(self, factor=0.2, maximum=0.08, motor_serial=None):
+        logger.info("Opening %s", self.SERIAL)
 
-        self.motor_serial = motor_serial or self.MOTOR_SERIAL
+        if motor_serial:
+            self.motor_serial = motor_serial
+        else:
+            self.motor_serial = serial.Serial(
+                port=self.SERIAL,
+                baudrate=115200, xonxoff=True, timeout=0.01)
+
         self.factor = factor
         self.maximum = maximum
 
         self.state = [0, 0, 0, 0]
-        self.time = time()
 
     def assert_config(self):
         speeds, shooter = self.state[:-1], self.state[-1]

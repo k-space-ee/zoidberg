@@ -1,40 +1,38 @@
-import rospy
-from geometry_msgs.msg import Twist
-
-from time import time
-
+import messenger
 from controller import Controller
 
-last_callback = time()
 
+class ControllerNode(messenger.Node):
 
-def callback(data):
-    global last_callback
-    start = time()
+    def __init__(self, mock=False, run=True) -> None:
+        super().__init__('motion_node')
+        self.reader = messenger.Reader('/movement', messenger.Messages.motion, callback=self.callback)
+        self.mock = mock
+        if not mock:
+            self.controller = Controller()
 
-    linear = data.linear
-    angular = data.angular
+        if run:
+            self.spin()
 
-    x, y, z = linear.x, linear.y, linear.z
-    ax, ay, az = angular.x, angular.y, angular.z
+    def callback(self):
+        last_reading = self.reader.last_reading
 
-    controller.set_xyw(y, x, az)
-    controller.apply()
+        linear = last_reading.linear
+        angular = last_reading.angular
 
-    end = time()
-    time_taken = end - start
-    time_since_last = end - last_callback
-    rospy.loginfo(
-        ["linear", [x, y, z], "angular", [ax, ay, az], "time taken", time_taken, "time since", time_since_last])
-    last_callback = time()
+        x, y, z = linear.x, linear.y, linear.z
+        ax, ay, az = angular.x, angular.y, angular.z
 
-def listener():
-    rospy.init_node('listener', anonymous=True)
-    # receive here the speeds
-    rospy.Subscriber("/movement", Twist, callback)
-    rospy.spin()
+        if not self.mock:
+            self.controller.set_xyw(y, x, az)
+            self.controller.apply()
+
+        self.node.logger(
+            ["linear", [x, y, z], "angular", [ax, ay, az]],
+        )
 
 
 if __name__ == '__main__':
-    controller = Controller()
-    listener()
+    node = ControllerNode(mock=True, run=False)
+    messenger.test()
+    node.spin()

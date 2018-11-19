@@ -1,32 +1,31 @@
-import gevent
-from gevent import monkey
-from time import time
-import json
-from flask import Flask, render_template
-from flask_sockets import Sockets
-import logging
-import os
-from collections import deque
-from datetime import datetime, timedelta
-
-from config_manager import ConfigManager
-
+# ROS setup before gevent
 import rospy
 from geometry_msgs.msg import Twist
 
-# TODO: hack, should fix this
-# config = ConfigManager("game")
-
 pub = rospy.Publisher('/movement', Twist, queue_size=10)
-rospy.init_node('talker', anonymous=True)
+rospy.init_node('websocket', anonymous=True)
+
+# thread fixes
+import gevent
+from gevent import monkey
+from gevent.queue import Empty
 
 monkey.patch_all(thread=False)
+
+# imports
+import json
+import logging
+from collections import deque
+from time import time
+
+from datetime import datetime, timedelta
+
+from flask import Flask, render_template
+from flask_sockets import Sockets
+
+from config_manager import ConfigManager
+
 logger = logging.getLogger("flask")
-
-# Queue messages from bootstrap
-log_queue = deque(maxlen=1000)
-
-websockets = set()
 
 app = Flask(__name__)
 
@@ -38,10 +37,17 @@ except:
 
 sockets = Sockets(app)
 
+# Queue messages from bootstrap
+log_queue = deque(maxlen=1000)
+
+websockets = set()
+
 
 @app.route('/')
 def group():
-    return render_template('group.html')
+    return render_template(
+        'group.html',
+    )
 
 
 @app.route('/logging')
@@ -72,14 +78,17 @@ def command(websocket):
 
     settings_packet = json.dumps(dict(
         action="settings-packet",
-        sliders=ConfigManager.get_value("color"),
+        sliders=dict(color=ConfigManager.get_value("color")),
         options=game_options
     ))
     websocket.send(settings_packet)
 
     last_press = time()
+    last_press_history = []
 
+    counter = 0
     while not websocket.closed:
+        counter += 1
         websockets.add(websocket)
 
         gevent.sleep(0.005)
@@ -108,12 +117,15 @@ def command(websocket):
                 motion.angular.z = w
 
                 pub.publish(motion)
-                logger.info("Last press %.3f ago", time() - last_press)
+
+                last_press_history = [*last_press_history, time() - last_press][-30:]
                 last_press = time()
+                if counter % 120 == 1:
+                    logger.info("Last press %.3f ago on average", sum(last_press_history) / len(last_press_history))
 
         elif action == "set_settings":
             for k, v in response.items():
-                ConfigManager.set_config_value(k, v)
+                ConfigManager.set_value(k, v)
         elif action == "set_options":
             for k, v in response.items():
                 game_config.get_option("global", k).set_value(v)
@@ -156,6 +168,10 @@ class WebsocketLogHandler(logging.Handler):
 
 
 def main():
+    import os
+    from gevent import pywsgi
+    from geventwebsocket.handler import WebSocketHandler
+
     logger.info("Starting robovision")
 
     logging.basicConfig(
@@ -167,14 +183,10 @@ def main():
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
-
     for facility in "grabber", "recognition", "cli", "flask", "arduino", "gameplay", "threading", "recorder":
         logging.getLogger(facility).addHandler(handler)
         logging.getLogger(facility).addHandler(ws_handler)
         logging.getLogger(facility).setLevel(logging.DEBUG)
-
-    from gevent import pywsgi
-    from geventwebsocket.handler import WebSocketHandler
 
     ip, port = ('0.0.0.0', 5000)
     if os.getuid() == 0:

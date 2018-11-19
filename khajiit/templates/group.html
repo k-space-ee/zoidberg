@@ -20,14 +20,13 @@
             <img id='cameras' style="-webkit-user-select: none; position: relative; top: 0; left: 0;" src="combined/video">
     </div>
     <div class="floatBlock">
-        <h2>
-            <span id="camera">Camera slider</span>
-        </h2>
-        <div id="slider-be-here" class="no-ui-slider">
-            Derp
-        </div>
+        <div id="settings-be-here"></div>
     </div>
-{#    <em>Unbelievable. No CAMERAS here so far</em>#}
+
+    <div id="sliders-be-here" class="container-fluid no-ui-slider">
+        Derp
+    </div>
+
 </div>
 {% endblock %}
 
@@ -49,7 +48,6 @@
             $('#cameras').attr("src", 'combined/debug');
             $('#cameras').css("width", '100%');
         }
-
 </script>
 {% endblock %}
 

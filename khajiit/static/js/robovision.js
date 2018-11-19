@@ -19,6 +19,7 @@ function visualizeGamepads(values) {
 }
 
 var data = {};
+
 function streamGamepad() {
     var state = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
     for (var j = 0; j < state.length; j++) {
@@ -44,11 +45,11 @@ function streamGamepad() {
         }
     }
 
-    console.info("Sending:", data);
+    // console.info("Sending:", data);
     socket.send(JSON.stringify({"action": "gamepad", "data": data}));
     // TODO: remove this when serial write speed has been fixed
-    setTimeout(streamGamepad, 30);
-    // requestAnimationFrame(streamGamepad);
+    // setTimeout(streamGamepad, 30);
+    requestAnimationFrame(streamGamepad);
 }
 
 function scriptSaveAs(filename) {
@@ -147,7 +148,7 @@ $(document).ready(function () {
         if (!firstLoad) {
             location.reload();
         }
-        
+
         firstLoad = false;
         console.log("WebSocket opened");
         window.controllers = {};
@@ -188,8 +189,8 @@ $(document).ready(function () {
 
                 break
             case "settings-packet":
-                console.log(msg.sliders, msg.options);
-                createSomething(msg);
+                console.log(msg.sliders, msg.options, "websocket-settings-packet");
+                createInputNodes(msg);
                 break;
             default:
                 console.info("Unhandled message type", msg.type, "data:", msg);
@@ -198,14 +199,13 @@ $(document).ready(function () {
 
     function setColor(values) {
         var channel = this.target.dataset.channel;
-        var query = {[channel]: values[1]};
-        socket.send(JSON.stringify({"action": "set_settings", [channel]: values[1]}));
+        socket.send(JSON.stringify({"action": "set_settings", [channel]: values}));
     }
 
-    function createSomething(msg) {
+    function createInputNodes(msg) {
 
-        var element = document.getElementById("slider-be-here");
-        var sliders = "";
+        var settingsNode = document.getElementById("settings-be-here");
+        var settings = "";
 
         var spawn_radio = function (index, values) {
             var name = values[0];
@@ -215,31 +215,50 @@ $(document).ready(function () {
             var enabled_B = value_B === values[1][0] ? "checked" : "";
             var radio_A = "<input type='radio' name='" + name + "' value='" + value_A + "'" + enabled_A + "> " + name + " " + value_A + "<br>";
             var radio_B = "<input type='radio' name='" + name + "' value='" + value_B + "'" + enabled_B + "> " + name + " " + value_B + "<br>";
-            sliders += "<h4>" + name + "</h4><br><div>";
-            sliders += radio_A;
-            sliders += radio_B;
+            settings += "<div class='block pull-left'><h4>" + name + "</h4><br><div>";
+            settings += radio_A;
+            settings += radio_B;
             if (values[1].length > 3) {
                 var value_C = values[1][3];
                 var enabled_C = value_C === values[1][0] ? "checked" : "";
                 var radio_C = "<input type='radio' name='" + name + "' value='" + value_C + "'" + enabled_C + "> " + name + " " + value_C + "<br>";
-                sliders += radio_C;
+                settings += radio_C;
             }
-            sliders += "</div>";
-        }
+            settings += "</div></div>";
+        };
 
         $.each(msg.options, spawn_radio);
+        settingsNode.innerHTML = settings;
 
-        var data = msg.sliders;
+        var sliderNode = document.getElementById("sliders-be-here");
+        var sliders = "";
+        var sliderBlock = "";
+        for (var block in msg.sliders) {
+            var slider_mapping = msg.sliders[block];
 
-        var spawn = function (index, values) {
-            var key = values[0];
-            var val = values[1];
-            console.log(key, val);
-            sliders += "<h4>" + key + "</h4><div class='slider' data-channel='" + key + "' data-min='0' data-max='255' data-start='0' data-end='" + val + "'></div> <br>";
+            for (var group in slider_mapping) {
+                var attributes = slider_mapping[group];
+
+                var sliderGroup = "";
+                var keys = "";
+                for (var attribute in attributes) {
+                    var range = attributes[attribute];
+
+                    var key = block + "|" + group + "|" + attribute;
+
+                    keys += attribute + '|';
+
+                    sliderGroup += "<div class='slider' data-channel='" + key + "' data-min='0' data-max='255' data-start='" + range[0] + "' data-end='" + range[1] + "'></div>";
+                    sliderGroup += "<br>";
+                }
+                keys = keys.substring(0, keys.length-1);
+                sliderBlock += "<div class='col-lg-3 col-sm-6'><div class='floatBlock full-width'><h4>" + group.toUpperCase() + " " + keys + "</h4>" + sliderGroup + "</div></div>";
+            }
         }
 
-        $.each(data, spawn);
-        element.innerHTML = sliders;
+        sliders += "<div class='row'>" + sliderBlock + "</div>";
+        sliderNode.innerHTML = sliders;
+
         sliderInit();
 
         $('input[type=radio]').change(function () {
@@ -248,7 +267,6 @@ $(document).ready(function () {
     }
 
     function sliderInit() {
-
         var sliders = $(".slider");
         console.log('sliders', sliders);
         for (var i = 0; i < sliders.length; i++) {
@@ -256,6 +274,7 @@ $(document).ready(function () {
             var max = parseInt(sliders[i].getAttribute("data-max"));
             var start = parseInt(sliders[i].getAttribute("data-start"));
             var end = parseInt(sliders[i].getAttribute("data-end"));
+
             noUiSlider.create(sliders[i], {
                 start: [start, end],
                 behaviour: 'drag',
@@ -275,8 +294,5 @@ $(document).ready(function () {
             });
             sliders[i].noUiSlider.on('change', setColor);
         }
-
     }
-
-
 });
