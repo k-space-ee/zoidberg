@@ -24,11 +24,11 @@ class ControllerNode(messenger.Node):
         ax, ay, az = angular.x, angular.y, angular.z
 
         if not self.mock:
-            self.controller.set_xyw(y, x, az)
+            self.controller.set_xyw(x, y, az)
             self.controller.apply()
 
         self.logger(
-            ["linear", [x, y, z], "angular", [ax, ay, az]],
+            ["speeds", [x, y, az]],
         )
 
 

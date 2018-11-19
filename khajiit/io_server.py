@@ -108,7 +108,7 @@ def command(websocket):
                 y = controls.pop("controller0.axis1") * 0.33
                 w = controls.pop("controller0.axis3") * 0.2
 
-                publisher.publish(x=x, y=y, az=w)
+                publisher.publish(x=x, y=-y, az=-w)
 
                 last_press_history = [*last_press_history, time() - last_press][-30:]
                 last_press = time()

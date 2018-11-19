@@ -3,6 +3,12 @@ from multiprocessing import Process
 import messenger
 from controller_node import ControllerNode
 from kicker_node import KickerNode
+from argparse import ArgumentParser
+
+parser = ArgumentParser()
+parser.add_argument("-m", "--mock", dest="mock", action="store_true", default=False,
+                    help="no actual actuators are invoked", )
+args = parser.parse_args()
 
 
 class Launcher:
@@ -35,7 +41,7 @@ launcer = Launcher()
 
 launcer.launch(messenger.core)
 launcer.launch(server)
-launcer.launch(ControllerNode, mock=True)
-launcer.launch(KickerNode, mock=True)
+launcer.launch(ControllerNode, mock=args.mock)
+launcer.launch(KickerNode, mock=args.mock)
 
 launcer.spin()
