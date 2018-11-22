@@ -1,11 +1,14 @@
 # ROS setup before gevent
 import messenger
+from websocket_log_handler import WebsocketLogHandler
 
 movement_publisher = messenger.Publisher('/movement', messenger.Messages.motion)
 kicker_publisher = messenger.Publisher('/kicker_speed', messenger.Messages.integer)
 command_publisher = messenger.Publisher('/command', messenger.Messages.string)
 strategy_state = messenger.Listener('/strategy', messenger.Messages.string)
 canbus_state = messenger.Listener('/canbus_message', messenger.Messages.string)
+websocket_log_handler = WebsocketLogHandler()
+logging_state = messenger.Listener('/rosout_agg', messenger.Messages.logging, callback=websocket_log_handler.emit)
 node = messenger.Node('websocket', disable_signals=True)
 
 # thread fixes
@@ -16,18 +19,14 @@ monkey.patch_all(thread=False)
 
 # imports
 import json
-import logging
-from collections import deque
 from time import time
-
-from datetime import datetime, timedelta
 
 from flask import Flask, render_template
 from flask_sockets import Sockets
 
 from config_manager import ConfigManager
 
-logger = logging.getLogger("flask")
+logger = node.logger
 
 app = Flask(__name__)
 
@@ -40,15 +39,12 @@ except:
 sockets = Sockets(app)
 
 # Queue messages from bootstrap
-log_queue = deque(maxlen=1000)
-websockets = set()
+websockets = websocket_log_handler.websockets
 
 
 @app.route('/')
 def group():
-    return render_template(
-        'group.html',
-    )
+    return render_template('group.html')
 
 
 @app.route('/logging')
@@ -59,7 +55,7 @@ def logging_view():
 @sockets.route('/')
 def command(websocket):
     # send logging history to ws
-    for buf in log_queue:
+    for buf in websocket_log_handler.queue:
         websocket.send(buf)
 
     game_config = ConfigManager.get_value('game')
@@ -181,54 +177,13 @@ def command(websocket):
     return b""
 
 
-class MyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-        if isinstance(obj, timedelta):
-            f = obj.total_seconds()
-            mins = f // 60
-            return "%02d:%06.03f" % (mins, f % 60)
-        return json.JSONEncoder.default(self, obj)
-
-
-class WebsocketLogHandler(logging.Handler):
-    def __init__(self):
-        logging.Handler.__init__(self)
-        self.started = datetime.utcnow()
-
-    def emit(self, record):
-        timestamp = datetime.utcfromtimestamp(record.created)
-        buf = json.dumps(dict(
-            action="log-entry",
-            created=timestamp,
-            uptime=timestamp - self.started,
-            message=record.msg % record.args,
-            severity=record.levelname.lower()), cls=MyEncoder)
-        log_queue.append(buf)
-        for websocket in websockets:
-            websocket.send(buf)
-
-
 def main():
     from gevent import pywsgi
     from geventwebsocket.handler import WebSocketHandler
 
+    messenger.ConnectPythonLoggingToROS.reconnect('config_manager')
+
     logger.info("Starting robovision")
-
-    logging.basicConfig(
-        filename="/tmp/robovision.log",
-        level=logging.INFO)
-
-    ws_handler = WebsocketLogHandler()
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    for facility in "grabber", "recognition", "cli", "flask", "arduino", "gameplay", "threading", "recorder":
-        logging.getLogger(facility).addHandler(handler)
-        logging.getLogger(facility).addHandler(ws_handler)
-        logging.getLogger(facility).setLevel(logging.DEBUG)
 
     ip, port = ('0.0.0.0', 5000)
     # TODO: maybe useful

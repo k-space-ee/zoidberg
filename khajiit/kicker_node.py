@@ -16,17 +16,15 @@ class KickerNode(messenger.Node):
         if run:
             self.spin()
 
-    def callback(self):
-        speed = self.listener.last_reading
-
+    def callback(self, speed):
+        last_rpm = None
         if not self.mock:
             self.controller.speed = speed
             if self.controller.last_msg:
                 self.publisher.command(**self.controller.last_msg)
+                last_rpm = self.controller.last_rpm
 
-        self.logger(
-            ["speed", speed],
-        )
+        self.loginfo_throttle(1, f"set rpm {speed}, current: {last_rpm}")
 
 
 if __name__ == '__main__':

@@ -1,11 +1,48 @@
 import json
+import logging
 from typing import Callable, Dict, Optional
 
 import rospy
 from geometry_msgs.msg import Twist
 from std_msgs.msg import String, Int32
+from rosgraph_msgs.msg import Log
 
 from time import time, sleep
+
+
+# ROS: the R stands **tarded
+# https://github.com/ros/ros_comm/issues/1384
+# https://gist.github.com/nzjrs/8712011
+class ConnectPythonLoggingToROS(logging.Handler):
+    MAP = {
+        logging.DEBUG: rospy.logdebug,
+        logging.INFO: rospy.loginfo,
+        logging.WARNING: rospy.logwarn,
+        logging.ERROR: rospy.logerr,
+        logging.CRITICAL: rospy.logfatal
+    }
+
+    def emit(self, record):
+        try:
+            self.MAP[record.levelno]("%s: %s" % (record.name, record.msg), *record.args)
+        except KeyError:
+            rospy.logerr("unknown log level %s LOG: %s: %s" % (record.levelno, record.name, record.msg))
+
+    @classmethod
+    def reconnect(cls, loggers):
+        key: str
+        logger: logging.Logger
+        for key, logger in logging.Logger.manager.loggerDict.items():
+            if key not in loggers:
+                continue
+
+            has_handlers = getattr(logger, 'handlers', None)
+            if has_handlers is not None and not key.startswith('ros') and logger.__module__ == 'rosgraph.roslogging':
+
+                # reconnect logging calls which are children of this to the ros log system
+                if not any(isinstance(handler, cls) for handler in logger.handlers):
+                    logger.addHandler(cls())
+                    logger.info("Logger directed to ROS")
 
 
 class TwistWrapper:
@@ -25,6 +62,7 @@ class Messages:
     motion = TwistWrapper
     string = String
     integer = Int32
+    logging = Log
 
 
 class Listener:
@@ -42,7 +80,7 @@ class Listener:
         self.last_reading = data
         self.last_reading_time = time()
         if self.callback:
-            self.callback()
+            self.callback(data)
 
     @property
     def package(self) -> Optional[Dict]:
@@ -74,11 +112,41 @@ class Publisher:
         self.publish(command)
 
 
+class LoggerWrapper:
+    debug = rospy.logdebug
+    debug_throttle = rospy.logdebug_throttle
+    info = rospy.loginfo
+    info_throttle = rospy.loginfo_throttle
+    warning = rospy.logwarn
+    warning_throttle = rospy.logwarn_throttle
+    error = rospy.logerr
+    error_throttle = rospy.logerr_throttle
+    critical = rospy.logfatal
+    critical_throttle = rospy.logfatal_throttle
+
+
 class Node:
-    def __init__(self, name: str, disable_signals=True) -> None:
+    def __init__(self, name: str, disable_signals=True, existing_loggers=None) -> None:
         # TODO: disabled signals so that the damn rosnodes would die peacefully
         self.node = rospy.init_node(name, anonymous=True, disable_signals=disable_signals)
-        self.logger = rospy.loginfo
+
+        self.logdebug = LoggerWrapper.debug
+        self.logdebug_throttle = LoggerWrapper.debug_throttle
+        self.loginfo = LoggerWrapper.info
+        self.loginfo_throttle = LoggerWrapper.info_throttle
+        self.logwarning = LoggerWrapper.warning
+        self.logwarning_throttle = LoggerWrapper.warning_throttle
+        self.logerror = LoggerWrapper.error
+        self.logerror_throttle = LoggerWrapper.error_throttle
+        self.logcritical = LoggerWrapper.critical
+        self.logcritical_throttle = LoggerWrapper.critical_throttle
+        self.logger = LoggerWrapper
+
+        self.register_existing_loggers(*(existing_loggers or []))
+
+    @staticmethod
+    def register_existing_loggers(*loggers):
+        ConnectPythonLoggingToROS.reconnect(loggers)
 
     @staticmethod
     def spin():

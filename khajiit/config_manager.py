@@ -15,7 +15,7 @@ class ConfigManager:
     publisher = messenger.Publisher('settings_changed', messenger.Messages.string)
 
     def __init__(self, basename):
-        logging.info("New config %s", basename)
+        logger.info("New config %s", basename)
         self.path = "config/%s.yaml" % basename
         ConfigManager.INSTANCE_MAP[basename] = self
 
@@ -45,6 +45,7 @@ class ConfigManager:
             section_dict[option] = value
             instance.config[section] = section_dict
             instance.save()
+            logger.info("%s -> %s", key, value)
 
         cls.publisher.publish(basename)
 

@@ -4,19 +4,18 @@ from controller import Controller
 
 class ControllerNode(messenger.Node):
 
-    def __init__(self, mock=False, run=True) -> None:
-        super().__init__('motion_node')
+    def __init__(self, mock=False, run=True, **kwargs) -> None:
+        super().__init__('motion_node', existing_loggers=['esp32'], **kwargs)
         self.listener = messenger.Listener('/movement', messenger.Messages.motion, callback=self.callback)
         self.mock = mock
         if not mock:
             self.controller = Controller()
 
+        self.logger.info("Start")
         if run:
             self.spin()
 
-    def callback(self):
-        last_reading = self.listener.last_reading
-
+    def callback(self, last_reading):
         linear = last_reading.linear
         angular = last_reading.angular
 
@@ -27,9 +26,7 @@ class ControllerNode(messenger.Node):
             self.controller.set_xyw(x, y, az)
             self.controller.apply()
 
-        # self.logger(
-        #     ["speeds", [x, y, az]],
-        # )
+        self.loginfo_throttle(1, "speeds %.2f %.2f %.2f" % (x, y, az))
 
 
 if __name__ == '__main__':

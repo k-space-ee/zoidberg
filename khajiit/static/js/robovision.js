@@ -182,7 +182,7 @@ $(document).ready(function () {
         switch (msg.action) {
             case "log-entry":
                 // console[msg.severity].apply(this, [msg.message]);
-                $("#log").prepend("<li class=\"" + msg.severity + "\">" + msg.uptime + ": " + msg.message + "</li>");
+                $("#log").prepend("<li class=\"" + msg.severity + "\">" + msg.uptime + ": <strong>" + msg.file + "</strong>:" + msg.message + "</li>");
 
                 break
             case "sensors":
