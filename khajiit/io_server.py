@@ -41,7 +41,6 @@ sockets = Sockets(app)
 
 # Queue messages from bootstrap
 log_queue = deque(maxlen=1000)
-
 websockets = set()
 
 
@@ -59,24 +58,23 @@ def logging_view():
 
 @sockets.route('/')
 def command(websocket):
-    # Todo: what is this
-    # for buf in log_queue:
-    #     websocket.send(buf)
+    # send logging history to ws
+    for buf in log_queue:
+        websocket.send(buf)
 
-    game_config = ConfigManager.instance("game")
+    game_config = ConfigManager.get_value('game')
+    if not game_config:
+        ConfigManager.set_value('game|global|field_id', 'A')
+        ConfigManager.set_value('game|global|robot_id', 'A')
+        ConfigManager.set_value('game|global|target goal color', 'blue')
+        ConfigManager.set_value('game|global|gameplay status', 'disabled')
 
-    def get_game_options():
-        if not game_config:
-            logger.error("No game config found")
-            return []
-        return [
-            ("field_id", [game_config.get_value("global", "field_id"), "A", "B", "Z"]),
-            ("robot_id", [game_config.get_value("global", "robot_id"), "A", "B"]),
-            ("target goal color", [game_config.get_value("global", "target goal color"), "yellow", "blue"]),
-            ("gameplay status", [game_config.get_value("global", "gameplay status"), "disabled", "enabled"]),
-        ]
-
-    game_options = get_game_options()
+    game_options = [
+        ("field_id", [ConfigManager.get_value("game|global|field_id"), "A", "B", "Z"]),
+        ("robot_id", [ConfigManager.get_value("game|global|robot_id"), "A", "B"]),
+        ("target goal color", [ConfigManager.get_value("game|global|target goal color"), "purple", "blue"]),
+        ("gameplay status", [ConfigManager.get_value("game|global|gameplay status"), "disabled", "enabled"]),
+    ]
 
     settings_packet = json.dumps(dict(
         action="settings-packet",
@@ -174,8 +172,7 @@ def command(websocket):
                 ConfigManager.set_value(k, v)
         elif action == "set_options":
             for k, v in response.items():
-                game_config.get_option("global", k).set_value(v)
-                game_config.save()
+                ConfigManager.set_value(f"game|global|{k}", v)
         else:
             logger.error("Unhandled action: %s", str(action))
 

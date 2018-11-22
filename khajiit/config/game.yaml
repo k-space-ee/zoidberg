@@ -1,0 +1,5 @@
+global:
+  field_id: B
+  gameplay status: disabled
+  robot_id: A
+  target goal color: purple
