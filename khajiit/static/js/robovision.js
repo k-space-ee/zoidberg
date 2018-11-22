@@ -37,7 +37,7 @@ function streamGamepad() {
                 val = val.value;
             }
             var buttonKey = "controller" + state[j].index + ".button" + i;
-            if (controllers[buttonKey] != pressed) {
+            if (controllers[buttonKey] != pressed || pressed) {
                 data[buttonKey] = pressed;
             }
             controllers[buttonKey] = pressed;

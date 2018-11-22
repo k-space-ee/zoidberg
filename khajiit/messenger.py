@@ -1,4 +1,5 @@
-from typing import Callable
+import json
+from typing import Callable, Dict, Optional
 
 import rospy
 from geometry_msgs.msg import Twist
@@ -26,7 +27,7 @@ class Messages:
     integer = Int32
 
 
-class Reader:
+class Listener:
     def __init__(self, topic: str, msg: Callable, callback: Callable = None) -> None:
         self.topic = topic
         self.msg = msg
@@ -35,13 +36,22 @@ class Reader:
         self.callback = callback
 
         msg = getattr(msg, 'message', msg)
-        self.subscriber = rospy.Subscriber(topic, msg, self.recieve, queue_size=10)
+        self.subscriber = rospy.Subscriber(topic, msg, self.receive, queue_size=10)
 
-    def recieve(self, data):
+    def receive(self, data):
         self.last_reading = data
         self.last_reading_time = time()
         if self.callback:
             self.callback()
+
+    @property
+    def package(self) -> Optional[Dict]:
+        if not self.last_reading or not self.msg != Messages.string:
+            return None
+        try:
+            return json.loads(self.last_reading)
+        except:
+            return None
 
 
 class Publisher:
@@ -58,11 +68,16 @@ class Publisher:
         msg = getattr(message, 'msg', message)
         self.publisher.publish(msg)
 
+    def command(self, **commands):
+        assert self.msg == Messages.string, 'Commands available only on Messages.string mode'
+        command = json.dumps(commands)
+        self.publish(command)
+
 
 class Node:
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, disable_signals=True) -> None:
         # TODO: disabled signals so that the damn rosnodes would die peacefully
-        self.node = rospy.init_node(name, anonymous=True, disable_signals=True)
+        self.node = rospy.init_node(name, anonymous=True, disable_signals=disable_signals)
         self.logger = rospy.loginfo
 
     @staticmethod
@@ -112,5 +127,5 @@ def core():
 
 if __name__ == '__main__':
     node = Node("messenger")
-    reader = Reader("/messenger", Messages.motion)
+    reader = Listener("/messenger", Messages.motion)
     test()

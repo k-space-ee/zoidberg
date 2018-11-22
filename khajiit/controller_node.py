@@ -6,7 +6,7 @@ class ControllerNode(messenger.Node):
 
     def __init__(self, mock=False, run=True) -> None:
         super().__init__('motion_node')
-        self.reader = messenger.Reader('/movement', messenger.Messages.motion, callback=self.callback)
+        self.listener = messenger.Listener('/movement', messenger.Messages.motion, callback=self.callback)
         self.mock = mock
         if not mock:
             self.controller = Controller()
@@ -15,7 +15,7 @@ class ControllerNode(messenger.Node):
             self.spin()
 
     def callback(self):
-        last_reading = self.reader.last_reading
+        last_reading = self.listener.last_reading
 
         linear = last_reading.linear
         angular = last_reading.angular

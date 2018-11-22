@@ -1,7 +1,12 @@
 # ROS setup before gevent
 import messenger
-publisher = messenger.Publisher('/movement', messenger.Messages.motion)
-node = messenger.Node('websocket')
+
+movement_publisher = messenger.Publisher('/movement', messenger.Messages.motion)
+kicker_publisher = messenger.Publisher('/kicker_speed', messenger.Messages.integer)
+command_publisher = messenger.Publisher('/command', messenger.Messages.string)
+strategy_state = messenger.Listener('/strategy', messenger.Messages.string)
+canbus_state = messenger.Listener('/canbus_message', messenger.Messages.string)
+node = messenger.Node('websocket', disable_signals=True)
 
 # thread fixes
 import gevent
@@ -102,19 +107,25 @@ def command(websocket):
 
         action = response.pop("action", None)
 
+        game_package = strategy_state.package or {}
+        canbus_package = canbus_state.package or {}
+
+        gameplay = game_package.get('gameplay', None)
+        target_goal_angle = game_package.get('target_goal_angle', 0)
+        average_rpm = canbus_package.get('average_rpm', 0)
+
         if action == "gamepad":
             controls = response.get("data")
+            # print(controls)
 
             if controls:
-                toggle_gameplay = controls.get("controller0.button8") or controls.get("controller0.button11")
-                gameplay = False
-                target_goal_angle = round(0)
-                last_rpm = 0
+                commands = {}
 
-                if toggle_gameplay:
-                    gameplay = True
-
-                if not gameplay:
+                if gameplay:
+                    toggle_gameplay = controls.get("controller0.button8") or controls.get("controller0.button11")
+                    if toggle_gameplay:
+                        commands['toggle_gameplay'] = None
+                else:
                     # # Manual control of the robot
                     x = controls.pop("controller0.axis0", 0) * 0.33
                     y = controls.pop("controller0.axis1", 0) * 0.33
@@ -124,7 +135,7 @@ def command(websocket):
                         y = 0.15
 
                     if x or y or w:
-                        publisher.publish(x=x, y=-y, az=-w)
+                        movement_publisher.publish(x=x, y=-y, az=-w)
 
                     delta = controls.pop("controller0.button12", 0)
                     delta = delta or -controls.pop("controller0.button13", 0)
@@ -134,29 +145,23 @@ def command(websocket):
                         logger.info("PWM+: %.0f", rpm)
 
                     if controls.get("controller0.button0", None):
-                        logger.info(f"drive_towards_target_goal: {target_goal_angle} rpm:{rpm} speed:{last_rpm}")
-                        # gameplay.arduino.set_thrower(rpm)
+                        logger.info(f"drive_towards_target_goal: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
+                        kicker_publisher.publish(rpm)
                         # no driving backwards when angle error
-                        # gameplay.drive_towards_target_goal(
-                        #     backtrack=False,
-                        #     speed_factor=0.5)
+                        command_publisher.command(drive_towards_target_goal=dict(backtrack=False, speed_factor=0.5))
 
-                    elif controls.get("controller0.button5", None):
-                        logger.info(f"set_thrower: {target_goal_angle} rpm:{rpm} speed:{last_rpm}")
-                        # gameplay.arduino.set_thrower(rpm)
-
-                    if controls.get("controller0.button1", None):
-                        logger.info(f"kick: {target_goal_angle} rpm:{rpm} speed:{last_rpm}")
-                        # gameplay.kick()
+                    if controls.get("controller0.button5", None):
+                        logger.info(f"kick: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
+                        kicker_publisher.publish(rpm)
 
                     if controls.get("controller0.button6", None):
-                        # gameplay.drive_to_field_center()
                         logger.info("Drive to center")
+                        command_publisher.command(drive_to_field_center=None)
 
                     if controls.get("controller0.button2", None):
-                        # gameplay.drive_towards_target_goal(backtrack=False, speed_factor=0.5)
-                        # gameplay.kick()
-                        logger.info(f"drive_towards_target_goal: {target_goal_angle} speed:{last_rpm}")
+                        logger.info(f"drive_towards_target_goal: {target_goal_angle} speed:{average_rpm}")
+                        command_publisher.command(drive_towards_target_goal=dict(backtrack=False, speed_factor=0.5))
+                        kicker_publisher.publish(rpm)
 
                 last_press_history = [*last_press_history, time() - last_press][-30:]
                 last_press = time()

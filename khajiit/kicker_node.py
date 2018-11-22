@@ -6,7 +6,7 @@ class KickerNode(messenger.Node):
 
     def __init__(self, mock=False, run=True) -> None:
         super().__init__('kicker_node')
-        self.reader = messenger.Reader('/kicker_speed', messenger.Messages.integer, callback=self.callback)
+        self.listener = messenger.Listener('/kicker_speed', messenger.Messages.integer, callback=self.callback)
         self.publisher = messenger.Publisher('/canbus_message', messenger.Messages.string)
 
         self.mock = mock
@@ -17,11 +17,12 @@ class KickerNode(messenger.Node):
             self.spin()
 
     def callback(self):
-        speed = self.reader.last_reading
+        speed = self.listener.last_reading
 
         if not self.mock:
             self.controller.speed = speed
-            self.publisher.publish(self.controller.last_raw)
+            if self.controller.last_msg:
+                self.publisher.command(**self.controller.last_msg)
 
         self.logger(
             ["speed", speed],
