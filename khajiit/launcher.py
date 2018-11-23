@@ -9,6 +9,8 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("-m", "--mock", dest="mock", action="store_true", default=False,
                     help="no actual actuators are invoked", )
+parser.add_argument("-n", "--nuke", dest="nuke", action="store_true", default=False,
+                    help="nuke ros on exit", )
 args = parser.parse_args()
 
 
@@ -29,6 +31,9 @@ class Launcher:
                 process.join()
         except KeyboardInterrupt:
             print("\nKeyboard interrupt")
+            if args.nuke:
+                import os
+                os.system('pkill -f ros')
 
         for process in self.nodes:
             process.terminate()
@@ -41,10 +46,16 @@ def server():
     io_server.main()
 
 
+def image_server():
+    import image_server
+    image_server.main()
+
+
 launcer = Launcher()
 
 launcer.launch(messenger.core)
 launcer.launch(server)
+launcer.launch(image_server)
 launcer.launch(ControllerNode, mock=args.mock)
 launcer.launch(KickerNode, mock=args.mock)
 

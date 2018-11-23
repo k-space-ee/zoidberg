@@ -29,7 +29,7 @@ class ConnectPythonLoggingToROS(logging.Handler):
             rospy.logerr("unknown log level %s LOG: %s: %s" % (record.levelno, record.name, record.msg))
 
     @classmethod
-    def reconnect(cls, loggers):
+    def reconnect(cls, *loggers):
         key: str
         logger: logging.Logger
         for key, logger in logging.Logger.manager.loggerDict.items():
@@ -146,7 +146,7 @@ class Node:
 
     @staticmethod
     def register_existing_loggers(*loggers):
-        ConnectPythonLoggingToROS.reconnect(loggers)
+        ConnectPythonLoggingToROS.reconnect(*loggers)
 
     @staticmethod
     def spin():

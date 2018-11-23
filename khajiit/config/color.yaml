@@ -13,14 +13,14 @@ field:
   - 0
   - 149
   chroma red:
-  - 178
-  - 229
+  - 177
+  - 228
   luma:
   - 64
   - 255
 goal A:
   chroma blue:
-  - 89
+  - 90
   - 255
   chroma red:
   - 116

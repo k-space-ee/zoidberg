@@ -1,5 +1,6 @@
 # ROS setup before gevent
 import messenger
+from config_manager import ConfigManager
 from websocket_log_handler import WebsocketLogHandler
 
 movement_publisher = messenger.Publisher('/movement', messenger.Messages.motion)
@@ -21,10 +22,9 @@ monkey.patch_all(thread=False)
 import json
 from time import time
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect
 from flask_sockets import Sockets
 
-from config_manager import ConfigManager
 
 logger = node.logger
 
@@ -35,6 +35,11 @@ try:
         app.config['SECRET_KEY'] = fh.read()
 except:
     app.config['SECRET_KEY'] = 'secret!'
+
+ip, port = ('0.0.0.0', 5000)
+# TODO: maybe useful
+# if os.getuid() == 0:
+#     port = 80
 
 sockets = Sockets(app)
 
@@ -50,6 +55,13 @@ def group():
 @app.route('/logging')
 def logging_view():
     return render_template('logging.html')
+
+# redirect to image server
+@app.route('/combined/<path:type_str>')
+def video_combined(type_str):
+    url = request.url
+    url = url.replace(str(port), '5005')
+    return redirect(url)
 
 
 @sockets.route('/')
@@ -184,11 +196,6 @@ def main():
     messenger.ConnectPythonLoggingToROS.reconnect('config_manager')
 
     logger.info("Starting robovision")
-
-    ip, port = ('0.0.0.0', 5000)
-    # TODO: maybe useful
-    # if os.getuid() == 0:
-    #     port = 80
 
     server = pywsgi.WSGIServer((ip, port), app, handler_class=WebSocketHandler)
     logger.info("Started server at http://{}:{}".format(ip, port))
