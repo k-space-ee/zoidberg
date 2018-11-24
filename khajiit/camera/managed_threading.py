@@ -118,6 +118,16 @@ class ManagedThread(Thread):
     def on_disabled(self, *args):
         pass
 
+    @property
+    def average_fps(self):
+        if self.rate:
+            return len(self.rate) / sum(self.rate)
+
+    @property
+    def average_latency(self):
+        if self.latency:
+            return sum(self.latency) / len(self.latency)
+
     def run(self):
         self.tid = libc.syscall(186)
         logger.info("%s thread spawned with PID %d", self.__class__.__name__, self.tid)

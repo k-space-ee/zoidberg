@@ -75,6 +75,19 @@ class Messages:
     logging = Log
 
 
+class LoggerWrapper:
+    debug = rospy.logdebug
+    debug_throttle = rospy.logdebug_throttle
+    info = rospy.loginfo
+    info_throttle = rospy.loginfo_throttle
+    warning = rospy.logwarn
+    warning_throttle = rospy.logwarn_throttle
+    error = rospy.logerr
+    error_throttle = rospy.logerr_throttle
+    critical = rospy.logfatal
+    critical_throttle = rospy.logfatal_throttle
+
+
 class Listener:
     def __init__(self, topic: str, msg: Callable, callback: Callable = None) -> None:
         self.topic = topic
@@ -85,6 +98,7 @@ class Listener:
 
         msg = getattr(msg, 'message', msg)
         self.subscriber = rospy.Subscriber(topic, msg, self.receive, queue_size=10)
+        self.logger = LoggerWrapper
 
     def receive(self, data):
         self.last_reading = data
@@ -111,6 +125,7 @@ class Publisher:
         self.last_reading_time = 0
         msg = getattr(msg, 'message', msg)
         self.publisher = rospy.Publisher(topic, msg, queue_size=10)
+        self.logger = LoggerWrapper
 
     def publish(self, *args, **kwargs):
         message = self.msg(*args, **kwargs)
@@ -121,19 +136,6 @@ class Publisher:
         assert self.msg == Messages.string, 'Commands available only on Messages.string mode'
         command = json.dumps(commands, indent=1)
         self.publish(command)
-
-
-class LoggerWrapper:
-    debug = rospy.logdebug
-    debug_throttle = rospy.logdebug_throttle
-    info = rospy.loginfo
-    info_throttle = rospy.loginfo_throttle
-    warning = rospy.logwarn
-    warning_throttle = rospy.logwarn_throttle
-    error = rospy.logerr
-    error_throttle = rospy.logerr_throttle
-    critical = rospy.logfatal
-    critical_throttle = rospy.logfatal_throttle
 
 
 class Node:

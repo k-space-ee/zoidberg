@@ -14,8 +14,6 @@ monkey.patch_all(thread=False)
 
 from time import sleep
 from flask import Flask, Response
-import logging
-import os
 from collections import deque
 from camera.recorder import Recorder
 from camera.visualization import Visualizer
@@ -32,7 +30,8 @@ app = Flask(__name__)
 
 # Build pipeline
 grabber = PanoramaGrabber()
-image_recognizer = ImageRecognizer(grabber, config_manager=ConfigManager, publisher=recognition_publisher)
+image_recognizer = ImageRecognizer(
+    grabber, config_manager=ConfigManager, publisher=recognition_publisher, produce_rate=10)
 visualizer = Visualizer(image_recognizer, framedrop=1)
 # recorder = Recorder(grabber)
 
@@ -64,7 +63,7 @@ def video_combined(type_str):
 def main():
     from gevent import pywsgi
 
-    messenger.ConnectPythonLoggingToROS.reconnect('image_recognition', 'visualization')
+    messenger.ConnectPythonLoggingToROS.reconnect('image_recognition', 'visualization', 'threading')
 
     ip, port = ('0.0.0.0', 5005)
 

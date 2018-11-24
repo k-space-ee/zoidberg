@@ -463,17 +463,26 @@ class ImageRecognition:
 class ImageRecognizer(ManagedThread):
     last_frame = None
 
-    def __init__(self, upstream_producer=None, framedrop=0, lossy=True, config_manager=None, publisher=None):
+    def __init__(self, upstream_producer=None, framedrop=0, lossy=True, config_manager=None, publisher=None, produce_rate=0):
         super().__init__(upstream_producer, framedrop, lossy)
         self.camera_config = {}
         self.color_config = {}
         self.config_manager = config_manager
         self.publisher = publisher
+        self.produce_rate = produce_rate
+        self.counter = 0
         self.refresh_config()
-        self.start_time = time()
+        self.roundtrip_start = time()
+
+    def log_roundtrip(self):
+        roundtrip = 1 / (time() - self.roundtrip_start)
+        self.roundtrip_start = time()
+        self.publisher.logger.info_throttle(
+            0.5,
+            "fps:%.0f lat:%.2f roundtrip:%.2f" % (self.average_fps or 0, self.average_latency or 0, roundtrip))
 
     def refresh_config(self, *_):
-        logger.info("settings update recieved")
+        logger.info("settings update received")
         if self.config_manager:
             self.camera_config = self.config_manager.get_value('camera')
             self.color_config = self.config_manager.get_value('color')
@@ -484,15 +493,18 @@ class ImageRecognizer(ManagedThread):
             camera_config=self.camera_config,
             color_config=self.color_config,
         )
-        self.produce(r, self.grabber)
-        self.last_frame = r
 
-        # print(time() - self.start_time)
-        self.start_time = time()
+        self.counter += 1
+        if self.produce_rate and (self.counter % self.produce_rate) == 0:
+            # TODO: critical, whut is this
+            self.produce(r, self.grabber)
+            self.last_frame = r
+
         if self.publisher:
             serialized = r.serialize()
             self.publisher.command(**serialized)
 
+        self.log_roundtrip()
 
 class Player(ManagedThread):
     """
