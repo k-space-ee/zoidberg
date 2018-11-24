@@ -98,7 +98,7 @@ def command(websocket):
     last_press_history = []
 
     counter = 0
-    rpm = 6500
+    rpm = 1000
     while not websocket.closed:
         counter += 1
         websockets.add(websocket)
