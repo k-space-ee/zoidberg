@@ -441,8 +441,9 @@ class Gameplay:
         return self.target_goal_distance
 
     def step(self, recognition, *args):
-        if not recognition:
+        if not recognition or not self.is_enabled:
             return
+
         self.recognition = recognition
 
         if self.target_goal:
@@ -456,21 +457,10 @@ class Gameplay:
         self.update_recent_closest_balls()
 
         self.motors.apply()
-        # sleep(0.01)
-
-    def on_enabled(self, *args):
-        self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('enabled')
-        self.motors.set_grabber(True)
-
-    def on_disabled(self, *args):
-        self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('disabled')
-        self.motors.set_grabber(False)
-        self.motors.set_xyw(0, 0, 0)
 
     def start(self):
         self.motors.start()
         self.state = ForceCenter(self)
-        ManagedThread.start(self)
 
 
 class StateNode:

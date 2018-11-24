@@ -70,26 +70,29 @@ def command(websocket):
     for buf in websocket_log_handler.queue:
         websocket.send(buf)
 
-    game_config = ConfigManager.get_value('game')
-    if not game_config:
-        ConfigManager.set_value('game|global|field_id', 'A')
-        ConfigManager.set_value('game|global|robot_id', 'A')
-        ConfigManager.set_value('game|global|target goal color', 'blue')
-        ConfigManager.set_value('game|global|gameplay status', 'disabled')
+    def send_settings_packet():
+        game_config = ConfigManager.get_value('game')
+        if not game_config:
+            ConfigManager.set_value('game|global|field_id', 'A')
+            ConfigManager.set_value('game|global|robot_id', 'A')
+            ConfigManager.set_value('game|global|target goal color', 'blue')
+            ConfigManager.set_value('game|global|gameplay status', 'disabled')
 
-    game_options = [
-        ("field_id", [ConfigManager.get_value("game|global|field_id"), "A", "B", "Z"]),
-        ("robot_id", [ConfigManager.get_value("game|global|robot_id"), "A", "B"]),
-        ("target goal color", [ConfigManager.get_value("game|global|target goal color"), "purple", "blue"]),
-        ("gameplay status", [ConfigManager.get_value("game|global|gameplay status"), "disabled", "enabled"]),
-    ]
+        game_options = [
+            ("field_id", [ConfigManager.get_value("game|global|field_id"), "A", "B", "Z"]),
+            ("robot_id", [ConfigManager.get_value("game|global|robot_id"), "A", "B"]),
+            ("target goal color", [ConfigManager.get_value("game|global|target goal color"), "purple", "blue"]),
+            ("gameplay status", [ConfigManager.get_value("game|global|gameplay status"), "disabled", "enabled"]),
+        ]
 
-    settings_packet = json.dumps(dict(
-        action="settings-packet",
-        sliders=dict(color=ConfigManager.get_value("color")),
-        options=game_options
-    ))
-    websocket.send(settings_packet)
+        settings_packet = json.dumps(dict(
+            action="settings-packet",
+            sliders=dict(color=ConfigManager.get_value("color")),
+            options=game_options
+        ))
+        websocket.send(settings_packet)
+
+    send_settings_packet()
 
     last_press = time()
     last_press_history = []
@@ -116,7 +119,7 @@ def command(websocket):
         game_package = strategy_state.package or {}
         canbus_package = canbus_state.package or {}
 
-        gameplay = game_package.get('gameplay', None)
+        gameplay_status = game_package.get('is_enabled', None)
         target_goal_angle = game_package.get('target_goal_angle', 0)
         average_rpm = canbus_package.get('average_rpm', 0)
 
@@ -125,13 +128,12 @@ def command(websocket):
             # print(controls)
 
             if controls:
-                commands = {}
+                toggle_gameplay = controls.get("controller0.button8", controls.get("controller0.button11", None))
+                if toggle_gameplay is False:  # False is key up event
+                    ConfigManager.set_value('game|global|gameplay status', 'disabled' if gameplay_status else 'enabled')
+                    send_settings_packet()
 
-                if gameplay:
-                    toggle_gameplay = controls.get("controller0.button8") or controls.get("controller0.button11")
-                    if toggle_gameplay:
-                        commands['toggle_gameplay'] = None
-                else:
+                elif not gameplay_status:
                     # # Manual control of the robot
                     x = controls.pop("controller0.axis0", 0) * 0.33
                     y = controls.pop("controller0.axis1", 0) * 0.33
@@ -178,9 +180,11 @@ def command(websocket):
         elif action == "set_settings":
             for k, v in response.items():
                 ConfigManager.set_value(k, v)
+            send_settings_packet()
         elif action == "set_options":
             for k, v in response.items():
                 ConfigManager.set_value(f"game|global|{k}", v)
+            send_settings_packet()
         else:
             logger.error("Unhandled action: %s", str(action))
 

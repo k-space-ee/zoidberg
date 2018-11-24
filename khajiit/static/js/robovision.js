@@ -24,6 +24,7 @@ var previous = "";
 function streamGamepad() {
     var data = {};
     var anyMotion = 0;
+    var initialRun = Object.keys(controllers).length === 0;
 
     var state = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
     for (var j = 0; j < state.length; j++) {
@@ -52,12 +53,14 @@ function streamGamepad() {
             controllers[axisKey] = state[j].axes[i];
         }
     }
-    var newPackage = JSON.stringify({"action": "gamepad", "data": data});
-    if (Object.keys(data).length || anyMotion){
-        socket.send(newPackage);
-        previous = newPackage;
-    } else {
-         socket.send(JSON.stringify({"action": "gamepad"}));
+    if (!initialRun){
+        var newPackage = JSON.stringify({"action": "gamepad", "data": data});
+        if (Object.keys(data).length || anyMotion){
+            socket.send(newPackage);
+            previous = newPackage;
+        } else {
+             socket.send(JSON.stringify({"action": "gamepad"}));
+        }
     }
     // TODO: remove this when serial write speed has been fixed
     setTimeout(streamGamepad, 30);

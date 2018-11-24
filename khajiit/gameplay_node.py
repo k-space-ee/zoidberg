@@ -38,6 +38,7 @@ class GameplayNode(messenger.Node):
 
     def __init__(self, mock=False, run=True, **kwargs) -> None:
         super().__init__('gameplay', existing_loggers=['gameplay'], **kwargs)
+        self.strategy_publisher = messenger.Publisher('/strategy', messenger.Messages.string)
         self.listener = messenger.Listener('/recognition', messenger.Messages.string, callback=self.callback)
 
         self.settings_listener = messenger.Listener(
@@ -61,11 +62,18 @@ class GameplayNode(messenger.Node):
     def callback(self, *_):
         package = self.listener.package
         if package:
-            keys = tuple(package.keys())
-            self.loginfo_throttle(0.5, f"PACK: {keys}")
-
             r_state = RecognitionState.from_dict(package)
             self.gameplay.step(r_state)
+
+            self.strategy_publisher.command(
+                is_enabled=self.gameplay.is_enabled,
+                target_goal_angle=self.gameplay.target_goal_angle,
+            )
+
+            if self.gameplay.is_enabled:
+                keys = tuple(package.keys())
+                self.loginfo_throttle(2, f"PACK: {keys}")
+
 
 
 if __name__ == '__main__':
