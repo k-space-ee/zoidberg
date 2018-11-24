@@ -297,22 +297,16 @@ class Grabber(Thread):
 
 
 class PanoramaGrabber(Thread):
-    def __init__(self):
+    def __init__(self, config):
         Thread.__init__(self)
         self.last_product = 0
-        import yaml
-        conf = 'config/camera.yaml'
-        config = {}
-        if os.path.isfile(conf):
-            with open(conf) as file:
-                config = yaml.safe_load(file) or {}
 
+        global_config = config.prop("global")
+        kwargs = dict((k, v) for k, v in global_config.items() if k in ("fps", "gain", "exposure", "saturation"))
         self.slaves = []
-        for i in range(1, config.get("global", {}).get("cameras") + 1):
-            kwargs = dict([
-                (key, config.get("global", key))
-                for key in ("fps", "gain", "exposure", "saturation")])
+        for i in range(1, global_config.get("cameras", 0) + 1):
             self.slaves.append(Grabber(config.get("camera%d" % i, {}).get("path"), name="camera%d" % i, **kwargs))
+
         self.tid = 0
         self.running = False
         self.alive = True

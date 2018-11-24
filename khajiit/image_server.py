@@ -29,7 +29,8 @@ websockets = set()
 app = Flask(__name__)
 
 # Build pipeline
-grabber = PanoramaGrabber()
+config = ConfigManager.get_value('camera')
+grabber = PanoramaGrabber(config)
 image_recognizer = ImageRecognizer(
     grabber, config_manager=ConfigManager, publisher=recognition_publisher, produce_rate=10)
 visualizer = Visualizer(image_recognizer, framedrop=1)
