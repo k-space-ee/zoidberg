@@ -35,6 +35,7 @@ class Controller:
 
 
 class GameplayNode(messenger.Node):
+    # TODO: critical listen to commands form command /channel
 
     def __init__(self, mock=False, run=True, **kwargs) -> None:
         super().__init__('gameplay', existing_loggers=['gameplay'], **kwargs)

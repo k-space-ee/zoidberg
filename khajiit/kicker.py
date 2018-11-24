@@ -1,14 +1,13 @@
 import threading
 from time import time
+import serial.tools.list_ports
+import yaml
 
 import uavcan
-import yaml
 
 
 class CanBusMotor:
     # TODO: this has the ability to not constantly update the speed, we should use that
-
-    SERIAL = '/dev/serial/by-id/usb-Zubax_Robotics_Zubax_Babel_32002E0018514D563935392000000000-if00'
 
     def __init__(self) -> None:
         self.last_raw = ""
@@ -18,8 +17,12 @@ class CanBusMotor:
         self._speed = 0
         self.last_edit = time()
 
+        ports = serial.tools.list_ports.comports()
+        zubax = [port.device for port in ports if port.product and 'zubax' in port.product.lower()]
+        assert len(zubax) == 1, f"Zubax controller not determined, {zubax}"
+
         self.node = node = uavcan.make_node(
-            self.SERIAL,
+            zubax[0],
             node_id=10,
             bitrate=1000000,
         )
