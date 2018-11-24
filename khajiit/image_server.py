@@ -1,18 +1,11 @@
 import messenger
 from config_manager import ConfigManager
 
-
-class CallbackListener:
-    listeners = []
-
-    @classmethod
-    def update(cls, *args):
-        for func in cls.listeners:
-            func(*args)
-
+listener_wrapper = messenger.CallbackListenerWrapper()
 
 node = messenger.Node('image_server')
-settings_change = messenger.Listener('/settings_changed', messenger.Messages.string, callback=CallbackListener.update)
+settings_change = messenger.Listener('/settings_changed', messenger.Messages.string, callback=listener_wrapper.update)
+recognition_publisher = messenger.Publisher('/recognition', messenger.Messages.string)
 
 from gevent import monkey
 from gevent.queue import Empty
@@ -39,12 +32,12 @@ app = Flask(__name__)
 
 # Build pipeline
 grabber = PanoramaGrabber()
-image_recognizer = ImageRecognizer(grabber, config_manager=ConfigManager)
+image_recognizer = ImageRecognizer(grabber, config_manager=ConfigManager, publisher=recognition_publisher)
 visualizer = Visualizer(image_recognizer, framedrop=1)
 # recorder = Recorder(grabber)
 
 # settings listeners
-CallbackListener.listeners.append(image_recognizer.refresh_config)
+listener_wrapper.listeners.append(image_recognizer.refresh_config)
 
 
 def generator(type_str):

@@ -1,3 +1,5 @@
+from time import time
+
 import cv2
 import cv2.aruco as aruco
 import numpy as np
@@ -56,12 +58,13 @@ class PolarPoint(Point):
     Polar coordinate (radians, meters)
     """
 
-    def __init__(self, angle, dist, suspicious=False):
-        self.angle_rad = angle  # radians
+    def __init__(self, angle_rad=None, dist=None, suspicious=False, **_):
+        self.angle_rad = angle_rad  # radians
         self.dist = dist  # distance in meters
         self.angle_deg = math.degrees(self.angle_rad)
         self.x = self.dist * math.cos(self.angle_rad)
         self.y = self.dist * math.sin(self.angle_rad)
+        self.suspicious = suspicious
 
     @property
     def angle_deg_abs(self):
@@ -70,6 +73,16 @@ class PolarPoint(Point):
     @property
     def angle_rad_abs(self):
         return abs(self.angle_rad)
+
+    def serialize(self):
+        return dict(
+            angle_rad=self.angle_rad,
+            dist=self.dist,
+            angle_deg=self.angle_deg,
+            x=self.x,
+            y=self.y,
+            suspicious=self.suspicious,
+        )
 
 
 class ImageRecognition:
@@ -102,49 +115,53 @@ class ImageRecognition:
         goal_A = color_config.get("goal A", {})
         goal_B = color_config.get("goal B", {})
 
-        def unpack(mapping):
-            luma = mapping['luma']
-            chroma_red = mapping['chroma red']
-            chroma_blue = mapping['chroma blue']
-            lower, upper = zip(luma, chroma_blue, luma, chroma_red)
-            return lower, upper
-
-        self.FIELD_LOWER, self.FIELD_UPPER = unpack(field)
-        self.BALL_LOWER, self.BALL_UPPER = unpack(ball)
-        self.BLUE_LOWER, self.BLUE_UPPER = unpack(goal_A)
-        self.YELLOW_LOWER, self.YELLOW_UPPER = unpack(goal_B)
+        self.FIELD_LOWER, self.FIELD_UPPER = self.unpack(field)
+        self.BALL_LOWER, self.BALL_UPPER = self.unpack(ball)
+        self.BLUE_LOWER, self.BLUE_UPPER = self.unpack(goal_A)
+        self.YELLOW_LOWER, self.YELLOW_UPPER = self.unpack(goal_B)
 
         self.dist_goals = dist_goals
         self.camera_height = camera_height
         self.camera_mount_radius = camera_mount_radius
         self.camera_horiz_fov_rad = math.radians(camera_horiz_fov)
         self.camera_vert_fov_rad = math.radians(camera_vert_fov)
-        self.update(frame)
 
-        assert abs(self.x_to_deg(self.deg_to_x(50)) - 50) < 0.1, self.x_to_deg(self.deg_to_x(50))
-        assert abs(self.y_to_dist(self.dist_to_y(2.0)) - 2.0) < 0.1
-
-    def update(self, frame):
         self.frame = frame
-        self._recognize_markers()
+        # self.markers = self._recognize_markers()
         # print([ (id, round(dist))for id, dist in self.markers.items()])
 
         self.field_mask, self.field_contours = self._recognize_field(self.FIELD_LOWER, self.FIELD_UPPER)
 
-        self.goal_blue_mask, \
-        self.goal_blue, \
-        self.goal_blue_rect, \
-        self.goal_blue_width_deg = self._recognize_goal(self.BLUE_LOWER, self.BLUE_UPPER, ids=[10, 11])
+        self.goal_blue_mask, self.goal_blue, self.goal_blue_rect, self.goal_blue_width_deg = \
+            self._recognize_goal(self.BLUE_LOWER, self.BLUE_UPPER, ids=[10, 11])
 
-        self.goal_yellow_mask, \
-        self.goal_yellow, \
-        self.goal_yellow_rect, \
-        self.goal_yellow_width_deg = self._recognize_goal(self.YELLOW_LOWER, self.YELLOW_UPPER)
+        self.goal_yellow_mask, self.goal_yellow, self.goal_yellow_rect, self.goal_yellow_width_deg = \
+            self._recognize_goal(self.YELLOW_LOWER, self.YELLOW_UPPER)
 
-        self.robot, self.orientation = self._position_robot()  # Calculate x and y coords on the field and angle to grid
+        # Calculate x and y coords on the field and angle to grid
+        # self.robot, self.orientation = self._position_robot()
 
         self.balls_mask, self.balls = self._recognize_balls()
         self.closest_edge, self.field_center = self._recognize_closest_edge()
+
+        assert abs(self.x_to_deg(self.deg_to_x(50)) - 50) < 0.1, self.x_to_deg(self.deg_to_x(50))
+        assert abs(self.y_to_dist(self.dist_to_y(2.0)) - 2.0) < 0.1
+
+    def serialize(self):
+        return dict(
+            balls=[relative.serialize() for relative, absolute, cx, cy, radius in self.balls],
+            goal_yellow=self.goal_yellow and self.goal_yellow.serialize(),
+            goal_blue=self.goal_blue and self.goal_blue.serialize(),
+            closest_edge=self.closest_edge and self.closest_edge.serialize(),
+        )
+
+    @staticmethod
+    def unpack(mapping):
+        luma = mapping['luma']
+        chroma_red = mapping['chroma red']
+        chroma_blue = mapping['chroma blue']
+        lower, upper = zip(luma, chroma_blue, luma, chroma_red)
+        return lower, upper
 
     def _recognize_closest_edge(self):
         """
@@ -260,7 +277,7 @@ class ImageRecognition:
         return mask, hulls
 
     def _recognize_markers(self):
-        self.markers = {}
+        markers = {}
         #
         # factor = 1
         # j = 4
@@ -289,6 +306,7 @@ class ImageRecognition:
         #         self.markers[marker_ids[0]] = (dist_a  + dist_b) / 2
         #         self.markers[marker_ids[0]] = dist_b
         #     print(self.markers)
+        return markers
 
     def _recognize_goal(self, lower, upper, overlap=4, ids=[]):
         # Recognize goal
@@ -393,6 +411,7 @@ class ImageRecognition:
                 absolute = None
             ball_coords = relative, absolute, cx, cy, radius
             balls.add(ball_coords)
+
         # TODO: better alghoritm to sort balls
         # return mask, sorted(
         #     balls,
@@ -444,12 +463,14 @@ class ImageRecognition:
 class ImageRecognizer(ManagedThread):
     last_frame = None
 
-    def __init__(self, upstream_producer=None, framedrop=0, lossy=True, config_manager=None):
+    def __init__(self, upstream_producer=None, framedrop=0, lossy=True, config_manager=None, publisher=None):
         super().__init__(upstream_producer, framedrop, lossy)
         self.camera_config = {}
         self.color_config = {}
         self.config_manager = config_manager
+        self.publisher = publisher
         self.refresh_config()
+        self.start_time = time()
 
     def refresh_config(self, *_):
         logger.info("settings update recieved")
@@ -465,6 +486,12 @@ class ImageRecognizer(ManagedThread):
         )
         self.produce(r, self.grabber)
         self.last_frame = r
+
+        # print(time() - self.start_time)
+        self.start_time = time()
+        if self.publisher:
+            serialized = r.serialize()
+            self.publisher.command(**serialized)
 
 
 class Player(ManagedThread):

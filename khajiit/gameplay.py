@@ -1,18 +1,21 @@
 import logging
+from typing import List, Optional
 
-from line_fit import dist_to_pwm, dist_to_rpm
+from camera.line_fit import dist_to_rpm
 
 logger = logging.getLogger("gameplay")
-from managed_threading import ManagedThread
-from image_recognition import Point, PolarPoint
-from controller import Controller
+from camera.image_recognition import Point, PolarPoint
+# from controller import Controller
 import math
 from time import time, sleep
 
 from collections import defaultdict
 from config_manager import ConfigManager
 
-config = ConfigManager("game")
+try:
+    dataclass  # python 3.7.1
+except:
+    from dataclasses import dataclass
 
 
 def distance(point_a, point_b):
@@ -22,12 +25,29 @@ def distance(point_a, point_b):
     return dist
 
 
-class Gameplay(ManagedThread):
-    def __init__(self, *args, **kwargs):
-        ManagedThread.__init__(self, *args)
-        self.arduino = Controller()  # config read from ~/.robovision/pymata.conf
+@dataclass
+class RecognitionState:
+    """Class for keeping track of the recognition state."""
+    balls: List[PolarPoint] = list
+    goal_yellow: Optional[PolarPoint] = None
+    goal_blue: Optional[PolarPoint] = None
+    closest_edge: Optional[PolarPoint] = None
+
+    @staticmethod  # for some reason type analysis didn't work for classmethod
+    def from_dict(packet: dict) -> 'RecognitionState':
+        balls: List[PolarPoint] = [PolarPoint(**b) for b in packet.get('balls', [])]
+        goal_yellow: Optional[PolarPoint] = packet.get('goal_yellow') and PolarPoint(**packet['goal_yellow'])
+        goal_blue: Optional[PolarPoint] = packet.get('goal_blue') and PolarPoint(**packet['goal_blue'])
+        closest_edge: Optional[PolarPoint] = packet.get('closest_edge') and PolarPoint(**packet['closest_edge'])
+
+        return RecognitionState(balls, goal_yellow, goal_blue, closest_edge)
+
+
+class Gameplay:
+    def __init__(self, config, controller):
+        self.motors = controller
         self.state = Patrol(self)
-        self.recognition = None
+        self.recognition = RecognitionState()
         self.closest_edges = []
         self.safe_distance_to_goals = 1.4
         self.config = config
@@ -42,20 +62,19 @@ class Gameplay(ManagedThread):
 
     @property
     def field_id(self):
-        return self.config.get_option("global", "field_id", type=str, default='A').get_value()
+        return self.config.prop("global").prop("field_id", default='A')
 
     @property
     def robot_id(self):
-        return self.config.get_option("global", "robot_id", type=str, default='A').get_value()
+        return self.config.prop("global").prop("robot_id", default='A')
 
     @property
     def is_enabled(self):
-        return self.config.get_option("global", "gameplay status", type=str,
-                                      default='disabled').get_value() == 'enabled'
+        return self.config.prop("global").prop("gameplay status", default='disabled') == 'enabled'
 
     @property
     def config_goal(self):
-        return self.config.get_option("global", "target goal color", type=str, default='blue').get_value()
+        return self.config.prop("global").prop("target goal color", default='blue')
 
     @property
     def balls(self):
@@ -69,12 +88,12 @@ class Gameplay(ManagedThread):
         too_close = []
         suspicious = []
         for ball in self.recognition.balls:
-            if ball[0].suspicious:
+            if ball.suspicious:
                 suspicious.append(ball)
                 continue
 
             # for goal in goals:
-            #     if distance(ball[0], goal) < 0.3:
+            #     if distance(ball, goal) < 0.3:
             #         too_close.append(ball)
             #         break
             # else:
@@ -151,13 +170,13 @@ class Gameplay(ManagedThread):
 
     @property
     def flank_is_alligned(self):
-        # if self.balls and abs(self.balls[0][0].angle_deg) < 10:
+        # if self.balls and abs(self.balls[0].angle_deg) < 10:
         #     return True
 
         in_line = self.goal_to_ball_angle
 
         if in_line and abs(in_line) < 13:
-            log_str = "B{:.1f} G{:.1f} | D{:.1f}".format(self.balls[0][0].angle_deg, self.target_goal.angle_deg,
+            log_str = "B{:.1f} G{:.1f} | D{:.1f}".format(self.balls[0].angle_deg, self.target_goal.angle_deg,
                                                          in_line)
             # logger.info(log_str)
 
@@ -169,7 +188,7 @@ class Gameplay(ManagedThread):
             # logger.info("goal_to_ball_angle failed: GOAL:{} BAALS:{}".format(self.target_goal, self.balls))
             return
 
-        ball = self.balls[0][0]
+        ball = self.balls[0]
         goal = self.target_goal
 
         vg = goal.angle_deg
@@ -215,23 +234,23 @@ class Gameplay(ManagedThread):
 
         # TODO: stupid backtrack, when angle wrong, drive back and try again
         if abs(angle) > 4 and backtrack:
-            return self.arduino.set_xyw(0, -0.09, 0)
+            return self.motors.set_xyw(0, -0.09, 0)
 
         factor = abs(math.tanh(angle / 5))
         factor = min(factor, 0.4)
 
-        return self.arduino.set_xyw(0, 0.13 * speed_factor, rotation * factor)
+        return self.motors.set_xyw(0, 0.13 * speed_factor, rotation * factor)
 
     def rotate(self, degrees):
         delta = degrees / 360
         # TODO enable full rotating
-        self.arduino.set_xyw(0, 0, -delta)
+        self.motors.set_xyw(0, 0, -delta)
 
     def drive_xy(self, x, y):
-        self.arduino.set_xyw(y, x, 0)
+        self.motors.set_xyw(y, x, 0)
 
     def drive_to_ball(self, use_falloff):
-        ball = self.average_closest_ball or self.balls[0][0]
+        ball = self.average_closest_ball or self.balls[0]
 
         if ball:
             dist = ball.dist
@@ -241,7 +260,7 @@ class Gameplay(ManagedThread):
                 factor = max(math.tanh(dist), 0.08)
                 bx, by = bx * factor, by * factor
 
-            self.arduino.set_xyw(by, bx, 0)
+            self.motors.set_xyw(by, bx, 0)
 
     def flank_vector(self):
         angle = self.goal_to_ball_angle
@@ -249,7 +268,7 @@ class Gameplay(ManagedThread):
             logger.info("not flank vector")
             return
 
-        ball = self.average_closest_ball or self.balls[0][0]
+        ball = self.average_closest_ball or self.balls[0]
 
         dist = ball.dist
 
@@ -299,7 +318,7 @@ class Gameplay(ManagedThread):
 
         if abs(rotation) > 0.4:
             rotation = rotation / abs(rotation) * 0.4
-        return self.arduino.set_xyw(0, 0, rotation * factor)
+        return self.motors.set_xyw(0, 0, rotation * factor)
 
     def flank(self):
         rotation = self.rotation_for_goal() or 0
@@ -312,7 +331,7 @@ class Gameplay(ManagedThread):
 
         if abs(goal_angle) > max(abs(shooting_angle * 3), 10):
             # print("rotate", goal_angle, shooting_angle)
-            return self.arduino.set_xyw(0, 0, rotation)
+            return self.motors.set_xyw(0, 0, rotation)
 
         flank = self.flank_vector()
 
@@ -321,7 +340,7 @@ class Gameplay(ManagedThread):
             return
         x, y = flank
 
-        self.arduino.set_xyw(y, x, rotation / 1.4)
+        self.motors.set_xyw(y, x, rotation / 1.4)
 
     @property
     def continue_to_kick(self):
@@ -335,16 +354,16 @@ class Gameplay(ManagedThread):
         if distance and self.continue_to_kick:
             speed = dist_to_rpm(distance)
             # print(distance, speed, self.target_goal.angle)
-            return self.arduino.set_thrower(speed)
+            return self.motors.set_thrower(speed)
 
     def stop_moving(self):
-        self.arduino.set_abc(0, 0, 0)
+        self.motors.set_xyw(0, 0, 0)
 
     def drive_to_ball(self):
         if not self.balls:
             return
 
-        ball = self.balls[0][0]
+        ball = self.balls[0]
         # logger.info("%f" % ball.dist)
 
         x, y = ball.x, ball.y
@@ -357,7 +376,7 @@ class Gameplay(ManagedThread):
 
         w = - ball.angle_deg / 180.0
 
-        self.arduino.set_xyw(y, x, w)
+        self.motors.set_xyw(y, x, w)
 
     def drive_away_from_goal(self):
 
@@ -375,7 +394,7 @@ class Gameplay(ManagedThread):
             x *= -1
             y *= -1
 
-        self.arduino.set_xyw(y, x, 0.5)
+        self.motors.set_xyw(y, x, 0.5)
 
     def drive_to_field_center(self):
 
@@ -385,7 +404,7 @@ class Gameplay(ManagedThread):
         x, y, _ = self.closest_edge
 
         # logger.info("{} == {}?".format(self.field_center_angle, Point(-x, -y).angle_deg))
-        self.arduino.set_xyw(-y / 3, -x / 3, 0)
+        self.motors.set_xyw(-y / 3, -x / 3, 0)
 
     @property
     def last_closest_ball(self) -> PolarPoint:
@@ -400,7 +419,7 @@ class Gameplay(ManagedThread):
     @property
     def closest_ball(self) -> PolarPoint:
         if self.balls:
-            return self.balls[0][0]
+            return self.balls[0]
 
     @property
     def average_closest_ball(self) -> PolarPoint:
@@ -422,8 +441,6 @@ class Gameplay(ManagedThread):
         return self.target_goal_distance
 
     def step(self, recognition, *args):
-        self.arduino.set_abc(0, 0, 0)
-        self.arduino.set_thrower(0)
         if not recognition:
             return
         self.recognition = recognition
@@ -438,20 +455,20 @@ class Gameplay(ManagedThread):
 
         self.update_recent_closest_balls()
 
-        self.arduino.apply()
-        #sleep(0.01)
+        self.motors.apply()
+        # sleep(0.01)
 
     def on_enabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('enabled')
-        self.arduino.set_grabber(True)
+        self.motors.set_grabber(True)
 
     def on_disabled(self, *args):
         self.config.get_option("global", "gameplay status", type=str, default='disabled').set_value('disabled')
-        self.arduino.set_grabber(False)
-        self.arduino.set_xyw(0, 0, 0)
+        self.motors.set_grabber(False)
+        self.motors.set_xyw(0, 0, 0)
 
     def start(self):
-        self.arduino.start()
+        self.motors.start()
         self.state = ForceCenter(self)
         ManagedThread.start(self)
 
@@ -576,9 +593,9 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
             return Shoot(self.actor)
 
     # def VEC_TOO_CLOSE(self):
-        # if self.actor.too_close or self.actor.too_close_to_edge:
-            # print("too close")  
-            # return ForceCenter(self.actor)
+    # if self.actor.too_close or self.actor.too_close_to_edge:
+    # print("too close")
+    # return ForceCenter(self.actor)
 
     def VEC_NO_BALLS(self):
         if not self.actor.balls:
@@ -716,7 +733,7 @@ class Penalty(StateNode):
         own, other = self.actor.own_goal, self.actor.target_goal
         safe_dist = self.actor.safe_distance_to_goals
         if (not own or own.dist >= safe_dist) and (
-                    not other or other.dist >= safe_dist) and not self.forced_recovery_time:
+                not other or other.dist >= safe_dist) and not self.forced_recovery_time:
             return Patrol(self.actor)
 
     def VEC_TOO_CLOSE_TO_EDGE(self):

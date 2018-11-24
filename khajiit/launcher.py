@@ -3,6 +3,7 @@ from typing import List
 
 import messenger
 from controller_node import ControllerNode
+from gameplay_node import GameplayNode
 from kicker_node import KickerNode
 from argparse import ArgumentParser
 
@@ -58,5 +59,6 @@ launcer.launch(server)
 launcer.launch(image_server)
 launcer.launch(ControllerNode, mock=args.mock)
 launcer.launch(KickerNode, mock=args.mock)
+launcer.launch(GameplayNode, mock=args.mock)
 
 launcer.spin()

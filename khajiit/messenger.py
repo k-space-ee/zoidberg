@@ -45,6 +45,16 @@ class ConnectPythonLoggingToROS(logging.Handler):
                     logger.info("Logger directed to ROS")
 
 
+class CallbackListenerWrapper:
+
+    def __init__(self) -> None:
+        self.listeners = []
+
+    def update(self, *args):
+        for func in self.listeners:
+            func(*args)
+
+
 class TwistWrapper:
     message = Twist
 
@@ -84,11 +94,12 @@ class Listener:
 
     @property
     def package(self) -> Optional[Dict]:
-        if not self.last_reading or not self.msg != Messages.string:
+        if not self.last_reading or not issubclass(self.msg, Messages.string):
             return None
         try:
-            return json.loads(self.last_reading)
-        except:
+            return json.loads(self.last_reading.data)
+        except Exception as e:
+            rospy.logerr(e)
             return None
 
 
@@ -108,7 +119,7 @@ class Publisher:
 
     def command(self, **commands):
         assert self.msg == Messages.string, 'Commands available only on Messages.string mode'
-        command = json.dumps(commands)
+        command = json.dumps(commands, indent=1)
         self.publish(command)
 
 

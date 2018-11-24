@@ -1,12 +1,24 @@
 import json
 import logging
 import os
+from typing import Union
 
 import yaml
 
 import messenger
 
 logger = logging.getLogger("config_manager")
+
+
+class Settings(dict):
+    def prop(self, key, default=None):
+        if key not in self:
+            return default or Settings()
+        else:
+            value = self[key]
+            if isinstance(value, dict):
+                return Settings(value)
+            return value
 
 
 class ConfigManager:
@@ -50,20 +62,20 @@ class ConfigManager:
         cls.publisher.publish(basename)
 
     @classmethod
-    def get_value(cls, key, default=None, reload=True):
+    def get_value(cls, key, default=None, reload=True) -> Union[Settings, object]:
         basename, section, option, *_ = [*key.split("|"), None, None]
         instance = ConfigManager.instance(basename)
 
         if reload:
             instance.reload()
 
-        value = instance.config
+        value = Settings(instance.config)
 
         if section:
-            value = value.get(section, {})
+            value = value.prop(section)
 
         if section and option:
-            value = value.get(option, default)
+            value = value.prop(option, default)
 
         return value
 

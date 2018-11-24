@@ -14,3 +14,5 @@ git+https://gitlab.com/noppo/gevent-websocket
 rospkg
 
 prospector
+
+dataclasses; python_version < '3.7.1'
