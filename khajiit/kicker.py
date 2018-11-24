@@ -48,7 +48,7 @@ class CanBusMotor:
 
     @speed.setter
     def speed(self, speed):
-        self._speed = speed
+        self._speed = int(speed)
         self.last_edit = time()
 
     def update(self):
