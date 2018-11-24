@@ -19,7 +19,7 @@ class KickerNode(messenger.Node):
     def callback(self, speed):
         last_rpm = None
         if not self.mock:
-            self.controller.speed = speed
+            self.controller.speed = speed.data
             if self.controller.last_msg:
                 self.publisher.command(**self.controller.last_msg)
                 last_rpm = self.controller.last_rpm
