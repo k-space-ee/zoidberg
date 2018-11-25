@@ -193,8 +193,7 @@ def command(websocket):
                     print("button6: drive to center")
 
                 if controls.get("controller0.button2", None):
-                    gameplay.drive_towards_target_goal(backtrack=False, speed_factor=0.5)
-                    gameplay.kick()
+                    gameplay.align_to_goal(0.5)
                     print(f"button2: {round(gameplay.target_goal_angle or 0)} speed:{gameplay.arduino.kicker.last_rpm}")
 
                     # logger.info(str(gameplay.state))
