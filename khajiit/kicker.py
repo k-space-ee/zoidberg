@@ -1,9 +1,10 @@
 import threading
 from time import time
-import serial.tools.list_ports
 import yaml
 
 import uavcan
+
+from serial_wrapper import find_serial
 
 
 class CanBusMotor:
@@ -17,8 +18,7 @@ class CanBusMotor:
         self._speed = 0
         self.last_edit = time()
 
-        ports = serial.tools.list_ports.comports()
-        zubax = [port.device for port in ports if port.product and 'zubax' in port.product.lower()]
+        zubax = find_serial('zubax')
         assert len(zubax) == 1, f"Zubax controller not determined, {zubax}"
 
         self.node = node = uavcan.make_node(
@@ -44,7 +44,7 @@ class CanBusMotor:
 
     @property
     def speed(self):
-        return self.__speed
+        return self._speed
 
     @speed.setter
     def speed(self, speed):

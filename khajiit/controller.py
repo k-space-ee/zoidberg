@@ -1,24 +1,21 @@
 import logging
-
 import serial
+
+from serial_wrapper import find_serial
 
 logger = logging.getLogger("esp32")
 
 
 class Controller:
-    SERIAL = "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0"
-
     # Ctrl-C doesn't work well,  Lauri tested b"\x03" +
     # safe values 0.2 0.05
-    def __init__(self, factor=0.2, maximum=0.08, motor_serial=None):
-        logger.info("Opening %s", self.SERIAL)
+    def __init__(self, factor=0.2, maximum=0.08):
+        controller_serial = find_serial('CP2102')[0]
+        logger.info("Opening %s", controller_serial)
 
-        if motor_serial:
-            self.motor_serial = motor_serial
-        else:
-            self.motor_serial = serial.Serial(
-                port=self.SERIAL,
-                baudrate=115200, xonxoff=True, timeout=0.01)
+        self.motor_serial = serial.Serial(
+            port=controller_serial,
+            baudrate=115200, xonxoff=True, timeout=0.01)
 
         self.factor = factor
         self.maximum = maximum
