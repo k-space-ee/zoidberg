@@ -262,7 +262,7 @@ $(document).ready(function () {
 
                     keys += attribute + '|';
 
-                    sliderGroup += "<div class='slider' data-channel='" + key + "' data-min='0' data-max='255' data-start='" + range[0] + "' data-end='" + range[1] + "'></div>";
+                    sliderGroup += attribute + "<div class='slider' data-channel='" + key + "' data-min='0' data-max='255' data-start='" + range[0] + "' data-end='" + range[1] + "'></div>";
                     sliderGroup += "<br>";
                 }
                 keys = keys.substring(0, keys.length-1);
