@@ -113,6 +113,8 @@ class Visualizer(ManagedThread):
             cv2.putText(frame, "ANG %.0f" % (angle), (200, 300), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 20)
             cv2.putText(frame, "Y %.0f" % (y), (200, 400), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 20)
 
+            logger.info(f"goal_yellow: %.0f goal_blue: %.0f", r.goal_yellow.dist * 100, r.goal_blue.dist * 100)
+
         if not self.DEBUG_MASK or self.type_str == 'VIDEO':  # TODO: Read from config manager
             resized = cv2.resize(frame, (0, 0), fx=self.ZOOM, fy=self.ZOOM)
             ret, jpeg = cv2.imencode('.jpg', frame, (cv2.IMWRITE_JPEG_QUALITY, 50))
