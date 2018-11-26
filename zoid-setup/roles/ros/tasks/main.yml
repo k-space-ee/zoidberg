@@ -17,7 +17,7 @@
 # as ansible has no realtime log showing
 - name: Install ROS, (could be around 2GB install)
   shell: |
-    apt install ros-{{ ros_release }}-{{ ros_package }}
+    apt install ros-{{ ros_release }}-{{ ros_package }} -y > ros_install.log
   args:
       executable: /bin/bash
 
