@@ -107,8 +107,10 @@ class Visualizer(ManagedThread):
             pwm = dist_to_rpm(dist)
             angle = r.goal_blue.angle_deg
             y = sum(y + h for x, y, w, h in r.goal_blue_rect) / len(r.goal_blue_rect)
-
-            cv2.putText(frame, "DIST %.0f" % (dist), (200, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 20)
+            dist_str = "DIST %.0f" % dist
+            if r.goal_yellow:
+                dist_str = "DIST B-%.0f P-%.0f" % (dist, r.goal_yellow.dist)
+            cv2.putText(frame, dist_str, (200, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 20)
             cv2.putText(frame, "PWM %.0f" % (pwm), (200, 200), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 20)
             cv2.putText(frame, "ANG %.0f" % (angle), (200, 300), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 20)
             cv2.putText(frame, "Y %.0f" % (y), (200, 400), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 20)
