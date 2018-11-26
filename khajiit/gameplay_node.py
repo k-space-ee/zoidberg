@@ -41,8 +41,6 @@ class GameplayNode(messenger.Node):
 
         self.strategy_publisher = messenger.Publisher('/strategy', messenger.Messages.string)
 
-        self.listener = messenger.Listener(
-            '/recognition', messenger.Messages.string, callback=self.callback)
         self.settings_listener = messenger.Listener(
             '/settings_changed', messenger.Messages.string, callback=self.refresh_settings)
         self.recognition_listener = messenger.Listener(
@@ -75,7 +73,7 @@ class GameplayNode(messenger.Node):
                     self.logger.error('Gameplay command failed: %s %s', function_name, arguments)
 
     def callback(self, *_):
-        package = self.listener.package
+        package = self.recognition_listener.package
         if package:
             r_state = RecognitionState.from_dict(package)
             self.gameplay.step(r_state)
@@ -83,12 +81,17 @@ class GameplayNode(messenger.Node):
             self.strategy_publisher.command(
                 is_enabled=self.gameplay.is_enabled,
                 target_goal_angle=self.gameplay.target_goal_angle,
+                goal=self.gameplay.config_goal,
+                field=self.gameplay.field_id,
+                robot=self.gameplay.robot_id,
+                state=str(self.gameplay.state),
+                dist=self.gameplay.get_target_goal_distance(),
+                angle=self.gameplay.target_goal_angle,
             )
 
             if self.gameplay.is_enabled:
                 keys = tuple(package.keys())
                 self.loginfo_throttle(2, f"PACK: {keys}")
-
 
 
 if __name__ == '__main__':

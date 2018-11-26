@@ -4,6 +4,7 @@ from typing import List
 import messenger
 from controller_node import ControllerNode
 from gameplay_node import GameplayNode
+from injector_node import InjectorNode
 from kicker_node import KickerNode
 from argparse import ArgumentParser
 
@@ -20,7 +21,7 @@ class Launcher:
         self.nodes: List[Process] = []
 
     def launch(self, node, *args, **kwargs):
-        p = Process(target=node, args=args, kwargs=kwargs)
+        p = Process(target=node, args=args, name=str(node), kwargs=kwargs)
         self.nodes.append(p)
 
         p.start()
@@ -28,8 +29,9 @@ class Launcher:
 
     def spin(self):
         try:
-            for process in self.nodes:
+            for process in reversed(self.nodes):
                 process.join()
+                process.terminate()
         except KeyboardInterrupt:
             print("\nKeyboard interrupt")
             if args.nuke:
@@ -60,5 +62,6 @@ launcer.launch(image_server)
 launcer.launch(ControllerNode, mock=args.mock)
 launcer.launch(KickerNode, mock=args.mock)
 launcer.launch(GameplayNode, mock=args.mock)
+launcer.launch(InjectorNode, mock=args.mock)
 
 launcer.spin()

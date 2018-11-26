@@ -10,8 +10,11 @@ class Controller:
     # Ctrl-C doesn't work well,  Lauri tested b"\x03" +
     # safe values 0.2 0.05
     def __init__(self, factor=0.2, maximum=0.08):
-        controller_serial = find_serial('CP2102')[0]
+        controller_serial = next(iter(find_serial('CP2102')), None)
         logger.info("Opening %s", controller_serial)
+        if not serial:
+            logger.error('serial device not found!')
+        assert controller_serial, "serial not found"
 
         self.motor_serial = serial.Serial(
             port=controller_serial,

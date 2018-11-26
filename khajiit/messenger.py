@@ -1,8 +1,9 @@
 import json
 import logging
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, List
 
 import rospy
+import rosnode
 from geometry_msgs.msg import Twist
 from std_msgs.msg import String, Int32
 from rosgraph_msgs.msg import Log
@@ -113,7 +114,7 @@ class Listener:
         try:
             return json.loads(self.last_reading.data)
         except Exception as e:
-            rospy.logerr(e)
+            rospy.logerr_throttle(0.5, f'Parse package failed:\n{e}\n{self.last_reading}')
             return None
 
 
@@ -141,7 +142,7 @@ class Publisher:
 class Node:
     def __init__(self, name: str, disable_signals=True, existing_loggers=None) -> None:
         # TODO: disabled signals so that the damn rosnodes would die peacefully
-        self.node = rospy.init_node(name, anonymous=True, disable_signals=disable_signals)
+        self.node = rospy.init_node(name, anonymous=False, disable_signals=disable_signals)
 
         self.logdebug = LoggerWrapper.debug
         self.logdebug_throttle = LoggerWrapper.debug_throttle
@@ -156,14 +157,29 @@ class Node:
         self.logger = LoggerWrapper
 
         self.register_existing_loggers(*(existing_loggers or []))
+        self._rate = None
 
     @staticmethod
     def register_existing_loggers(*loggers):
         ConnectPythonLoggingToROS.reconnect(*loggers)
 
-    @staticmethod
-    def spin():
+    def spin(self):
         rospy.spin()
+
+    def rate(self, hz):
+        self._rate = rospy.Rate(hz)
+
+    def sleep(self):
+        self._rate and self._rate.sleep()
+
+    def loop(self, hz=10):
+        self.rate(hz)
+        while not rospy.is_shutdown():
+            self.step()
+            self._rate.sleep()
+
+    def step(self):
+        raise NotImplemented("Can't run, please implement Node.step")
 
 
 class Timer:
@@ -199,6 +215,13 @@ def test():
     print("ROSTOPIC")
     print(os.popen("rostopic list").read())
     print("END")
+
+
+def list() -> List[str]:
+    # no freaking api for getting alive nodes, greato!
+    active_nodes = rosnode.get_node_names()
+    active_nodes = [node for node in active_nodes if rosnode.rosnode_ping(node, max_count=1)]
+    return active_nodes
 
 
 def core():

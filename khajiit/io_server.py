@@ -10,7 +10,7 @@ strategy_state = messenger.Listener('/strategy', messenger.Messages.string)
 canbus_state = messenger.Listener('/canbus_message', messenger.Messages.string)
 websocket_log_handler = WebsocketLogHandler()
 logging_state = messenger.Listener('/rosout_agg', messenger.Messages.logging, callback=websocket_log_handler.emit)
-node = messenger.Node('websocket', disable_signals=True)
+node = messenger.Node('io_server', disable_signals=True)
 
 # thread fixes
 import gevent

@@ -10,9 +10,9 @@ timer_motors = Timer(1)
 motors_enable = Pin(16, mode=Pin.OUT)
 motors_enable.value(0)
 
-motor1_speed = PWM(Pin(4, mode=Pin.OUT), freq=6000, duty=102)
-motor2_speed = PWM(Pin(12, mode=Pin.OUT), freq=6000, duty=102)
-motor3_speed = PWM(Pin(14, mode=Pin.OUT), freq=6000, duty=102)
+motor1_speed = PWM(Pin(4, mode=Pin.OUT), freq=900, duty=102)
+motor2_speed = PWM(Pin(12, mode=Pin.OUT), freq=900, duty=102)
+motor3_speed = PWM(Pin(14, mode=Pin.OUT), freq=900, duty=102)
 
 motor1_reverse = Pin(5, mode=Pin.OUT)
 motor2_reverse = Pin(13, mode=Pin.OUT)

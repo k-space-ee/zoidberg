@@ -501,7 +501,7 @@ class ImageRecognizer(ManagedThread):
             self.last_frame = r
 
         if self.publisher:
-            serialized = r.serialize()
+            serialized = dict(**r.serialize(), fps=self.average_fps, lat=self.average_latency)
             self.publisher.command(**serialized)
 
         self.log_roundtrip()
