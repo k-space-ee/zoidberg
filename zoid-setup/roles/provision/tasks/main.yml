@@ -7,6 +7,9 @@
 - apt: name=python3-pip state=installed
   sudo: yes
 
+- apt: name=openssh-server state=installed
+  sudo: yes
+
 - pip: name=httplib2
   sudo: yes
 
@@ -29,3 +32,17 @@
     - export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
     - export WORKON_HOME=~/.virtualenvs
     - source /usr/local/bin/virtualenvwrapper.sh
+
+- name: Install extra tools
+  become: true
+  apt: name={{ item }} state=present
+  with_items:
+    - htop
+    - ncdu
+
+- name: Install extra pip3 packages
+  become: true
+  pip: name={{ item }} executable=pip3
+  with_items:
+    - adafruit-ampy
+    - esptool

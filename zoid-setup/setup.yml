@@ -1,5 +1,5 @@
 ---
-- hosts: virtual  # change this to zoidberg
+- hosts: khajiit  # change this to zoidberg
   vars:
     user: robot
     download_dir: ~/Downloads

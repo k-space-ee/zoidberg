@@ -4,7 +4,10 @@ These Ansible scripts are created to setup the stack for our robot.
 
 [How to install ansible](https://www.cyberciti.biz/python-tutorials/linux-tutorial-install-ansible-configuration-management-and-it-automation-tool/)
 
-Don't forget to change the host in the inventory.yml and in the setup.yml
+Don't forget to change the host and user in the inventory.yml and in the setup.yml  
+Also, having your ssh key in the robot is very helpful also
+
+    ssh-copy-id -i ~/.ssh/mykey user@host
 
 To check ssh connection
 
