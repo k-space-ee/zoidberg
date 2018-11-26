@@ -94,8 +94,8 @@ class InjectorNode(messenger.Node):
 
             active_nodes = messenger.list()
             package_B = (
-                "{:<8}: {}".format('recog_fps', f"{round(recognition_package.get('fps', 0))}fps"),
-                "{:<8}: {}".format('recog_lat', f"{round(recognition_package.get('lat', 0) * 1000)}ms"),
+                "{:<8}: {}".format('recog_fps', f"{round(recognition_package.get('fps') or 0)}fps"),
+                "{:<8}: {}".format('recog_lat', f"{round((recognition_package.get('lat') or 0) * 1000)}ms"),
                 "{:<8}: {}".format('io_srv', '/io_server' in active_nodes),
                 "{:<8}: {}".format('img_srv', '/image_server' in active_nodes),
                 "{:<8}: {}".format('kicker', '/kicker_node' in active_nodes),

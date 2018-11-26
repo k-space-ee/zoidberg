@@ -21,8 +21,9 @@ class CanBusMotor:
         zubax = find_serial('zubax')
         assert len(zubax) == 1, f"Zubax controller not determined, {zubax}"
 
+        serial_device = next(iter(zubax), None)
         self.node = node = uavcan.make_node(
-            zubax[0],
+            serial_device,
             node_id=10,
             bitrate=1000000,
         )
