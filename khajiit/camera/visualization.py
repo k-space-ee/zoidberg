@@ -113,6 +113,7 @@ class Visualizer(ManagedThread):
             cv2.putText(frame, "ANG %.0f" % (angle), (200, 300), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 20)
             cv2.putText(frame, "Y %.0f" % (y), (200, 400), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 20)
 
+        if r.goal_yellow and r.goal_blue:
             logger.info(f"goal_yellow: %.0f goal_blue: %.0f", r.goal_yellow.dist * 100, r.goal_blue.dist * 100)
 
         if not self.DEBUG_MASK or self.type_str == 'VIDEO':  # TODO: Read from config manager
