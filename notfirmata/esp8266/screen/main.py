@@ -185,4 +185,8 @@ def render(*_):
 render()
 
 timer_redraw = Timer(1)
-timer_redraw.init(period=700, mode=Timer.PERIODIC, callback=render)
+timer_redraw.init(period=2000, mode=Timer.PERIODIC, callback=render)
+
+
+def kill():
+    timer_redraw.deinit()
