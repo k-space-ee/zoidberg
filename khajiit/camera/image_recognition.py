@@ -106,6 +106,10 @@ class ImageRecognition:
         camera_vert_fov -- Camera field of view vertically (deg)
         camera_horiz_fov -- Camera field of view horizontally (deg)
         """
+        # unused currently
+        self.robot = None
+        self.orientation = None
+
         camera_config = camera_config or {}
         color_config = color_config or {}
         self.kicker_offset = camera_config.get('global', {}).get('kicker offset', 0)
