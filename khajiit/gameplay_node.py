@@ -68,6 +68,7 @@ class GameplayNode(messenger.Node):
                 try:
                     func = getattr(self.gameplay, function_name)
                     func(**arguments)
+                    self.gameplay.motors.apply()
                     self.logger.info_throttle(1, 'command success')
                 except Exception as e:
                     self.logger.error('Gameplay command failed: %s %s', function_name, arguments)
