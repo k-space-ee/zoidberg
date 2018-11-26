@@ -8,25 +8,25 @@ global:
   kicker offset: 2190
 
 camera1:
-  path: pci-0000:00:14.0-usb-0:3.4:1.0-video-index0
-
-camera2:
   path: pci-0000:00:14.0-usb-0:3.3:1.0-video-index0
 
-camera3:
+camera2:
   path: pci-0000:00:14.0-usb-0:2.3:1.0-video-index0
 
-camera4:
+camera3:
   path: pci-0000:00:14.0-usb-0:2.4:1.0-video-index0
 
-camera5:
+camera4:
   path: pci-0000:00:14.0-usb-0:4.3:1.0-video-index0
 
-camera6:
+camera5:
   path: pci-0000:00:14.0-usb-0:4.4:1.0-video-index0
 
-camera7:
+camera6:
   path: pci-0000:00:14.0-usb-0:1.2:1.0-video-index0
 
-camera8:
+camera7:
   path: pci-0000:00:14.0-usb-0:1.1:1.0-video-index0
+
+camera8:
+  path: pci-0000:00:14.0-usb-0:3.4:1.0-video-index0
