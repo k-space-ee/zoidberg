@@ -10,13 +10,14 @@ from serial_wrapper import find_serial
 class CanBusMotor:
     # TODO: this has the ability to not constantly update the speed, we should use that
 
-    def __init__(self) -> None:
+    def __init__(self, kill=True) -> None:
         self.last_raw = ""
         self.last_msg = {}
         self.last_rpm = 0
         self.rpm = []
         self._speed = 0
         self.last_edit = time()
+        self.kill = kill
 
         zubax = find_serial('zubax')
         assert len(zubax) == 1, f"Zubax controller not determined, {zubax}"
@@ -56,7 +57,10 @@ class CanBusMotor:
         if time() - self.last_edit > 0.8:
             if self._speed:
                 print(self.last_raw)
-            self._speed = 0
+            if self.kill:
+                self._speed = 0
+            else:
+                self.last_edit = time()
 
         message = uavcan.equipment.esc.RawCommand(cmd=[self._speed])
         self.node.broadcast(message)
@@ -79,7 +83,7 @@ class CanBusMotor:
 
 
 if __name__ == '__main__':
-    kicker = CanBusMotor()
+    kicker = CanBusMotor(kill=False)
 
     while True:
         try:

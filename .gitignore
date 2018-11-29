@@ -202,3 +202,6 @@ venv/
 # ansible setup stuff
 *.idea
 *.retry
+
+# config
+*.yaml
