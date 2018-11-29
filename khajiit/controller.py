@@ -44,7 +44,7 @@ class Controller:
             return
 
         motor_serial = self.motor_serial
-        speed = [str(round(s, 3)) for s in self.state[:-1]]
+        speed = [str(round(s, 5)) for s in self.state[:-1]]
         a, c, b = speed
 
         # send a python command to esp32

@@ -314,11 +314,10 @@ class Gameplay:
         rotation = self.rotation_for_goal() or 0
         goal_angle = self.target_goal_angle
         shooting_angle = self.goal_to_ball_angle or 999
-        # print("rotate", goal_angle, shooting_angle, rotation)
 
         if abs(rotation) > 0.4:
             rotation = rotation / abs(rotation) * 0.4
-        return self.motors.set_xyw(0, 0, rotation * factor)
+        return self.motors.set_xyw(0, 0, rotation * factor * 1.4)
 
     def flank(self):
         rotation = self.rotation_for_goal() or 0
