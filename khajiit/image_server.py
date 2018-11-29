@@ -65,9 +65,10 @@ def main(silent=False):
     from gevent import pywsgi
 
     if not silent:
-        messenger.ConnectPythonLoggingToROS.reconnect('image_recognition', 'visualization', 'threading')
+        messenger.ConnectPythonLoggingToROS.reconnect('image_recognition', 'visualization', 'threading', 'grabber')
     else:
         image_recognizer.silent = True
+        messenger.ConnectPythonLoggingToROS.reconnect('grabber')
 
     ip, port = ('0.0.0.0', 5005)
 

@@ -85,7 +85,7 @@ class Grabber(Thread):
         if observer:
             observer.schedule(CaptureHotplugHandler(self), "/dev/v4l/by-path", recursive=False)
         else:
-            logger.warn("Hotplug disabled for %s", self.path)
+            logger.warning("Hotplug disabled for %s", self.path)
 
     def get_queue(self):
         """
