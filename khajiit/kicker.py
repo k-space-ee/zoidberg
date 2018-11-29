@@ -62,7 +62,7 @@ class CanBusMotor:
             else:
                 self.last_edit = time()
 
-        message = uavcan.equipment.esc.RawCommand(cmd=[self._speed / 1.6665])
+        message = uavcan.equipment.esc.RawCommand(cmd=[int(self._speed / 1.6665)])
         self.node.broadcast(message)
 
     def listen(self, msg):
