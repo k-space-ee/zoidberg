@@ -61,9 +61,17 @@ class GameplayNode(messenger.Node):
         self.config = ConfigManager.get_value('game')
         self.gameplay.config = Settings(self.config)
 
+    def get_recognition(self):
+        package = self.recognition_listener.package
+        if package:
+            return RecognitionState.from_dict(package)
+
     def command_callback(self, *_):
         package = self.command_listener.package
         if package:
+            r_state = self.get_recognition()
+            self.gameplay.recognition = r_state
+
             for function_name, arguments in package.items():
                 try:
                     func = getattr(self.gameplay, function_name)
@@ -74,9 +82,8 @@ class GameplayNode(messenger.Node):
                     self.logger.error('Gameplay command failed: %s %s', function_name, arguments)
 
     def callback(self, *_):
-        package = self.recognition_listener.package
-        if package:
-            r_state = RecognitionState.from_dict(package)
+        r_state = self.get_recognition()
+        if r_state:
             self.gameplay.step(r_state)
 
             self.strategy_publisher.command(
