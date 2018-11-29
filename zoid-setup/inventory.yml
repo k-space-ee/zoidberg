@@ -8,6 +8,8 @@ robot:
       ansible_host: 172.21.100.104
     khajiit:
       ansible_host: 172.21.62.70
+    local:
+      ansible_host: localhost
   vars:
     ansible_python_interpreter: /usr/bin/python3
     ansible_ssh_user: robot
