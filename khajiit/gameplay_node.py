@@ -90,10 +90,10 @@ class GameplayNode(messenger.Node):
                 angle=self.gameplay.target_goal_angle,
             )
 
-            if self.gameplay.is_enabled:
-                keys = tuple(package.keys())
-                self.loginfo_throttle(2, f"PACK: {keys}")
-
+            # if self.gameplay.is_enabled:
+            #     keys = tuple(package.keys())
+            #     self.loginfo_throttle(2, f"PACK: {keys}")
+            #
 
 if __name__ == '__main__':
     node = GameplayNode(mock=True, run=False)

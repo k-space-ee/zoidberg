@@ -61,10 +61,13 @@ def video_combined(type_str):
     return Response(generator(type_str.upper()), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-def main():
+def main(silent=False):
     from gevent import pywsgi
 
-    messenger.ConnectPythonLoggingToROS.reconnect('image_recognition', 'visualization', 'threading')
+    if not silent:
+        messenger.ConnectPythonLoggingToROS.reconnect('image_recognition', 'visualization', 'threading')
+    else:
+        image_recognizer.silent = True
 
     ip, port = ('0.0.0.0', 5005)
 

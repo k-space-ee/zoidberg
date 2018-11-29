@@ -49,18 +49,18 @@ def server():
     io_server.main()
 
 
-def image_server():
+def image_server(silent=False):
     import image_server
-    image_server.main()
+    image_server.main(silent)
 
 
 launcer = Launcher()
 
 launcer.launch(messenger.core)
 launcer.launch(server)
-launcer.launch(image_server)
-launcer.launch(ControllerNode, mock=args.mock)
-launcer.launch(KickerNode, mock=args.mock)
+launcer.launch(image_server, silent=True)
+launcer.launch(ControllerNode, mock=args.mock, silent=True)
+launcer.launch(KickerNode, mock=args.mock, silent=True)
 launcer.launch(GameplayNode, mock=args.mock)
 launcer.launch(InjectorNode, mock=args.mock)
 

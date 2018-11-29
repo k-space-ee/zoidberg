@@ -135,9 +135,9 @@ def command(websocket):
 
                 elif not gameplay_status:
                     # # Manual control of the robot
-                    x = controls.pop("controller0.axis0", 0) * 0.33
-                    y = controls.pop("controller0.axis1", 0) * 0.33
-                    w = controls.pop("controller0.axis3", 0) * 0.2
+                    x = controls.get("controller0.axis0", 0) * 0.33
+                    y = controls.get("controller0.axis1", 0) * 0.33
+                    w = controls.get("controller0.axis3", 0) * 0.2
 
                     if controls.get("controller0.button3"):
                         y = 0.15
@@ -145,8 +145,8 @@ def command(websocket):
                     if x or y or w:
                         movement_publisher.publish(x=x, y=-y, az=-w)
 
-                    delta = controls.pop("controller0.button12", 0)
-                    delta = delta or -controls.pop("controller0.button13", 0)
+                    delta = controls.get("controller0.button12", 0)
+                    delta = delta or -controls.get("controller0.button13", 0)
 
                     if delta:
                         rpm = max(0, min(rpm + delta * 50, 15000))
@@ -174,7 +174,10 @@ def command(websocket):
                 last_press = time()
                 if counter % 30 == 1:
                     average = sum(last_press_history) / len(last_press_history)
-                    logger.info("Last press %.3f ago on average", average)
+                    if not gameplay_status:
+                        logger.info("Last press %.3f ago on average", average)
+                        format = dict((k, v if type(v) == bool else round(v, 1)) for k, v in controls.items())
+                        logger.info("Last press %s", format)
 
         elif action == "set_settings":
             for k, v in response.items():

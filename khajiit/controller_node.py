@@ -4,10 +4,11 @@ from controller import Controller
 
 class ControllerNode(messenger.Node):
 
-    def __init__(self, mock=False, run=True, **kwargs) -> None:
+    def __init__(self, mock=False, run=True, silent=False, **kwargs) -> None:
         super().__init__('motion_node', existing_loggers=['esp32'], **kwargs)
         self.listener = messenger.Listener('/movement', messenger.Messages.motion, callback=self.callback)
         self.mock = mock
+        self.silent = silent
         if not mock:
             self.controller = Controller()
 
@@ -26,7 +27,8 @@ class ControllerNode(messenger.Node):
             self.controller.set_xyw(x, y, az)
             self.controller.apply()
 
-        self.loginfo_throttle(1, "speeds %.2f %.2f %.2f" % (x, y, az))
+        if not self.silent:
+            self.loginfo_throttle(1, "speeds %.2f %.2f %.2f" % (x, y, az))
 
 
 if __name__ == '__main__':

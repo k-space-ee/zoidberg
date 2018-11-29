@@ -477,13 +477,15 @@ class ImageRecognizer(ManagedThread):
         self.counter = 0
         self.refresh_config()
         self.roundtrip_start = time()
+        self.silent = False
 
     def log_roundtrip(self):
         roundtrip = 1 / (time() - self.roundtrip_start)
         self.roundtrip_start = time()
-        self.publisher.logger.info_throttle(
-            2,
-            "fps:%.0f lat:%.2f roundtrip:%.2f" % (self.average_fps or 0, self.average_latency or 0, roundtrip))
+        if not self.silent:
+            self.publisher.logger.info_throttle(
+                2,
+                "fps:%.0f lat:%.2f roundtrip:%.2f" % (self.average_fps or 0, self.average_latency or 0, roundtrip))
 
     def refresh_config(self, *_):
         logger.info("settings update received")
