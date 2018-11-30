@@ -81,8 +81,8 @@ Xb = [
 ]
 
 # function that takes vertical pos and gives distance
-vertical_to_dist = function_fit(inv, Xa, Y)
-height_to_dist = function_fit(inv, Xb, Y)
+# vertical_to_dist = function_fit(inv, Xa, Y)
+# height_to_dist = function_fit(inv, Xb, Y)
 
 goal_distance = [
     (420, 50),
@@ -96,12 +96,24 @@ goal_distance = [
 
 goal_distance = [
     (442, 47),
+    (334, 59),
+    (296, 67),
     (272, 76),
-    (164, 132),
+    (226, 89),
+    (204, 100),
+    (190, 107),
+    (178, 120),
+    (166, 130),
+    (154, 140),
+    (142, 150),
+    (132, 162),
+    (126, 170),
     (118, 188),
+    (114, 200),
+    (108, 210), #
     (104, 221),
     (96, 241),
-    (90, 257),
+    # (90, 257),
     (84, 300),
     (80, 330),
     (72, 390),
@@ -113,6 +125,9 @@ ginv = lambda x, a, b, c: a / x + b / x ** 2 + c
 # ginv = lambda x, a, b, c, d: ((b + (800 - x)) * (d + (800 - x))) / (c * (b + (800 - x)) + a * (d + (800 - x)))
 print("goal_to_dist")
 goal_to_dist = function_fit(ginv, gX, gY)
+for k,v in goal_distance:
+    calc = round(goal_to_dist(k))
+    print([k], v, calc, [v - calc])
 
 # 20 deg tuesday, low voltage
 pwm_distance = [
