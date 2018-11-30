@@ -120,7 +120,7 @@ def command(websocket):
         canbus_package = canbus_state.package or {}
 
         gameplay_status = game_package.get('is_enabled', None)
-        target_goal_angle = game_package.get('target_goal_angle', 0)
+        target_goal_angle = round(game_package.get('target_goal_angle', 0), 3)
         average_rpm = canbus_package.get('average_rpm', 0)
 
         if action == "gamepad":

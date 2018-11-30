@@ -110,7 +110,7 @@ goal_distance = [
     (126, 170),
     (118, 188),
     (114, 200),
-    (108, 210), #
+    (108, 210),  #
     (104, 221),
     (96, 241),
     # (90, 257),
@@ -125,7 +125,7 @@ ginv = lambda x, a, b, c: a / x + b / x ** 2 + c
 # ginv = lambda x, a, b, c, d: ((b + (800 - x)) * (d + (800 - x))) / (c * (b + (800 - x)) + a * (d + (800 - x)))
 print("goal_to_dist")
 goal_to_dist = function_fit(ginv, gX, gY)
-for k,v in goal_distance:
+for k, v in goal_distance:
     calc = round(goal_to_dist(k))
     print([k], v, calc, [v - calc])
 
@@ -171,45 +171,45 @@ pwm_distance = [
     (77, 300),
     (78, 300),
 ]
-throw_function = lambda x, a, b: a * (b + x / 100) ** 2 + 50
+# throw_function = lambda x, a, b: a * (b + x / 100) ** 2 + 50
 
-# 12.5 deg, ~13,1v
-pwm_distance = [
-    (56, 20),
-    (57, 50),
-    (57, 50),
-    (58, 100),
-    (59, 100),
-    (61, 150),
-    (62, 150),
-    (64, 200),
-    (65, 200),
-    (66, 200),
-    (71, 250),
-    (72, 250),
-    (73, 250),
-    (77, 300),
-    (78, 300),
-    (79, 300),
-]
+# # 12.5 deg, ~13,1v
+# pwm_distance = [
+#     (56, 20),
+#     (57, 50),
+#     (57, 50),
+#     (58, 100),
+#     (59, 100),
+#     (61, 150),
+#     (62, 150),
+#     (64, 200),
+#     (65, 200),
+#     (66, 200),
+#     (71, 250),
+#     (72, 250),
+#     (73, 250),
+#     (77, 300),
+#     (78, 300),
+#     (79, 300),
+# ]
 
 # distance
-X = [dist for pwm, dist in pwm_distance]
-# pwm
-Y = [pwm for pwm, dist in pwm_distance]
-
-throw_function = lambda x, a, b, c: a * (b + x / 100) ** 2 + 50 + c
-dist_to_pwm = function_fit(
-    throw_function,
-    X,
-    Y,
-)
-
-dist_to_pwm_interpolated = interpolate(
-    X,
-    Y,
-    backup=throw_function,
-)
+# X = [dist for pwm, dist in pwm_distance]
+# # pwm
+# Y = [pwm for pwm, dist in pwm_distance]
+#
+# throw_function = lambda x, a, b, c: a * (b + x / 100) ** 2 + 50 + c
+# dist_to_pwm = function_fit(
+#     throw_function,
+#     X,
+#     Y,
+# )
+#
+# dist_to_pwm_interpolated = interpolate(
+#     X,
+#     Y,
+#     backup=throw_function,
+# )
 
 rpm_distance = [
     (5550, 60),
@@ -239,12 +239,26 @@ rpm_distance = [
     (9050, 330),
 ]
 
+rpm_distance = [
+    (5300, 59),
+    (5400, 76),
+    (5500, 89),
+    (5600, 107),
+    (5900, 132),
+    (5950, 140),
+    (6250, 162),
+    (6750, 188),
+    (7150, 221),
+    (7350, 255),
+    (8250, 300),
+]
+
 # distance
 X = [dist for rpm, dist in rpm_distance]
 # rpm
 Y = [rpm for rpm, dist in rpm_distance]
 
-rpm_throw_function = lambda x, a, b, c, d: a * x + b * x ** 2 + d * x ** 4 + c
+rpm_throw_function = lambda x, a, b, c, d, e: a * x + b * x ** 2 + d * x ** 5 + e * x ** 7 + c
 print("DIST to RPM")
 dist_to_rpm = function_fit(
     rpm_throw_function,
@@ -252,17 +266,9 @@ dist_to_rpm = function_fit(
     Y,
 )
 
-print(60, dist_to_rpm(60))
-print(70, dist_to_rpm(70))
-print(80, dist_to_rpm(80))
-print(105, dist_to_rpm(105))
-print(120, dist_to_rpm(120))
-print(140, dist_to_rpm(140))
-print(150, dist_to_rpm(150))
-print(159, dist_to_rpm(159))
-print(174, dist_to_rpm(174))
-print(204, dist_to_rpm(204))
-print(230, dist_to_rpm(230))
+for v, k in rpm_distance:
+    calc = round(dist_to_rpm(k))
+    print([k], v, calc, [v - calc])
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
