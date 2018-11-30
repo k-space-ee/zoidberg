@@ -29,9 +29,17 @@ class Controller:
     def set_grabber(self):
         self.rpm = 550
 
+    def reset(self):
+        self.x = 0
+        self.y = 0
+        self.w = 0
+        self.rpm = 0
+
     def apply(self):
-        self.movement_publisher.publish(x=self.x, y=self.y, az=self.w)
-        self.kicker_publisher.publish(int(self.rpm))
+        if self.x or self.y or self.w:
+            self.movement_publisher.publish(x=self.x, y=self.y, az=self.w)
+        if self.rpm:
+            self.kicker_publisher.publish(int(self.rpm))
 
 
 class GameplayNode(messenger.Node):
@@ -76,6 +84,8 @@ class GameplayNode(messenger.Node):
     def command_callback(self, *_):
         package = self.command_listener.package
         if package:
+            self.gameplay.motors.reset()
+
             r_state = self.get_recognition()
             self.gameplay.recognition = r_state
             self.gameplay.update_recent_closest_balls()
@@ -85,10 +95,11 @@ class GameplayNode(messenger.Node):
                     func = getattr(self.gameplay, function_name)
                     func(**(arguments or {}))
 
-                    self.gameplay.motors.apply()                    
                     self.logger.info_throttle(1, 'command success')
                 except Exception as e:
                     self.logger.error('Gameplay command failed: %s %s\n %s', function_name, arguments, e)
+
+            self.gameplay.motors.apply()
 
     def callback(self, *_):
         r_state = self.get_recognition()
