@@ -239,7 +239,7 @@ class Gameplay:
         factor = abs(math.tanh(angle / 5))
         factor = min(factor, 0.4)
 
-        return self.motors.set_xyw(0, 0.13 * speed_factor, rotation * factor)
+        return self.motors.set_xyw(0, 0.1625 * speed_factor, rotation * factor)
 
     def rotate(self, degrees):
         delta = degrees / 360
