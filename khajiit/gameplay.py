@@ -295,9 +295,6 @@ class Gameplay:
         y = bx * math.sin(delta) + by * math.cos(delta)
 
         factor = abs(math.tanh(angle / 60)) + 0.2
-        kicker_difference = self.kicker_speed_difference
-        if kicker_difference > 200 or  kicker_difference < -300:
-            factor /= abs(kicker_difference) / 1000
 
         # TODO: falloff when goal angle and dist decreases
         return round(x * factor * 0.8, 6), round(y * factor * 0.8, 6)
@@ -324,7 +321,7 @@ class Gameplay:
         r_speed = rotation * factor
         return self.motors.set_xyw(0, 0, r_speed)
 
-    def flank(self):
+    def flank(self, movement_factor=1):
         rotation = self.rotation_for_goal() or 0
         goal_angle = self.target_goal_angle
         shooting_angle = self.goal_to_ball_angle or 999
@@ -349,7 +346,7 @@ class Gameplay:
         factor = abs(math.tanh(angle / 1.5))
         # print("traget ANGLE", goal_angle, factor)
 
-        self.motors.set_xyw(y, x, rotation / 1.4 * factor)
+        self.motors.set_xyw(y * movement_factor, x * movement_factor, rotation / 1.4 * factor)
 
     @property
     def continue_to_kick(self):
@@ -366,8 +363,8 @@ class Gameplay:
 
     @property
     def kicker_speed_difference(self):
-        kicker_speed = self.actor.kicker_speed
-        desired_kicker_speed = self.actor.get_desired_kicker_speed()
+        kicker_speed = self.kicker_speed
+        desired_kicker_speed = self.get_desired_kicker_speed()
         return kicker_speed - desired_kicker_speed
 
     def kick(self, update=True):
@@ -588,7 +585,12 @@ class Patrol(RetreatMixin, TimeoutMixin, StateNode):
 
 class Flank(RetreatMixin, DangerZoneMixin, StateNode):
     def animate(self):
-        self.actor.flank()
+        kicker_difference = self.actor.kicker_speed_difference
+        factor = 1
+        if abs(kicker_difference) > 200:
+            factor = 200 / abs(kicker_difference)
+
+        self.actor.flank(movement_factor=factor)
         self.actor.kick()
 
     def VEC_SHOULD_SHOOT(self):
