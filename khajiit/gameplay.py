@@ -357,7 +357,7 @@ class Gameplay:
         if distance:
             speed = dist_to_rpm(distance)
             speed = abs(speed)
-            speed = min(15000, speed)
+            speed = min(8000, speed)
             return speed
         return 0
 
@@ -587,8 +587,9 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
     def animate(self):
         kicker_difference = self.actor.kicker_speed_difference
         factor = 1
-        if abs(kicker_difference) > 200:
-            factor = 200 / abs(kicker_difference)
+        limit = 150
+        if abs(kicker_difference) > limit:
+            factor = limit / abs(kicker_difference)
 
         self.actor.flank(movement_factor=factor)
         self.actor.kick()

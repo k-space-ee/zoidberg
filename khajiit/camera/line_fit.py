@@ -249,8 +249,9 @@ rpm_distance = [
     (6250, 162),
     (6750, 188),
     (7150, 221),
-    (7350, 255),
+    # (7350, 255),
     (8250, 300),
+    (9000, 350),
 ]
 
 # distance
@@ -258,7 +259,7 @@ X = [dist for rpm, dist in rpm_distance]
 # rpm
 Y = [rpm for rpm, dist in rpm_distance]
 
-rpm_throw_function = lambda x, a, b, c, d, e: a * x + b * x ** 2 + d * x ** 5 + e * x ** 7 + c
+rpm_throw_function = lambda x, a, b, c, d, e: a * x + b * x ** 3 + d * x ** 5 + e * x ** 4 + c
 print("DIST to RPM")
 dist_to_rpm = function_fit(
     rpm_throw_function,
@@ -266,7 +267,7 @@ dist_to_rpm = function_fit(
     Y,
 )
 
-for v, k in rpm_distance:
+for v, k in rpm_distance + [[9500, 350]]:
     calc = round(dist_to_rpm(k))
     print([k], v, calc, [v - calc])
 
