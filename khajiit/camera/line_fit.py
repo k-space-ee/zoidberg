@@ -93,6 +93,20 @@ goal_distance = [
     (50, 300),
     (42, 350),
 ]
+
+goal_distance = [
+    (442, 47),
+    (272, 76),
+    (164, 132),
+    (118, 188),
+    (104, 221),
+    (96, 241),
+    (90, 257),
+    (84, 300),
+    (80, 330),
+    (72, 390),
+]
+
 gX = [e[0] for e in goal_distance]
 gY = [e[1] for e in goal_distance]
 ginv = lambda x, a, b, c: a / x + b / x ** 2 + c
@@ -199,14 +213,15 @@ rpm_distance = [
 ]
 
 rpm_distance = [
-    (5550, 60),
-    (5680, 70),
-    (5850, 80),
-    # (6250, 106),
-    (6675, 128),
-    (7100, 159),
-    # (7950, 171),
-    (9050, 205),
+    # (5550, 40),
+    (5550, 59),
+    (5680, 76),
+    (5850, 89),
+    # (6250, 132),
+    (6675, 162),
+    (7100, 221),
+    # (7950, 241),
+    (9050, 330),
 ]
 
 # distance
@@ -237,10 +252,16 @@ print(230, dist_to_rpm(230))
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
+    full_plot, axarr = plt.subplots(2, 1)
+
     xp = np.linspace(round(min(X) - 30), round(max(X) + 30), 300)
-    plt.plot(X, Y, '.', )
-    plt.plot(xp, dist_to_rpm(xp), '-')
-    # plt.plot(xp, dist_to_pwm_interpolated(xp), '--')
+    axarr[0].plot(X, Y, '.', )
+    axarr[0].plot(xp, dist_to_rpm(xp), '-')
+
+    xp = np.linspace(round(min(gX) - 30), round(max(gX) + 30), 300)
+    axarr[1].plot(gX, gY, '.', )
+    axarr[1].plot(xp, goal_to_dist(xp), '-')
+
     plt.show()
 
     # xp = np.linspace(round(min(gX) - 30), round(max(gX) + 30), 300)
