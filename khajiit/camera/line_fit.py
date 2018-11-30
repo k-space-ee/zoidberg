@@ -200,12 +200,12 @@ rpm_distance = [
 
 rpm_distance = [
     (5850, 80),
-    (6650, 106),
+    # (6650, 106),
     (6750, 128),
     (7100, 151),
-    (8050, 171),
+    (7950, 171),
     (9150, 205),
-    (10500, 295),
+    (11000, 295),
 ]
 
 # distance
@@ -213,13 +213,15 @@ X = [dist for rpm, dist in rpm_distance]
 # rpm
 Y = [rpm for rpm, dist in rpm_distance]
 
-rpm_throw_function = lambda x, a, b, c, d, e: a * x + b * x ** 3 + d * x ** 2 + c
+rpm_throw_function = lambda x, a, b, c, d, e: a * x + b * x ** 3 + d * x ** 4 + c
 print("DIST to RPM")
 dist_to_rpm = function_fit(
     rpm_throw_function,
     X,
     Y,
 )
+
+print(174, dist_to_rpm(174))
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
