@@ -71,13 +71,14 @@ class GameplayNode(messenger.Node):
         if package:
             r_state = self.get_recognition()
             self.gameplay.recognition = r_state
+            self.gameplay.update_recent_closest_balls()
 
             for function_name, arguments in package.items():
                 try:
                     func = getattr(self.gameplay, function_name)
                     func(**(arguments or {}))
 
-                    self.gameplay.motors.apply()
+                    self.gameplay.motors.apply()                    
                     self.logger.info_throttle(1, 'command success')
                 except Exception as e:
                     self.logger.error('Gameplay command failed: %s %s', function_name, arguments)

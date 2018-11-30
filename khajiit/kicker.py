@@ -50,6 +50,8 @@ class CanBusMotor:
 
     @speed.setter
     def speed(self, speed):
+        speed = abs(speed)
+        speed = min(15000, speed)
         self._speed = int(speed)
         self.last_edit = time()
 

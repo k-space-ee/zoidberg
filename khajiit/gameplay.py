@@ -231,15 +231,15 @@ class Gameplay:
     def drive_towards_target_goal(self, backtrack=True, speed_factor=0.8):
         rotation = self.rotation_for_goal() or 0
         angle = self.target_goal_angle or 0
-
-        # TODO: stupid backtrack, when angle wrong, drive back and try again
-        if abs(angle) > 4 and backtrack:
-            return self.motors.set_xyw(0, -0.09, 0)
-
-        factor = abs(math.tanh(angle / 8))
+        factor = abs(math.tanh(angle / 10))
         factor = min(factor, 0.4)
 
-        return self.motors.set_xyw(0, 0.13 * speed_factor, rotation * factor)
+        # TODO: stupid backtrack, when angle wrong, drive back and try again
+        if abs(angle) > 7 and backtrack:
+            logger.error("backtrack %.1f", angle)
+            return self.motors.set_xyw(0, -0.08 * speed_factor - abs(factor) / 6, rotation * factor * 2)
+
+        return self.motors.set_xyw(0, 0.16 * speed_factor - abs(factor) / 6, rotation * factor * 2)
 
     def rotate(self, degrees):
         delta = degrees / 360
@@ -268,7 +268,7 @@ class Gameplay:
             logger.info("not flank vector")
             return
 
-        ball = self.average_closest_ball or self.balls[0]
+        ball = self.balls[0]
 
         dist = ball.dist
 
@@ -278,9 +278,9 @@ class Gameplay:
 
         sign = [-1, 1][angle > 0]
 
-        factor = abs(math.tanh(angle / 30))
+        factor = abs(math.tanh(angle / 15))
 
-        delta_deg = abs(angle) * 2 + 10
+        delta_deg = abs(angle) * 1.7 + 10
 
         delta_deg += abs(angle) * factor
 
@@ -296,7 +296,7 @@ class Gameplay:
         factor = abs(math.tanh(angle / 60)) + 0.2
 
         # TODO: falloff when goal angle and dist decreases
-        return round(x * factor * 0.7, 6), round(y * factor * 0.7, 6)
+        return round(x * factor * 0.8, 6), round(y * factor * 0.8, 6)
 
     def rotation_for_goal(self):
         """ The rotation needed to align with the goal """
@@ -322,25 +322,30 @@ class Gameplay:
 
     def flank(self):
         rotation = self.rotation_for_goal() or 0
-
         goal_angle = self.target_goal_angle
         shooting_angle = self.goal_to_ball_angle or 999
 
         if goal_angle is None:
+            self.motors.set_xyw(0, 0, 0.05)
             return
 
         if abs(goal_angle) > max(abs(shooting_angle * 3), 10):
-            # print("rotate", goal_angle, shooting_angle)
+            # print("angle too big", goal_angle, shooting_angle)
             return self.motors.set_xyw(0, 0, rotation)
 
         flank = self.flank_vector()
 
         if not flank:
-            # print('flank', flank)
             return
+
         x, y = flank
 
-        self.motors.set_xyw(y, x, rotation / 1.4)
+        maximum = 50
+        angle = min(goal_angle, maximum)
+        factor = abs(math.tanh(angle / 1.5))
+        # print("traget ANGLE", goal_angle, factor)
+
+        self.motors.set_xyw(y, x, rotation / 1.4 * factor)
 
     @property
     def continue_to_kick(self):
@@ -354,6 +359,8 @@ class Gameplay:
         if distance and self.continue_to_kick:
             speed = dist_to_rpm(distance)
             # print(distance, speed, self.target_goal.angle)
+            speed = abs(speed)
+            speed = min(15000, speed)
             return self.motors.set_thrower(speed)
 
     def stop_moving(self):
@@ -412,7 +419,7 @@ class Gameplay:
 
     def update_recent_closest_balls(self):
         if self.closest_ball and self.closest_ball.dist < 0.5 and self.closest_ball.angle_deg_abs < 15:
-            self.recent_closest_balls = [self.closest_ball] + self.recent_closest_balls[:12]
+            self.recent_closest_balls = [self.closest_ball] + self.recent_closest_balls[:4]
         else:
             self.recent_closest_balls = self.recent_closest_balls[:-1]
 
@@ -574,13 +581,13 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
         if not last_best_ball:
             return
 
-        if last_best_ball.angle_deg_abs < 9 and last_best_ball.dist < 0.22:
-            print(self.actor.target_goal_distance)
+        if last_best_ball.angle_deg_abs < 6 and last_best_ball.dist < 0.20:
+            logger.info("goal:%.1f angle:%.1f dist:%.2f " , self.actor.target_goal_distance, last_best_ball.angle_deg_abs, last_best_ball.dist)
             return Shoot(self.actor)
 
-        if last_best_ball.angle_deg_abs < 4.5 and last_best_ball.dist < 0.3:
-            print(self.actor.target_goal_distance, 'w2')
-            return Shoot(self.actor)
+        # if last_best_ball.angle_deg_abs < 4.5 and last_best_ball.dist < 0.3:
+        #     print(self.actor.target_goal_distance, 'w2')
+        #     return Shoot(self.actor)
 
     # def VEC_TOO_CLOSE(self):
     # if self.actor.too_close or self.actor.too_close_to_edge:
@@ -598,11 +605,11 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
 
 class Shoot(StateNode):
     def animate(self):
-        self.actor.drive_towards_target_goal()
+        self.actor.drive_towards_target_goal(backtrack=False)
         self.actor.kick()
 
     def VEC_DONE_SHOOT(self):
-        if self.elapsed_time > 2:
+        if self.elapsed_time > 1.8:
             return Flank(self.actor)
 
 
