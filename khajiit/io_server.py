@@ -156,7 +156,7 @@ def command(websocket):
                         logger.info(f"drive_towards_target_goal: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
                         kicker_publisher.publish(rpm)
                         # no driving backwards when angle error
-                        command_publisher.command(drive_towards_target_goal=dict(backtrack=False, speed_factor=0.5))
+                        command_publisher.command(drive_towards_target_goal=dict(backtrack=False, speed_factor=0.8))
 
                     if controls.get("controller0.button5", None):
                         logger.info(f"kick: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
