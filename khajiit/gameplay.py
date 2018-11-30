@@ -61,6 +61,8 @@ class Gameplay:
         self.has_ball = False
         self.kicker_speed = 0
 
+        self.desired_kicker_seed_cache = []
+
     @property
     def field_id(self):
         return self.config.prop("global").prop("field_id", default='A')
@@ -358,6 +360,10 @@ class Gameplay:
             speed = dist_to_rpm(distance)
             speed = abs(speed)
             speed = min(8000, speed)
+            self.desired_kicker_seed_cache.append(speed)
+            self.desired_kicker_seed_cache = self.desired_kicker_seed_cache[-5:]
+
+            speed = sum(self.desired_kicker_seed_cache) / len(self.desired_kicker_seed_cache)
             return speed
         return 0
 
