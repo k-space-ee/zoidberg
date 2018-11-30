@@ -317,7 +317,8 @@ class Gameplay:
 
         if abs(rotation) > 0.4:
             rotation = rotation / abs(rotation) * 0.4
-        return self.motors.set_xyw(0, 0, rotation * factor * 1.4)
+        r_speed = rotation * factor
+        return self.motors.set_xyw(0, 0, r_speed)
 
     def flank(self):
         rotation = self.rotation_for_goal() or 0

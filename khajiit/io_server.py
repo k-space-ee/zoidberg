@@ -168,7 +168,7 @@ def command(websocket):
 
                     if controls.get("controller0.button2", None):
                         logger.info(f"align_to_goal: {target_goal_angle} speed:{average_rpm}")
-                        command_publisher.command(align_to_goal=dict(factor=0.5))
+                        command_publisher.command(align_to_goal=dict(factor=1.0))
 
                 last_press_history = [*last_press_history, time() - last_press][-30:]
                 last_press = time()
