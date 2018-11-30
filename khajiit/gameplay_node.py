@@ -47,6 +47,8 @@ class GameplayNode(messenger.Node):
             '/recognition', messenger.Messages.string, callback=self.callback)
         self.command_listener = messenger.Listener(
             '/command', messenger.Messages.string, callback=self.command_callback)
+        self.kicker_listener = messenger.Listener(
+            '/canbus_message', messenger.Messages.string, callback=self.kicker_callback)
 
         self.mock = mock
         self.config = ConfigManager.get_value('game')
@@ -65,6 +67,11 @@ class GameplayNode(messenger.Node):
         package = self.recognition_listener.package
         if package:
             return RecognitionState.from_dict(package)
+
+    def kicker_callback(self, *_):
+        package = self.kicker_listener.package
+        if package:
+            self.gameplay.kicker_speed = package.get('rpm', 0)
 
     def command_callback(self, *_):
         package = self.command_listener.package
@@ -103,6 +110,7 @@ class GameplayNode(messenger.Node):
             #     keys = tuple(package.keys())
             #     self.loginfo_throttle(2, f"PACK: {keys}")
             #
+
 
 if __name__ == '__main__':
     node = GameplayNode(mock=True, run=False)

@@ -59,6 +59,7 @@ class Gameplay:
 
         self.recent_closest_balls = []
         self.has_ball = False
+        self.kicker_speed = 0
 
     @property
     def field_id(self):
@@ -351,16 +352,21 @@ class Gameplay:
     def continue_to_kick(self):
         return time() - self.last_kick < 1
 
+    def get_desired_kicker_speed(self):
+        distance = self.get_target_goal_distance()
+        if distance:
+            speed = dist_to_rpm(distance)
+            speed = abs(speed)
+            speed = min(15000, speed)
+            return speed
+        return 0
+
     def kick(self, update=True):
         if update:
             self.last_kick = time()
 
-        distance = self.get_target_goal_distance()
-        if distance and self.continue_to_kick:
-            speed = dist_to_rpm(distance)
-            # print(distance, speed, self.target_goal.angle)
-            speed = abs(speed)
-            speed = min(15000, speed)
+        speed = self.get_desired_kicker_speed()
+        if speed and self.continue_to_kick:
             return self.motors.set_thrower(speed)
 
     def stop_moving(self):
@@ -459,7 +465,7 @@ class Gameplay:
 
         self.state = self.state.tick()
 
-        self.kick(update=False)
+        self.kick()
 
         self.update_recent_closest_balls()
 
@@ -582,7 +588,15 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
             return
 
         if last_best_ball.angle_deg_abs < 6 and last_best_ball.dist < 0.20:
-            logger.info("goal:%.1f angle:%.1f dist:%.2f " , self.actor.target_goal_distance, last_best_ball.angle_deg_abs, last_best_ball.dist)
+            logger.info("goal:%.1f angle:%.1f dist:%.2f ", self.actor.target_goal_distance,
+                        last_best_ball.angle_deg_abs, last_best_ball.dist)
+
+            kicker_speed = self.actor.kicker_speed
+            desired_kicker_speed = self.actor.get_desired_kicker_speed()
+            if kicker_speed - desired_kicker_speed > 400:
+                logger.error('RPM:%.2f DESIRED:%.2f', kicker_speed, desired_kicker_speed)
+                return
+
             return Shoot(self.actor)
 
         # if last_best_ball.angle_deg_abs < 4.5 and last_best_ball.dist < 0.3:

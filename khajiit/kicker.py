@@ -38,7 +38,8 @@ class CanBusMotor:
             print('Waiting for other nodes to become online...')
             node.spin(timeout=1)
 
-        node.periodic(0.08, self.update)
+        # how fast can we blast this?
+        node.periodic(0.05, self.update)
         node.add_handler(uavcan.equipment.esc.Status, self.listen)
 
         self.thread = threading.Thread(target=node.spin, daemon=True)
