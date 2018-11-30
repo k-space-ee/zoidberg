@@ -20,21 +20,21 @@ field:
   - 255
 goal A:
   chroma blue:
-  - 100
-  - 142
+  - 99
+  - 132
   chroma red:
-  - 83
+  - 115
   - 157
   luma:
-  - 41
-  - 141
+  - 44
+  - 120
 goal B:
   chroma blue:
-  - 85
-  - 116
-  chroma red:
-  - 149
-  - 179
-  luma:
   - 84
-  - 142
+  - 120
+  chroma red:
+  - 163
+  - 193
+  luma:
+  - 74
+  - 136
