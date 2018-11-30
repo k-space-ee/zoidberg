@@ -295,6 +295,9 @@ class Gameplay:
         y = bx * math.sin(delta) + by * math.cos(delta)
 
         factor = abs(math.tanh(angle / 60)) + 0.2
+        kicker_difference = self.kicker_speed_difference
+        if kicker_difference > 200 or  kicker_difference < -300:
+            factor /= abs(kicker_difference) / 1000
 
         # TODO: falloff when goal angle and dist decreases
         return round(x * factor * 0.8, 6), round(y * factor * 0.8, 6)
@@ -360,6 +363,12 @@ class Gameplay:
             speed = min(15000, speed)
             return speed
         return 0
+
+    @property
+    def kicker_speed_difference(self):
+        kicker_speed = self.actor.kicker_speed
+        desired_kicker_speed = self.actor.get_desired_kicker_speed()
+        return kicker_speed - desired_kicker_speed
 
     def kick(self, update=True):
         if update:
@@ -594,11 +603,11 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
             kicker_speed = self.actor.kicker_speed
             desired_kicker_speed = self.actor.get_desired_kicker_speed()
             message = 'RPM:%.2f DESIRED:%.2f', kicker_speed, desired_kicker_speed
-            if kicker_speed - desired_kicker_speed > 400:
-                logger.error(message)
+            if kicker_speed - desired_kicker_speed > 200:
+                logger.error(*message)
                 return
 
-            logger.info(message)
+            logger.info(*message)
 
             return Shoot(self.actor)
 
