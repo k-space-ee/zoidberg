@@ -81,7 +81,7 @@ class GameplayNode(messenger.Node):
                     self.gameplay.motors.apply()                    
                     self.logger.info_throttle(1, 'command success')
                 except Exception as e:
-                    self.logger.error('Gameplay command failed: %s %s', function_name, arguments)
+                    self.logger.error('Gameplay command failed: %s %s\n %s', function_name, arguments, e)
 
     def callback(self, *_):
         r_state = self.get_recognition()
