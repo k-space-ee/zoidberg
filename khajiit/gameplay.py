@@ -228,7 +228,7 @@ class Gameplay:
     def blind_spot_for_shoot(self):
         return (not self.own_goal or self.own_goal.dist > 3.0) and self.closest_edge[2] < 1.2
 
-    def drive_towards_target_goal(self, backtrack=True, speed_factor=1):
+    def drive_towards_target_goal(self, backtrack=True, speed_factor=0.8):
         rotation = self.rotation_for_goal() or 0
         angle = self.target_goal_angle or 0
 
