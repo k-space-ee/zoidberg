@@ -166,6 +166,10 @@ def command(websocket):
                         logger.info("Drive to center")
                         command_publisher.command(drive_to_field_center=None)
 
+                    if controls.get("controller0.button7", None):
+                        logger.info(f"Flank {target_goal_angle}")
+                        command_publisher.command(flank=None)
+
                     if controls.get("controller0.button2", None):
                         logger.info(f"align_to_goal: {target_goal_angle} speed:{average_rpm}")
                         command_publisher.command(align_to_goal=dict(factor=1.0))
