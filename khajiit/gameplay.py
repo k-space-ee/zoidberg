@@ -593,9 +593,12 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
 
             kicker_speed = self.actor.kicker_speed
             desired_kicker_speed = self.actor.get_desired_kicker_speed()
+            message = 'RPM:%.2f DESIRED:%.2f', kicker_speed, desired_kicker_speed
             if kicker_speed - desired_kicker_speed > 400:
-                logger.error('RPM:%.2f DESIRED:%.2f', kicker_speed, desired_kicker_speed)
+                logger.error(message)
                 return
+
+            logger.info(message)
 
             return Shoot(self.actor)
 
