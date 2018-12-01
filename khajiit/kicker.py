@@ -51,7 +51,7 @@ class CanBusMotor:
                 continue
 
             serial_device = next(iter(zubax), None)
-            logger.error(f"Zubax controller determined, {zubax}")
+            logger.info(f"Zubax controller determined, {zubax}")
             self.node = node = uavcan.make_node(
                 serial_device,
                 node_id=10,
@@ -71,6 +71,8 @@ class CanBusMotor:
             node.periodic(0.05, self.update)
             node.add_handler(uavcan.equipment.esc.Status, self.listen)
             logger.info('New zubax node: %s', serial_device)
+
+            return
 
     @property
     def speed(self):
