@@ -30,6 +30,7 @@ class InjectorNode(messenger.Node):
         self.mock = mock
 
         self.initial_devices = set(find_serial('CP2102').keys())
+        self.logger.info("existing devices %s", list(self.initial_devices))
         self.injector: Optional[serial.Serial] = None
 
         if run:
