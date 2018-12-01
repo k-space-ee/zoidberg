@@ -1,8 +1,9 @@
-from time import sleep_ms
+from time import sleep
 from ucollections import OrderedDict
 from machine import Pin, PWM, Timer, I2C, reset
 from micropython import const
 import framebuf
+import ujson
 
 # How to use this
 # 1. Flash MicroPython on the board
@@ -136,8 +137,20 @@ oled = SSD1306_I2C(128, 64, i2c)
 oled.invert(0)  # White text on black background
 oled.contrast(255)  # Maximum contrast
 oled.fill(0)
-[oled.text(str(i), 8 * i, 8 * i) for i in range(20)]
+
+logo = (
+   "\    ||||__   o",
+   "| \_/    o \ o",
+   "> _   (( <_ o",
+   "| / \__+___/",
+   "|/     |/",
+   "",
+   "Sick fish hackin",
+)
+for i, row in enumerate(logo):
+    oled.text(row, 0, 8 * i)
 oled.show()
+sleep(1)
 
 ##############
 config = {
@@ -147,36 +160,50 @@ config = {
     'target goal color': 'purple',
 }
 
-import ujson
 config_json = ujson.dumps(config)
 config_package = "!@#$%s!@#$" % config_json
 
-data = [
-    (
-        "\    ||||__   o",
-        "| \_/    o \ o",
-        "> _   (( <_ o",
-        "| / \__+___/",
-        "|/     |/",
-        "",
-        "Sick fish hackin",
-    ),
+field_jumper = Pin(15, Pin.IN, Pin.PULL_UP)
+goal_jumper = Pin(13, Pin.IN, Pin.PULL_UP)
+robot_jumper = Pin(12, Pin.IN, Pin.PULL_UP)
 
-    tuple(
-        '{:<8}: {}'.format(k[:8], v) for k, v in config.items()
-    )
-]
 
+def refresh_config():
+    global config, config_json, config_package
+
+    config = {
+        'field_id': 'A' if field_jumper.value() else 'B',
+        'gameplay status': 'disabled',
+        'robot_id': 'A' if robot_jumper.value() else 'B',
+        'target goal color': 'blue' if goal_jumper.value() else 'purple',
+    }
+
+    config_json = ujson.dumps(config)
+    config_package = "!@#$%s!@#$" % config_json
+
+
+refresh_config()
+
+data = []
 flip = 0
 
 
 def render(*_):
     global flip
-    flip = (flip + 1) % len(data)
+
+    placeholder_data = [
+        tuple(
+            '{:<8}: {}'.format(k[:8], v) for k, v in config.items()
+        )
+    ]
+    to_show = data or placeholder_data
+    flip = (flip + 1) % len(to_show)
+
+    refresh_config()
 
     oled.fill(0)
 
-    for i, row in enumerate(data[flip]):
+    for i, row in enumerate(to_show[flip]):
         oled.text(row, 0, 8 * i)
 
     oled.show()
