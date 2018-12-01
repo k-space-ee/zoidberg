@@ -73,11 +73,12 @@ class Visualizer(ManagedThread):
         for relative, absolute, x, y, radius in r.balls:
             cv2.circle(frame, (x, y), radius, (255, 255, 255) if index else (0, 0, 255), 3)
             x = r.deg_to_x(relative.angle_deg)
-            cv2.putText(frame, "%.1fdeg" % relative.angle_deg, (x + 20, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 2,
-                        (255, 0, 0), 10)
-            cv2.putText(frame, "%.2fm" % relative.dist, (x + 20, y + 40), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 12)
+            cv2.putText(
+                frame, "%.1fdeg" % relative.angle_deg, (x + 20, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 4)
+            cv2.putText(
+                frame, "%.2fm" % relative.dist, (x + 20, y + 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 4)
             index += 1
-            if index < 5:
+            if index < 2:
                 point = x, y
                 if prev is not None:
                     cv2.line(frame, prev, point, (0, 0, 255), 4)
@@ -93,7 +94,7 @@ class Visualizer(ManagedThread):
                 cv2.putText(frame, "%.2fm" % r.goal_yellow.dist, (x, r.GOAL_BOTTOM - 30), cv2.FONT_HERSHEY_SIMPLEX, 2,
                             (0, 0, 0), 4)
             for rect in r.goal_yellow_rect:
-                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (32, 32, 255), 8)
+                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (32, 32, 255), 16)
 
         if r.goal_blue:
             for delta in -3840, 0, 3840:
@@ -104,7 +105,7 @@ class Visualizer(ManagedThread):
                 cv2.putText(frame, "%.2fm" % r.goal_blue.dist, (x, r.GOAL_BOTTOM - 30), cv2.FONT_HERSHEY_SIMPLEX, 2,
                             (0, 0, 0), 4)
             for rect in r.goal_blue_rect:
-                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (255, 32, 32), 8)
+                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (255, 32, 32), 16)
 
         target_goal = r.goal_blue
         if target_goal:
