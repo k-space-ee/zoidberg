@@ -591,24 +591,31 @@ class Patrol(RetreatMixin, TimeoutMixin, StateNode):
 
 class Flank(RetreatMixin, DangerZoneMixin, StateNode):
     def animate(self):
-        kicker_difference = self.actor.kicker_speed_difference
         factor = 1
-        limit = 200
-        reduction = 0.4
-        if abs(kicker_difference) > limit:
-            factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
+        angle, dist = self.last_best_ball()
+
+        if None not in (angle, dist) and angle > 9:
+            kicker_difference = self.actor.kicker_speed_difference
+            limit = 200
+            reduction = 0.4
+            if abs(kicker_difference) > limit:
+                factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
 
         self.actor.flank(movement_factor=factor)
         self.actor.kick()
 
-    def VEC_SHOULD_SHOOT(self):
+    def last_best_ball(self):
         last_best_ball = self.actor.average_closest_ball
         if not last_best_ball:
-            return
+            return None, None
 
-        if last_best_ball.angle_deg_abs < 6 and last_best_ball.dist < 0.20:
-            logger.info("goal:%.1f angle:%.1f dist:%.2f ", self.actor.target_goal_distance,
-                        last_best_ball.angle_deg_abs, last_best_ball.dist)
+        return last_best_ball.angle_deg_abs, last_best_ball.dist
+
+    def VEC_SHOULD_SHOOT(self):
+        angle, dist = self.last_best_ball()
+
+        if None not in (angle, dist) and angle < 6 and distance < 0.20:
+            logger.info("goal:%.1f angle:%.1f dist:%.2f ", self.actor.target_goal_distance, angle, distance)
 
             kicker_speed = self.actor.kicker_speed
             desired_kicker_speed = self.actor.get_desired_kicker_speed()
