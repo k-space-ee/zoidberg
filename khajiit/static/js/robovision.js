@@ -70,7 +70,7 @@ function streamGamepad() {
 function ping() {
     var package = JSON.stringify({"action": "ping"});
     socket.send(package);
-    setTimeout(ping, 30);
+    setTimeout(ping, 500);
 }
 
 function scriptSaveAs(filename) {
@@ -210,7 +210,7 @@ $(document).ready(function () {
 
                 break
             case "settings-packet":
-                console.log(msg.sliders, msg.options, "websocket-settings-packet");
+                #console.log(msg.sliders, msg.options, "websocket-settings-packet");
                 createInputNodes(msg);
                 break;
             default:
