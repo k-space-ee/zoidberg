@@ -614,7 +614,7 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
     def VEC_SHOULD_SHOOT(self):
         angle, dist = self.last_best_ball()
 
-        if None not in (angle, dist) and angle < 6 and distance < 0.20:
+        if None not in (angle, dist) and angle < 6 and dist < 0.20:
             logger.info("goal:%.1f angle:%.1f dist:%.2f ", self.actor.target_goal_distance, angle, distance)
 
             kicker_speed = self.actor.kicker_speed
