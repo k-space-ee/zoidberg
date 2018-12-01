@@ -23,6 +23,9 @@ def get_distance(point_a, point_b):
     return dist
 
 
+Centimeter = float
+
+
 @dataclass
 class RecognitionState:
     """Class for keeping track of the recognition state."""
@@ -51,7 +54,7 @@ class Gameplay:
         self.config = config
 
         self.target_goal_distances = [100]
-        self.target_goal_distance = 100
+        self.target_goal_distance: Centimeter = 100
 
         self.last_kick = time()
 
@@ -457,7 +460,7 @@ class Gameplay:
         d = sum(D) / len(D)
         return PolarPoint(a, d)
 
-    def get_target_goal_distance(self):
+    def get_target_goal_distance(self) -> Centimeter:
         if self.target_goal:
             self.target_goal_distances = [self.target_goal.dist * 100] + self.target_goal_distances[:10]
             self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
@@ -590,14 +593,18 @@ class Patrol(RetreatMixin, TimeoutMixin, StateNode):
 class Flank(RetreatMixin, DangerZoneMixin, StateNode):
     def animate(self):
         factor = 1
-        angle, dist = self.last_best_ball()
+        abs_angle, dist = self.last_best_ball()
 
-        if None not in (angle, dist) and angle > 9:
-            kicker_difference = self.actor.kicker_speed_difference
-            limit = 200
-            reduction = 0.4
-            if abs(kicker_difference) > limit:
-                factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
+        if None not in (abs_angle, dist):
+            if abs_angle > 9:
+                kicker_difference = self.actor.kicker_speed_difference
+                limit = 200
+                reduction = 0.4
+                if abs(kicker_difference) > limit:
+                    factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
+
+            elif self.actor.target_goal_distance > 290:
+                factor = 1 + abs_angle / 9
 
         self.actor.flank(movement_factor=factor)
         self.actor.kick()
@@ -624,11 +631,8 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
 
             logger.info(*message)
 
-            return Shoot(self.actor)
-
-        # if last_best_ball.angle_deg_abs < 4.5 and last_best_ball.dist < 0.3:
-        #     print(self.actor.target_goal_distance, 'w2')
-        #     return Shoot(self.actor)
+            if self.actor.target_goal_distance < 290:
+                return Shoot(self.actor)
 
     # def VEC_TOO_CLOSE(self):
     # if self.actor.too_close or self.actor.too_close_to_edge:
