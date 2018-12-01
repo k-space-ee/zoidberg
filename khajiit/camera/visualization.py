@@ -119,7 +119,7 @@ class Visualizer(ManagedThread):
             cv2.putText(frame, "PWM %.0f" % pwm, (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
             cv2.putText(frame, "ANG %.0f" % angle, (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
             cv2.putText(frame, "Y %.0f" % y, (50, 400), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
-            cv2.putText(frame, "ADJ %.0f" % r.goal_angle_adjust, (50, 500), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
+            cv2.putText(frame, "ADJ %.2f" % r.goal_angle_adjust, (50, 500), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
 
         if r.goal_yellow and r.goal_blue:
             logger.info(f"goal_yellow: %.0f goal_blue: %.0f", r.goal_yellow.dist * 100, r.goal_blue.dist * 100)
