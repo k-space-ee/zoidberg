@@ -57,7 +57,7 @@ class Visualizer(ManagedThread):
             points = [(points[-1][0] - 3840, points[-1][1])] + points
             prev = None
             for point in points:
-                cv2.putText(frame, "%.2fx" % point[1], point, cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 4)
+                cv2.putText(frame, "%dy" % point[1], point, cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 4)
                 if prev is not None:
                     cv2.line(frame, prev, point, (128, 255, 128), 4)
                 prev = point
@@ -84,22 +84,22 @@ class Visualizer(ManagedThread):
                 x = r.deg_to_x(r.goal_yellow.angle_deg) + delta
                 cv2.line(frame, (x, 0), (x, r.GOAL_BOTTOM - 120), (255, 255, 255), 3)
                 cv2.putText(frame, "%.1fdeg" % r.goal_yellow.angle_deg, (x + 90, r.GOAL_BOTTOM + 120),
-                            cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0, 0), 20)
+                            cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 8)
                 cv2.putText(frame, "%.2fm" % r.goal_yellow.dist, (x, r.GOAL_BOTTOM - 30), cv2.FONT_HERSHEY_SIMPLEX, 2,
                             (0, 0, 0), 4)
             for rect in r.goal_yellow_rect:
-                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (0, 0, 255), 4)
+                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (128, 128, 255), 4)
 
         if r.goal_blue:
             for delta in -3840, 0, 3840:
                 x = r.deg_to_x(r.goal_blue.angle_deg) + delta
                 cv2.line(frame, (x, 0), (x, r.GOAL_BOTTOM - 120), (255, 255, 255), 3)
                 cv2.putText(frame, "%.1fdeg" % r.goal_blue.angle_deg, (x + 90, r.GOAL_BOTTOM + 120),
-                            cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0, 0), 20)
+                            cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 8)
                 cv2.putText(frame, "%.2fm" % r.goal_blue.dist, (x, r.GOAL_BOTTOM - 30), cv2.FONT_HERSHEY_SIMPLEX, 2,
                             (0, 0, 0), 4)
             for rect in r.goal_blue_rect:
-                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (255, 0, 0), 4)
+                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (255, 128, 128), 4)
 
         target_goal = r.goal_blue
         if target_goal:
