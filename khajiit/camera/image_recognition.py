@@ -192,9 +192,9 @@ class ImageRecognition:
             dy += math.cos(rotation) * dist
 
         bigger, smaller, goal_angle_adjust = None, None, 0.0
-        if 4 in y_map and 6 in y_map:
-            left_side = y_map[4]
-            right_side = y_map[6]
+        if 3 in y_map and 5 in y_map:
+            left_side = y_map[3]
+            right_side = y_map[5]
             bigger = max(left_side, right_side)
             smaller = min(left_side, right_side)
             factor = min(bigger / (smaller or 1), 4) - 1
