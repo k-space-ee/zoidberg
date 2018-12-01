@@ -5,7 +5,7 @@ from kicker import CanBusMotor
 class KickerNode(messenger.Node):
 
     def __init__(self, mock=False, run=True, silent=True) -> None:
-        super().__init__('kicker_node')
+        super().__init__('kicker_node', existing_loggers=['canbus'])
         self.listener = messenger.Listener('/kicker_speed', messenger.Messages.integer, callback=self.callback)
         self.publisher = messenger.Publisher('/canbus_message', messenger.Messages.string)
 

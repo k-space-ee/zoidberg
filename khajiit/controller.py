@@ -1,4 +1,6 @@
 import logging
+from time import sleep
+
 import serial
 
 from serial_wrapper import find_serial
@@ -10,15 +12,8 @@ class Controller:
     # Ctrl-C doesn't work well,  Lauri tested b"\x03" +
     # safe values 0.2 0.05
     def __init__(self, factor=0.2, maximum=0.08):
-        controller_serial = next(iter(find_serial('CP2102')), None)
-        logger.info("Opening %s", controller_serial)
-        if not serial:
-            logger.error('serial device not found!')
-        assert controller_serial, "serial not found"
-
-        self.motor_serial = serial.Serial(
-            port=controller_serial,
-            baudrate=115200, xonxoff=True, timeout=0.01)
+        self.motor_serial = None
+        self.try_reconnect()
 
         self.factor = factor
         self.maximum = maximum
@@ -38,6 +33,27 @@ class Controller:
 
         return True
 
+    def try_reconnect(self):
+        if self.motor_serial:
+            self.motor_serial.close()
+        self.motor_serial = None
+        while self.motor_serial is None:
+            controller_serial = next(iter(find_serial('CP2102')), None)
+            logger.info("Opening %s", controller_serial)
+
+            if not controller_serial:
+                logger.error('Reconnect serial device not found!')
+                sleep(1)
+                continue
+
+            try:
+                self.motor_serial = serial.Serial(
+                    port=controller_serial,
+                    baudrate=115200, xonxoff=True, timeout=0.01)
+            except Exception as e:
+                logger.error('Reconnect failed: %s', e)
+                sleep(1)
+
     def apply(self):
         # check if our state is valid
         if not self.assert_config():
@@ -49,7 +65,12 @@ class Controller:
 
         # send a python command to esp32
         command = "set_abce(%s,%s,%s,%d)\n\r" % (a, b, c, 40)
-        motor_serial.write(command.encode("ascii"))
+
+        try:
+            motor_serial.write(command.encode("ascii"))
+        except Exception as e:
+            logger.error("Motors dead: %s", e)
+            self.try_reconnect()
 
     def set_abc(self, *speed):
         if self.factor:

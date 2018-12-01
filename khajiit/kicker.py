@@ -1,10 +1,14 @@
-import threading
-from time import time
+import logging
+from time import time, sleep
+from typing import Optional
+
 import yaml
 
 import uavcan
 
 from serial_wrapper import find_serial
+
+logger = logging.getLogger("canbus")
 
 
 class CanBusMotor:
@@ -19,31 +23,51 @@ class CanBusMotor:
         self.last_edit = time()
         self.kill = kill
 
-        zubax = find_serial('zubax')
-        assert len(zubax) == 1, f"Zubax controller not determined, {zubax}"
+        self.node: Optional[uavcan.node.Node] = None
 
-        serial_device = next(iter(zubax), None)
-        self.node = node = uavcan.make_node(
-            serial_device,
-            node_id=10,
-            bitrate=1000000,
-        )
+        self.reconnect()
 
-        # setup
-        node_monitor = uavcan.app.node_monitor.NodeMonitor(node)
-        dynamic_node_id_allocator = uavcan.app.dynamic_node_id.CentralizedServer(node, node_monitor)
+        self.run()
 
-        # Waiting for at least one other node to appear online (our local node is already online).
-        while len(dynamic_node_id_allocator.get_allocation_table()) <= 1:
-            print('Waiting for other nodes to become online...')
-            node.spin(timeout=1)
+    def run(self):
+        while True:
+            try:
+                self.node.spin(timeout=1)  # Spin forever or until an exception is thrown
+            except Exception as ex:
+                logger.error('Node error: %s', ex)
+                if self.node:
+                    self.node.close()
+                self.node = None
+                self.reconnect()
 
-        # how fast can we blast this?
-        node.periodic(0.05, self.update)
-        node.add_handler(uavcan.equipment.esc.Status, self.listen)
+    def reconnect(self):
+        while True:
+            zubax = find_serial('zubax')
+            if len(zubax) != 1:
+                logger.error(f"Zubax controller not determined, {zubax}")
+                sleep(1)
+                continue
 
-        self.thread = threading.Thread(target=node.spin, daemon=True)
-        self.thread.start()
+            serial_device = next(iter(zubax), None)
+            self.node = node = uavcan.make_node(
+                serial_device,
+                node_id=10,
+                bitrate=1000000,
+            )
+
+            # setup
+            node_monitor = uavcan.app.node_monitor.NodeMonitor(node)
+            dynamic_node_id_allocator = uavcan.app.dynamic_node_id.CentralizedServer(node, node_monitor)
+
+            # Waiting for at least one other node to appear online (our local node is already online).
+            while len(dynamic_node_id_allocator.get_allocation_table()) <= 1:
+                print('Waiting for other nodes to become online...')
+                node.spin(timeout=1)
+
+            # how fast can we blast this?
+            node.periodic(0.05, self.update)
+            node.add_handler(uavcan.equipment.esc.Status, self.listen)
+            logger.info('New zubax node: %s', serial_device)
 
     @property
     def speed(self):

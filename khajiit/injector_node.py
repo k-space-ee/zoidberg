@@ -1,6 +1,6 @@
 import json
 import re
-from time import time
+from time import time, sleep
 from typing import Optional
 
 import serial
@@ -29,7 +29,7 @@ class InjectorNode(messenger.Node):
         self.config = ConfigManager.get_value('game')
         self.mock = mock
 
-        self.initial_devices = set(find_serial('CP2102').keys())
+        self.initial_devices = set((dev.hwid or dev.device) for dev in find_serial('CP2102').values())
         self.logger.info("existing devices %s", list(self.initial_devices))
         self.injector: Optional[serial.Serial] = None
 
@@ -40,9 +40,13 @@ class InjectorNode(messenger.Node):
         self.config = ConfigManager.get_value('game')
 
     def find_serial(self):
-        injector_serial = next(
-            (device for device in find_serial('CP2102').keys() if device not in self.initial_devices),
-            None,
+        injector_serial, injector_device = next(
+            (
+                (path, device)
+                for path, device in find_serial('CP2102').items()
+                if (device.hwid or device.device) not in self.initial_devices
+            ),
+            (None, None),
         )
         if injector_serial:
             self.sleep()
@@ -75,7 +79,6 @@ class InjectorNode(messenger.Node):
             self.injector = None
             return
 
-        config = {}
         try:
             m = re.search('\!\@\#\$(.+?)\!\@\#\$', config_string)
             if m:
@@ -83,8 +86,12 @@ class InjectorNode(messenger.Node):
                 self.loginfo('String found: %s', config_string)
             config = json.loads(config_string)
         except Exception as e:
-            self.loginfo("Config found: %s", str(config_string))
+            self.loginfo("String found: %s", str(config_string))
             self.logerror("Could not load settings package: %s", e)
+            self.injector.close()
+            self.injector = None
+            sleep(3)
+            return
 
         if config:
             for k, v in config.items():
