@@ -25,7 +25,6 @@ def get_distance(point_a, point_b):
 
 Centimeter = float
 
-DANGER_DISTANCE = 290
 
 @dataclass
 class RecognitionState:
@@ -356,10 +355,15 @@ class Gameplay:
     def continue_to_kick(self):
         return time() - self.last_kick < 1
 
+    def is_in_super_shoot_zone(self) -> bool:
+        if self.target_goal_dist and self.target_goal_dist > 290 or self.own_goal and self.own_goal.dist < 150:
+            return True
+        return False
+
     def get_desired_kicker_speed(self):
         distance = self.get_target_goal_distance()
         maximum = 8000
-        if self.target_goal_dist > DANGER_DISTANCE:
+        if self.is_in_super_shoot_zone():
             maximum = 7500
 
         if distance:
@@ -608,7 +612,7 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
                 if abs(kicker_difference) > limit:
                     factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
 
-            elif self.actor.target_goal_distance > DANGER_DISTANCE:
+            elif self.actor.is_in_super_shoot_zone():
                 factor = 1.5 + abs_angle / 9 / 2
 
         self.actor.flank(movement_factor=factor)
@@ -636,11 +640,10 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
 
             logger.info(*message)
 
-            if self.actor.target_goal_distance < DANGER_DISTANCE:
-                return Shoot(self.actor)
-            else:
+            if self.actor.is_in_super_shoot_zone():
                 return SuperShoot(self.actor)
-
+            else:
+                return Shoot(self.actor)
 
     # def VEC_TOO_CLOSE(self):
     # if self.actor.too_close or self.actor.too_close_to_edge:
