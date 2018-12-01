@@ -200,7 +200,7 @@ class ImageRecognition:
             factor = min(bigger / (smaller or 1), 4) - 1
             sign = -1 if left_side < right_side else 1
             goal_angle_adjust = sign * factor
-            logger.info('GOAL_ANGLE ADJUST: %s / %s -> %s', bigger, smaller, goal_angle_adjust)
+            # logger.info('GOAL_ANGLE ADJUST: %s / %s -> %s', bigger, smaller, goal_angle_adjust)
 
         else:
             logger.info('GOAL_ANGLE ADJUST: %s', str(y_map))
