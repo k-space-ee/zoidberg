@@ -115,7 +115,7 @@ class Visualizer(ManagedThread):
             y = sum(y + h for x, y, w, h in r.goal_blue_rect) / len(r.goal_blue_rect)
             dist_str = "DIST %.0f" % dist
             if r.goal_yellow:
-                dist_str = "DIST B-%.0f P-%.0f" % (dist, r.goal_yellow.dist * 100)
+                dist_str = "DIST B%.0f P%.0f" % (dist, r.goal_yellow.dist * 100)
             cv2.putText(frame, dist_str, (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
             cv2.putText(frame, "PWM %.0f" % pwm, (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
             cv2.putText(frame, "ANG %.0f" % angle, (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
