@@ -230,7 +230,11 @@ class Grabber(Thread):
                 try:
                     self.vd = self.open()
                 except OSError:
-                    logger.info("Failed to open: %s", self.path)
+                    logger.error("OSError: Failed to open: %s", self.path)
+                    self.vd = None
+                    continue
+                except Exception as e:
+                    logger.error("Exception: Failed to open: %s\n%s", self.path, e)
                     self.vd = None
                     continue
 
