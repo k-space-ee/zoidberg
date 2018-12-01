@@ -219,6 +219,8 @@ class Grabber(Thread):
             self.ready.clear()
 
             if not self.vd:
+                # give some time for cameras to recover
+                sleep(2)
                 # Check if /dev/v4l/by-path/bla symlink exists
                 if not os.path.exists(self.path):
                     logger.info("Waiting for %s to become available", self.path)
@@ -229,10 +231,8 @@ class Grabber(Thread):
                     self.vd = self.open()
                 except OSError:
                     logger.info("Failed to open: %s", self.path)
-                    sleep(1)
                     self.vd = None
                     continue
-            #                    raise
 
             # get image from the driver queue
             buf = v4l2_buffer()
