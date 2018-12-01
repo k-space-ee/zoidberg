@@ -1,5 +1,5 @@
 global:
-  fps: 30
+  fps: 25
   rotate: 1
   cameras: 8
   exposure: 60
