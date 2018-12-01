@@ -68,6 +68,9 @@ class Gameplay:
 
         self.desired_kicker_seed_cache = []
 
+        self.target_angle_adjusts = []
+        self.target_angle_adjust = 0
+
     @property
     def field_id(self):
         return self.config.prop("global").prop("field_id", default='A')
@@ -366,7 +369,7 @@ class Gameplay:
         return False
 
     def get_desired_kicker_speed(self):
-        distance = self.get_target_goal_distance()
+        distance = self.target_goal_distance
         maximum = 8000
         if self.is_in_super_shoot_zone():
             maximum = 7000
@@ -474,11 +477,19 @@ class Gameplay:
         d = sum(D) / len(D)
         return PolarPoint(a, d)
 
-    def get_target_goal_distance(self) -> Centimeter:
+    def set_target_goal_distance(self) -> Centimeter:
         if self.target_goal:
             self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
             self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
         return self.target_goal_distance
+
+    def set_target_goal_angle_adjust(self) -> float:
+        if self.recognition.angle_adjust is not None:
+            self.target_angle_adjusts = [self.recognition.angle_adjust] + self.target_angle_adjusts[:10]
+            self.target_angle_adjust = sum(self.target_angle_adjusts) / len(self.target_angle_adjusts)
+
+        logger.log("adjust is: %.2f", self.target_angle_adjust)
+        return self.target_angle_adjust
 
     def step(self, recognition, *args):
         if not recognition or not self.is_enabled:
@@ -486,7 +497,8 @@ class Gameplay:
 
         self.recognition = recognition
 
-        self.get_target_goal_distance()
+        self.set_target_goal_distance()
+        self.set_target_goal_angle_adjust()
 
         self.state = self.state.tick()
 

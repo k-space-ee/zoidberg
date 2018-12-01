@@ -197,7 +197,7 @@ class ImageRecognition:
             right_side = y_map[6]
             bigger = max(left_side, right_side)
             smaller = min(left_side, right_side)
-            factor = min(bigger / (smaller or 1), 3)
+            factor = min(bigger / (smaller or 1), 4) - 1
             sign = -1 if left_side < right_side else 1
             goal_angle_adjust = sign * factor
             logger.info('GOAL_ANGLE ADJUST: %s / %s -> %s', bigger, smaller, goal_angle_adjust)

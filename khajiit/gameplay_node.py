@@ -114,7 +114,7 @@ class GameplayNode(messenger.Node):
                 field=self.gameplay.field_id,
                 robot=self.gameplay.robot_id,
                 state=str(self.gameplay.state),
-                dist=self.gameplay.get_target_goal_distance(),
+                dist=self.gameplay.target_goal_distance,
                 angle=self.gameplay.target_goal_angle,
             )
 
