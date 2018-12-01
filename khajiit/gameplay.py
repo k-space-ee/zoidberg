@@ -369,7 +369,7 @@ class Gameplay:
         distance = self.get_target_goal_distance()
         maximum = 8000
         if self.is_in_super_shoot_zone():
-            maximum = 7500
+            maximum = 7000
 
         if distance:
             speed = dist_to_rpm(distance)

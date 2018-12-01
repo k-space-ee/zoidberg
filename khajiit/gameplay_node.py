@@ -59,6 +59,7 @@ class GameplayNode(messenger.Node):
             '/canbus_message', messenger.Messages.string, callback=self.kicker_callback)
 
         self.mock = mock
+        ConfigManager.set_value('game|global|gameplay status', 'disabled')
         self.config = ConfigManager.get_value('game')
         self.gameplay = Gameplay(self.config, Controller())
 
