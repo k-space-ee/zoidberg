@@ -1,6 +1,7 @@
 import json
 import re
 from time import time
+from typing import Optional
 
 import serial
 
@@ -29,7 +30,7 @@ class InjectorNode(messenger.Node):
         self.mock = mock
 
         self.initial_devices = set(find_serial('CP2102').keys())
-        self.injector = None
+        self.injector: Optional[serial.Serial] = None
 
         if run:
             self.loop(3)
@@ -49,7 +50,7 @@ class InjectorNode(messenger.Node):
             self.logger.info("Opening %s", injector_serial)
 
             try:
-                self.injector = serial.Serial(
+                self.injector: Optional[serial.Serial] = serial.Serial(
                     port=injector_serial,
                     baudrate=115200, xonxoff=True, timeout=1)
             except Exception as e:
@@ -57,15 +58,20 @@ class InjectorNode(messenger.Node):
                 return
 
             self.sleep()
+            self.sleep()
+            self.sleep()
             self.read_config()
 
     def read_config(self):
         try:
             self.injector.write("config_package\n\r".encode("ascii"))
             self.sleep()
+            self.sleep()
             config_string = self.injector.read(size=1024).decode('utf-8')
         except Exception as e:
             self.logerror("No config found, %s", e)
+            self.injector.close()
+            self.injector = None
             return
 
         config = {}
@@ -84,6 +90,7 @@ class InjectorNode(messenger.Node):
                 ConfigManager.set_value('game|global|%s' % k, v)
 
     def step(self):
+        self.injector: Optional[serial.Serial]
         if not self.injector:
             self.find_serial()
         else:
@@ -129,6 +136,7 @@ class InjectorNode(messenger.Node):
                 self.sleep()
             except Exception as e:
                 self.logerror("Injector lost, %s", e)
+                self.injector.close()
                 self.injector = None
 
 

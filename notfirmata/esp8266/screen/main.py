@@ -1,5 +1,3 @@
-from time import sleep
-from ucollections import OrderedDict
 from machine import Pin, PWM, Timer, I2C, reset
 from micropython import const
 import framebuf
