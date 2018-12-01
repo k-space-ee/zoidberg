@@ -90,6 +90,8 @@ class GameplayNode(messenger.Node):
             r_state = self.get_recognition()
             self.gameplay.recognition = r_state
             self.gameplay.update_recent_closest_balls()
+            self.gameplay.set_target_goal_distance()
+            self.gameplay.set_target_goal_angle_adjust()
 
             for function_name, arguments in package.items():
                 try:
