@@ -229,8 +229,8 @@ class Grabber(Thread):
                     continue
                 try:
                     self.vd = self.open()
-                except OSError:
-                    logger.error("OSError: Failed to open: %s", self.path)
+                except OSError as e:
+                    logger.error("OSError: Failed to open: %s\n%s", self.path, e)
                     self.vd = None
                     continue
                 except Exception as e:
