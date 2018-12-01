@@ -523,6 +523,9 @@ class StateNode:
         logger.info("DEBUG forced_recovery_time: %f" % (time() - self.time))
         return self.time + min(self.recovery_counter * self.recovery_factor, 5) > time()
 
+    def should_stick(self) -> bool:
+        return False
+
     def exctract_transistions(self):
         return [
             (func, getattr(self.__class__, func))
@@ -531,11 +534,12 @@ class StateNode:
         # return [i for i in self.__class__.__dict__.items() if 'VEC' in i[0]]
 
     def transition(self):
-        for name, vector in self.transitions.items():
-            result = vector(self)
-            if result:
-                logger.info("\n%s --> %s" % (name, result.__class__.__name__))
-                return result
+        if not self.should_stick():
+            for name, vector in self.transitions.items():
+                result = vector(self)
+                if result:
+                    logger.info("\n%s --> %s" % (name, result.__class__.__name__))
+                    return result
         return self
 
     def animate(self):
@@ -594,6 +598,10 @@ class ForceCenter(StateNode):
 class Patrol(RetreatMixin, TimeoutMixin, StateNode):
     def animate(self):
         self.actor.drive_to_field_center()
+
+    def should_stick(self):
+        # at least 1 sec
+        return self.elapsed_time < 1
 
     def VEC_SEE_BALLS_AND_CAN_FLANK(self):
         if self.actor.balls and not self.actor.danger_zone and self.actor.target_goal:
@@ -654,6 +662,10 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
     # if self.actor.too_close or self.actor.too_close_to_edge:
     # print("too close")
     # return ForceCenter(self.actor)
+
+    def VEC_NO_FLANK(self):
+        if self.actor.goal_to_ball_angle is None:
+            return Patrol(self.actor)
 
     def VEC_NO_BALLS(self):
         if not self.actor.balls:
