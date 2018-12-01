@@ -33,6 +33,9 @@ class RecognitionState:
     goal_yellow: Optional[PolarPoint] = None
     goal_blue: Optional[PolarPoint] = None
     closest_edge: Optional[PolarPoint] = None
+    angle_adjust: float = None
+    h_bigger: int = None
+    h_smaller: int = None
 
     @staticmethod  # for some reason type analysis didn't work for classmethod
     def from_dict(packet: dict) -> 'RecognitionState':
@@ -40,8 +43,9 @@ class RecognitionState:
         goal_yellow: Optional[PolarPoint] = packet.get('goal_yellow') and PolarPoint(**packet['goal_yellow'])
         goal_blue: Optional[PolarPoint] = packet.get('goal_blue') and PolarPoint(**packet['goal_blue'])
         closest_edge: Optional[PolarPoint] = packet.get('closest_edge') and PolarPoint(**packet['closest_edge'])
+        angle_adjust, h_bigger, h_smaller = packet.get('goal_angle_adjust')
 
-        return RecognitionState(balls, goal_yellow, goal_blue, closest_edge)
+        return RecognitionState(balls, goal_yellow, goal_blue, closest_edge, angle_adjust, h_bigger, h_smaller)
 
 
 class Gameplay:
@@ -120,9 +124,9 @@ class Gameplay:
         return self.recognition.goal_blue if self.config_goal == 'blue' else self.recognition.goal_yellow
 
     @property
-    def target_goal_angle(self):
+    def target_goal_angle(self) -> Optional[float]:
         if self.target_goal:
-            return self.target_goal.angle_deg
+            return self.target_goal.angle_deg + 10 + self.recognition.angle_adjust
 
     @property
     def target_goal_dist(self) -> Centimeter:
@@ -185,10 +189,6 @@ class Gameplay:
         in_line = self.goal_to_ball_angle
 
         if in_line and abs(in_line) < 13:
-            log_str = "B{:.1f} G{:.1f} | D{:.1f}".format(self.balls[0].angle_deg, self.target_goal.angle_deg,
-                                                         in_line)
-            # logger.info(log_str)
-
             return True
 
     @property
@@ -200,7 +200,7 @@ class Gameplay:
         ball = self.balls[0]
         goal = self.target_goal
 
-        vg = goal.angle_deg
+        vg = self.target_goal_angle
         vb = ball.angle_deg
 
         r = vb - vg
@@ -486,9 +486,7 @@ class Gameplay:
 
         self.recognition = recognition
 
-        if self.target_goal:
-            self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
-            self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
+        self.get_target_goal_distance()
 
         self.state = self.state.tick()
 
