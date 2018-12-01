@@ -281,7 +281,6 @@ class Grabber(Thread):
         self.die("Graceful shutdown")
 
     def die(self, reason):
-        logger.info("%s dying because %s", self.path, reason)
         if self.vd:
             self.vd.close()
         self.vd = 0
@@ -290,12 +289,16 @@ class Grabber(Thread):
         self.frame = None
         self.ready.clear()
         # clear cached frames
+        logger.info("%s dying because %s", self.path, reason)
+        sleep(1)
 
     def stop(self):
         self.running = False
         self.wake.set()
 
     def disable(self):
+        if self.vd:
+            self.vd.close()
         self.vd = 0
         self.frame = None
 
