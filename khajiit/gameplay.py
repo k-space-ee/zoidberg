@@ -633,6 +633,9 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
 
             if self.actor.target_goal_distance < 290:
                 return Shoot(self.actor)
+            else:
+                return SuperShoot(self.actor)
+
 
     # def VEC_TOO_CLOSE(self):
     # if self.actor.too_close or self.actor.too_close_to_edge:
@@ -655,6 +658,17 @@ class Shoot(StateNode):
 
     def VEC_DONE_SHOOT(self):
         if self.elapsed_time > 1.8:
+            return Flank(self.actor)
+
+
+class SuperShoot(Shoot):
+    def animate(self):
+        self.actor.drive_towards_target_goal(backtrack=False, speed_factor=3)
+        self.actor.kick()
+
+    def VEC_DONE_SHOOT(self):
+        if self.elapsed_time > 0.5:
+            logger.info("Begone thot!!!")
             return Flank(self.actor)
 
 
