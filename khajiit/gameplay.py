@@ -125,9 +125,14 @@ class Gameplay:
             return self.target_goal.angle_deg
 
     @property
-    def target_goal_dist(self):
+    def target_goal_dist(self) -> Centimeter:
         if self.target_goal:
-            return self.target_goal.dist
+            return self.target_goal.dist * 100
+
+    @property
+    def own_goal_dist(self) -> Centimeter:
+        if self.own_goal:
+            return self.own_goal.dist * 100
 
     @property
     def too_close(self):
@@ -141,7 +146,7 @@ class Gameplay:
     def alligned(self):
         # TODO: inverse of this
         if self.target_goal:
-            min_angle = 2 if not self.target_goal_dist or self.target_goal_dist > 3 else 3
+            min_angle = 2 if not self.target_goal_dist or self.target_goal_dist > 300 else 3
             return abs(self.target_goal_angle) <= min_angle
 
     @property
@@ -356,7 +361,7 @@ class Gameplay:
         return time() - self.last_kick < 1
 
     def is_in_super_shoot_zone(self) -> bool:
-        if self.target_goal_dist and self.target_goal_dist > 290 or self.own_goal and self.own_goal.dist < 150:
+        if self.target_goal_dist and self.target_goal_dist > 290 or self.own_goal and self.own_goal_dist < 150:
             return True
         return False
 
@@ -471,7 +476,7 @@ class Gameplay:
 
     def get_target_goal_distance(self) -> Centimeter:
         if self.target_goal:
-            self.target_goal_distances = [self.target_goal.dist * 100] + self.target_goal_distances[:10]
+            self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
             self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
         return self.target_goal_distance
 
@@ -482,7 +487,7 @@ class Gameplay:
         self.recognition = recognition
 
         if self.target_goal:
-            self.target_goal_distances = [self.target_goal.dist * 100] + self.target_goal_distances[:10]
+            self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
             self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
 
         self.state = self.state.tick()
