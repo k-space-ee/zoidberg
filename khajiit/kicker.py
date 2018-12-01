@@ -1,4 +1,5 @@
 import logging
+import threading
 from time import time, sleep
 from typing import Optional
 
@@ -27,7 +28,8 @@ class CanBusMotor:
 
         self.reconnect()
 
-        self.run()
+        self.thread = threading.Thread(target=self.run, daemon=True)
+        self.thread.start()
 
     def run(self):
         while True:
