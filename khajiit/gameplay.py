@@ -25,6 +25,7 @@ def get_distance(point_a, point_b):
 
 Centimeter = float
 
+DANGER_DISTANCE = 290
 
 @dataclass
 class RecognitionState:
@@ -357,10 +358,14 @@ class Gameplay:
 
     def get_desired_kicker_speed(self):
         distance = self.get_target_goal_distance()
+        maximum = 8000
+        if self.target_goal_dist > DANGER_DISTANCE:
+            maximum = 7500
+
         if distance:
             speed = dist_to_rpm(distance)
             speed = abs(speed)
-            speed = min(8000, speed)
+            speed = min(maximum, speed)
             self.desired_kicker_seed_cache.append(speed)
             self.desired_kicker_seed_cache = self.desired_kicker_seed_cache[-3:]
 
@@ -603,8 +608,8 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
                 if abs(kicker_difference) > limit:
                     factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
 
-            elif self.actor.target_goal_distance > 290:
-                factor = 1 + abs_angle / 9
+            elif self.actor.target_goal_distance > DANGER_DISTANCE:
+                factor = 1.5 + abs_angle / 9 / 2
 
         self.actor.flank(movement_factor=factor)
         self.actor.kick()
@@ -631,7 +636,7 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
 
             logger.info(*message)
 
-            if self.actor.target_goal_distance < 290:
+            if self.actor.target_goal_distance < DANGER_DISTANCE:
                 return Shoot(self.actor)
             else:
                 return SuperShoot(self.actor)
