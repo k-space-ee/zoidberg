@@ -68,7 +68,7 @@ def main(silent=False):
         messenger.ConnectPythonLoggingToROS.reconnect('image_recognition', 'visualization', 'threading', 'grabber')
     else:
         image_recognizer.silent = True
-        messenger.ConnectPythonLoggingToROS.reconnect('grabber')
+        messenger.ConnectPythonLoggingToROS.reconnect('grabber', 'image_recognition')
 
     ip, port = ('0.0.0.0', 5005)
 
