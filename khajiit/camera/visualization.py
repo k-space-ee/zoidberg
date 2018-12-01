@@ -56,10 +56,13 @@ class Visualizer(ManagedThread):
         if points:
             points = [(points[-1][0] - 3840, points[-1][1])] + points
             prev = None
-            for point in points:
+            for i, point in enumerate(points):
                 cv2.putText(frame, "%dy" % point[1], point, cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 4)
                 if prev is not None:
-                    cv2.line(frame, prev, point, (128, 255, 128), 4)
+                    color = (128, 255, 128)
+                    if i == 4:
+                        color = (0, 128, 0)
+                    cv2.line(frame, prev, point, color, 4)
                 prev = point
 
         # Visualize balls
