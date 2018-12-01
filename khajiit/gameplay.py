@@ -361,7 +361,7 @@ class Gameplay:
             speed = abs(speed)
             speed = min(8000, speed)
             self.desired_kicker_seed_cache.append(speed)
-            self.desired_kicker_seed_cache = self.desired_kicker_seed_cache[-5:]
+            self.desired_kicker_seed_cache = self.desired_kicker_seed_cache[-3:]
 
             speed = sum(self.desired_kicker_seed_cache) / len(self.desired_kicker_seed_cache)
             return speed
@@ -593,9 +593,10 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
     def animate(self):
         kicker_difference = self.actor.kicker_speed_difference
         factor = 1
-        limit = 150
+        limit = 200
+        reduction = 0.4
         if abs(kicker_difference) > limit:
-            factor = limit / abs(kicker_difference)
+            factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
 
         self.actor.flank(movement_factor=factor)
         self.actor.kick()
