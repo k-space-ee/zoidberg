@@ -60,8 +60,8 @@ class Visualizer(ManagedThread):
                 cv2.putText(frame, "%dy" % point[1], point, cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 4)
                 if prev is not None:
                     color = (128, 255, 128)
-                    if i == 4:
-                        color = (0, 128, 0)
+                    if i in (5, 6):
+                        color = (255, 0, 255)
                     cv2.line(frame, prev, point, color, 4)
                 prev = point
 
