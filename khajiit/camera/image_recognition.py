@@ -175,7 +175,6 @@ class ImageRecognition:
         closest_angle = 0
         dx = 0
         dy = 0
-        #        print("----")
         for index, hull in enumerate(self.field_contours[:8]):
             y, x, h, w = cv2.boundingRect(hull)
             rotation = (index - 4) * (math.pi * 2 / 8.0)

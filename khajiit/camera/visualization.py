@@ -1,4 +1,5 @@
 import logging
+from typing import Tuple, List
 
 import numpy as np
 import cv2
@@ -37,25 +38,26 @@ class Visualizer(ManagedThread):
 
         # Visualize closest edge
         closest_x, closest_y = r.deg_to_x(r.closest_edge.angle_deg), r.dist_to_y(r.closest_edge.dist)
-        cv2.putText(frame, "edge %.2fm" % r.closest_edge.dist, (closest_x - 240, 600), cv2.FONT_HERSHEY_SIMPLEX, 2,
-                    (255, 255, 0), 4)
+        # cv2.putText(frame, "edge %.2fm" % r.closest_edge.dist, (closest_x - 240, 600), cv2.FONT_HERSHEY_SIMPLEX, 2,
+        #             (255, 255, 0), 4)
 
         # Visualize center of field
-        center_x = r.deg_to_x(r.field_center.angle_deg)
-        cv2.line(frame, (center_x, 0), (center_x, 480), (255, 255, 255), 3)
-        cv2.putText(frame, "cnt %.1fdeg %.2fm" % (r.field_center.angle_deg, r.field_center.dist), (center_x, 450),
-                    cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 0), 4)
+        # center_x = r.deg_to_x(r.field_center.angle_deg)
+        # cv2.line(frame, (center_x, 0), (center_x, 480), (255, 255, 255), 3)
+        # cv2.putText(frame, "cnt %.1fdeg %.2fm" % (r.field_center.angle_deg, r.field_center.dist), (center_x, 450),
+        #             cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 0), 4)
 
         # Visualize field edges
-        points = []
+        points: List[Tuple[int, int]] = []
         for index, hull in enumerate(r.field_contours):
             y, x, h, w = cv2.boundingRect(hull)
-            rect = (x + index * 480), 2 * y, w, h * 2
             points.append((int(x + index * 480 + w / 2), 2 * y))
+
         if points:
             points = [(points[-1][0] - 3840, points[-1][1])] + points
             prev = None
             for point in points:
+                cv2.putText(frame, "%.2fx" % point[1], point, cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 4)
                 if prev is not None:
                     cv2.line(frame, prev, point, (128, 255, 128), 4)
                 prev = point
@@ -82,24 +84,22 @@ class Visualizer(ManagedThread):
                 x = r.deg_to_x(r.goal_yellow.angle_deg) + delta
                 cv2.line(frame, (x, 0), (x, r.GOAL_BOTTOM - 120), (255, 255, 255), 3)
                 cv2.putText(frame, "%.1fdeg" % r.goal_yellow.angle_deg, (x + 90, r.GOAL_BOTTOM + 120),
-                            cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0, 255), 20)
+                            cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0, 0), 20)
                 cv2.putText(frame, "%.2fm" % r.goal_yellow.dist, (x, r.GOAL_BOTTOM - 30), cv2.FONT_HERSHEY_SIMPLEX, 2,
                             (0, 0, 0), 4)
-                # cv2.putText(frame, "%.1fdeg wide" % r.goal_yellow_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
             for rect in r.goal_yellow_rect:
-                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (255, 255, 255), 4)
+                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (0, 0, 255), 4)
 
         if r.goal_blue:
             for delta in -3840, 0, 3840:
                 x = r.deg_to_x(r.goal_blue.angle_deg) + delta
                 cv2.line(frame, (x, 0), (x, r.GOAL_BOTTOM - 120), (255, 255, 255), 3)
                 cv2.putText(frame, "%.1fdeg" % r.goal_blue.angle_deg, (x + 90, r.GOAL_BOTTOM + 120),
-                            cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0, 255), 20)
+                            cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 0, 0), 20)
                 cv2.putText(frame, "%.2fm" % r.goal_blue.dist, (x, r.GOAL_BOTTOM - 30), cv2.FONT_HERSHEY_SIMPLEX, 2,
                             (0, 0, 0), 4)
-                # cv2.putText(frame, "%.1fdeg wide" % r.goal_blue_width_deg, (x, r.GOAL_BOTTOM+20), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,0), 4)
             for rect in r.goal_blue_rect:
-                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (255, 255, 255), 4)
+                cv2.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (255, 0, 0), 4)
 
         target_goal = r.goal_blue
         if target_goal:
