@@ -181,7 +181,7 @@ class ImageRecognition:
         y_map = {}
         for index, hull in enumerate(self.field_contours[:8]):
             y, x, h, w = cv2.boundingRect(hull)
-            y_map[index] = y
+            y_map[index] = y * 2
             rotation = (index - 4) * (math.pi * 2 / 8.0)
             dist = self.y_to_dist(y * 2)
             if dist < closest_dist:
