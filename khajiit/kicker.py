@@ -44,13 +44,14 @@ class CanBusMotor:
 
     def reconnect(self):
         while True:
-            zubax = find_serial('zubax')
+            zubax = set(find_serial('zubax').keys())
             if len(zubax) != 1:
                 logger.error(f"Zubax controller not determined, {zubax}")
                 sleep(1)
                 continue
 
             serial_device = next(iter(zubax), None)
+            logger.error(f"Zubax controller determined, {zubax}")
             self.node = node = uavcan.make_node(
                 serial_device,
                 node_id=10,
