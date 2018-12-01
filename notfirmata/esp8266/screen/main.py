@@ -137,7 +137,11 @@ oled = SSD1306_I2C(128, 64, i2c)
 oled.invert(0)  # White text on black background
 oled.contrast(255)  # Maximum contrast
 oled.fill(0)
+oled.show()
 
+##############
+flip = 0
+data = []
 logo = (
    "\    ||||__   o",
    "| \_/    o \ o",
@@ -147,12 +151,7 @@ logo = (
    "",
    "Sick fish hackin",
 )
-for i, row in enumerate(logo):
-    oled.text(row, 0, 8 * i)
-oled.show()
-sleep(1)
-
-##############
+placeholder_data = [logo]
 config = {
     'field_id': 'B',
     'gameplay status': 'disabled',
@@ -182,20 +181,9 @@ def refresh_config():
     config_package = "!@#$%s!@#$" % config_json
 
 
-refresh_config()
+def render(*_, extra=None):
+    global flip, placeholder_data
 
-data = []
-flip = 0
-
-
-def render(*_):
-    global flip
-
-    placeholder_data = [
-        tuple(
-            '{:<8}: {}'.format(k[:8], v) for k, v in config.items()
-        )
-    ]
     to_show = data or placeholder_data
     flip = (flip + 1) % len(to_show)
 
@@ -206,7 +194,16 @@ def render(*_):
     for i, row in enumerate(to_show[flip]):
         oled.text(row, 0, 8 * i)
 
+    if extra:
+        oled.text(extra, 0, 8 * (i + 2))
+
     oled.show()
+
+    placeholder_data = [
+        tuple(
+            '{:<8}: {}'.format(k[:8], v) for k, v in config.items()
+        )
+    ]
 
 
 render()
@@ -215,5 +212,13 @@ timer_redraw = Timer(1)
 timer_redraw.init(period=2000, mode=Timer.PERIODIC, callback=render)
 
 
-def kill():
-    timer_redraw.deinit()
+# if no machine input, kill oled screen, as it blocks flashing
+def kill(*t):
+    global data
+    if not data:
+        timer_redraw.deinit()
+        render(extra="FLASHING ALLOW")
+
+
+timer_kill = Timer(2)
+timer_kill.init(period=10000, mode=Timer.ONE_SHOT, callback=kill)

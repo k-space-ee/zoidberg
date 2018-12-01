@@ -131,7 +131,6 @@ def command(websocket):
                 toggle_gameplay = controls.get("controller0.button8", controls.get("controller0.button11", None))
                 if toggle_gameplay is False:  # False is key up event
                     ConfigManager.set_value('game|global|gameplay status', 'disabled' if gameplay_status else 'enabled')
-                    send_settings_packet()
 
                 elif not gameplay_status:
                     # # Manual control of the robot
@@ -191,6 +190,12 @@ def command(websocket):
             for k, v in response.items():
                 ConfigManager.set_value(f"game|global|{k}", v)
             send_settings_packet()
+        elif action == "ping":
+            try:
+                send_settings_packet()
+            except Exception as e:
+                logger.info("Socket is dead")
+
         else:
             logger.error("Unhandled action: %s", str(action))
 

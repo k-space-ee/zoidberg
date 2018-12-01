@@ -14,6 +14,8 @@ class InjectorNode(messenger.Node):
     def __init__(self, mock=False, run=True) -> None:
         super().__init__('injector_node')
 
+        self.command_publisher = messenger.Publisher('/command', messenger.Messages.string)
+
         self.strategy_listener = messenger.Listener(
             '/strategy', messenger.Messages.string)
         self.canbus_listener = messenger.Listener(
@@ -55,7 +57,6 @@ class InjectorNode(messenger.Node):
             self.injector.write("config_package\n\r".encode("ascii"))
             self.sleep()
             config_string = self.injector.read(size=1024).decode('utf-8')
-            self.loginfo("Config found: %s", str(config_string))
         except Exception as e:
             self.logerror("No config found, %s", e)
             return
@@ -65,8 +66,10 @@ class InjectorNode(messenger.Node):
             m = re.search('\!\@\#\$(.+?)\!\@\#\$', config_string)
             if m:
                 config_string = m.group(1)
+                self.loginfo('String found: %s', config_string)
             config = json.loads(config_string)
         except Exception as e:
+            self.loginfo("Config found: %s", str(config_string))
             self.logerror("Could not load settings package: %s", e)
 
         if config:
@@ -77,6 +80,7 @@ class InjectorNode(messenger.Node):
         if not self.injector:
             self.find_serial()
         else:
+            self.command_publisher.command(align_to_goal=dict(factor=1.0))
             canbus_package = self.canbus_listener.package or {}
             strategy_package = self.strategy_listener.package or {}
             recognition_package = self.recognition_listener.package or {}
@@ -113,6 +117,8 @@ class InjectorNode(messenger.Node):
                 self.sleep()
                 command = "data[1]=%s\n\r" % repr(package_B)
                 self.injector.write(command.encode("ascii"))
+                self.sleep()
+                self.read_config()
                 self.sleep()
             except Exception as e:
                 self.logerror("Injector lost, %s", e)

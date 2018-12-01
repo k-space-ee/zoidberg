@@ -67,6 +67,12 @@ function streamGamepad() {
     // requestAnimationFrame(streamGamepad);
 }
 
+function ping() {
+    var package = JSON.stringify({"action": "ping"});
+    socket.send(package);
+    setTimeout(ping, 30);
+}
+
 function scriptSaveAs(filename) {
     $.ajax({
         url: "/api/script/" + filename,
@@ -167,6 +173,7 @@ $(document).ready(function () {
         firstLoad = false;
         console.log("WebSocket opened");
         requestAnimationFrame(streamGamepad);
+        setTimeout(ping, 1000);
     };
 
     socket.onerror = function (error) {

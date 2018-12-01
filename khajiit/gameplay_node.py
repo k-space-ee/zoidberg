@@ -47,6 +47,11 @@ class GameplayNode(messenger.Node):
     def __init__(self, mock=False, run=True, **kwargs) -> None:
         super().__init__('gameplay', existing_loggers=['gameplay'], **kwargs)
 
+        self.mock = mock
+        ConfigManager.set_value('game|global|gameplay status', 'disabled')
+        self.config = ConfigManager.get_value('game')
+        self.gameplay = Gameplay(self.config, Controller())
+
         self.strategy_publisher = messenger.Publisher('/strategy', messenger.Messages.string)
 
         self.settings_listener = messenger.Listener(
@@ -57,11 +62,6 @@ class GameplayNode(messenger.Node):
             '/command', messenger.Messages.string, callback=self.command_callback)
         self.kicker_listener = messenger.Listener(
             '/canbus_message', messenger.Messages.string, callback=self.kicker_callback)
-
-        self.mock = mock
-        ConfigManager.set_value('game|global|gameplay status', 'disabled')
-        self.config = ConfigManager.get_value('game')
-        self.gameplay = Gameplay(self.config, Controller())
 
         self.logger.info("Start gameplay")
         if run:
