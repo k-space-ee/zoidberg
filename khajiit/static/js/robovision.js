@@ -283,6 +283,7 @@ $(document).ready(function () {
         sliderInit();
 
         $('input[type=radio]').change(function () {
+            console.log("send", this.name, this.value);
             socket.send(JSON.stringify({"action": "set_options", [this.name]: this.value}));
         });
     }
