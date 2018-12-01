@@ -202,8 +202,8 @@ class ImageRecognition:
             goal_angle_adjust = sign * factor
             # logger.info('GOAL_ANGLE ADJUST: %s / %s -> %s', bigger, smaller, goal_angle_adjust)
 
-        else:
-            logger.info('GOAL_ANGLE ADJUST: %s', str(y_map))
+        # else:
+        #     logger.info('GOAL_ANGLE ADJUST: %s', str(y_map))
 
         return PolarPoint(closest_angle, closest_dist), Point(dx / 8.0, dy / 8.0), goal_angle_adjust, bigger, smaller
 

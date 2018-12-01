@@ -129,7 +129,7 @@ class Gameplay:
     @property
     def target_goal_angle(self) -> Optional[float]:
         if self.target_goal:
-            return self.target_goal.angle_deg - self.target_angle_adjust
+            return self.target_goal.angle_deg - self.target_angle_adjust * 1.5
 
     @property
     def target_goal_dist(self) -> Centimeter:
@@ -488,8 +488,8 @@ class Gameplay:
             self.target_angle_adjusts = [self.recognition.angle_adjust] + self.target_angle_adjusts[:10]
             self.target_angle_adjust = sum(self.target_angle_adjusts) / len(self.target_angle_adjusts)
 
-        logger.info("adjust: %s %s", self.recognition.h_smaller, self.recognition.h_bigger)
-        logger.info("adjust is: %.2f", self.target_angle_adjust)
+        # logger.info("adjust: %s %s", self.recognition.h_smaller, self.recognition.h_bigger)
+        # logger.info("adjust is: %.2f", self.target_angle_adjust)
         return self.target_angle_adjust
 
     def step(self, recognition, *args):
