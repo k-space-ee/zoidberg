@@ -5,12 +5,10 @@ from camera.line_fit import dist_to_rpm
 
 logger = logging.getLogger("gameplay")
 from camera.image_recognition import Point, PolarPoint
-# from controller import Controller
 import math
-from time import time, sleep
+from time import time
 
 from collections import defaultdict
-from config_manager import ConfigManager
 
 try:
     dataclass  # python 3.7.1
@@ -18,7 +16,7 @@ except:
     from dataclasses import dataclass
 
 
-def distance(point_a, point_b):
+def get_distance(point_a, point_b):
     A = point_a.x * point_a.dist, point_a.y * point_a.dist
     B = point_b.x * point_b.dist, point_b.y * point_b.dist
     dist = ((A[0] - B[0]) ** 2 + (A[1] - B[1]) ** 2) ** 0.5
@@ -615,7 +613,7 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
         angle, dist = self.last_best_ball()
 
         if None not in (angle, dist) and angle < 6 and dist < 0.20:
-            logger.info("goal:%.1f angle:%.1f dist:%.2f ", self.actor.target_goal_distance, angle, distance)
+            logger.info("goal:%.1f angle:%.1f dist:%.2f ", self.actor.target_goal_distance, angle, dist)
 
             kicker_speed = self.actor.kicker_speed
             desired_kicker_speed = self.actor.get_desired_kicker_speed()
