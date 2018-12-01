@@ -210,7 +210,7 @@ $(document).ready(function () {
 
                 break
             case "settings-packet":
-                #console.log(msg.sliders, msg.options, "websocket-settings-packet");
+                // console.log(msg.sliders, msg.options, "websocket-settings-packet");
                 createInputNodes(msg);
                 break;
             default:
@@ -290,7 +290,7 @@ $(document).ready(function () {
 
     function sliderInit() {
         var sliders = $(".slider");
-        console.log('sliders', sliders);
+        // console.log('sliders', sliders);
         for (var i = 0; i < sliders.length; i++) {
             var min = parseInt(sliders[i].getAttribute("data-min"));
             var max = parseInt(sliders[i].getAttribute("data-max"));
