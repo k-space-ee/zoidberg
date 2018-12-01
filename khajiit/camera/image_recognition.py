@@ -1,4 +1,5 @@
 from time import time
+from typing import Tuple
 
 import cv2
 import cv2.aruco as aruco
@@ -146,7 +147,8 @@ class ImageRecognition:
         # self.robot, self.orientation = self._position_robot()
 
         self.balls_mask, self.balls = self._recognize_balls()
-        self.closest_edge, self.field_center = self._recognize_closest_edge()
+        self.closest_edge, self.field_center,\
+            self.goal_angle_adjust, self.h_bigger, self.h_smaller = self._recognize_closest_edge()
 
         assert abs(self.x_to_deg(self.deg_to_x(50)) - 50) < 0.1, self.x_to_deg(self.deg_to_x(50))
         assert abs(self.y_to_dist(self.dist_to_y(2.0)) - 2.0) < 0.1
@@ -157,6 +159,7 @@ class ImageRecognition:
             goal_yellow=self.goal_yellow and self.goal_yellow.serialize(),
             goal_blue=self.goal_blue and self.goal_blue.serialize(),
             closest_edge=self.closest_edge and self.closest_edge.serialize(),
+            goal_angle_adjust=[self.goal_angle_adjust, self.h_bigger, self.h_smaller]
         )
 
     @staticmethod
@@ -167,7 +170,7 @@ class ImageRecognition:
         lower, upper = zip(luma, chroma_blue, luma, chroma_red)
         return lower, upper
 
-    def _recognize_closest_edge(self):
+    def _recognize_closest_edge(self) -> Tuple[PolarPoint, PolarPoint, float, int, int]:
         """
         Recognize angle and distance to closest edge and to center of field
         """
@@ -175,8 +178,10 @@ class ImageRecognition:
         closest_angle = 0
         dx = 0
         dy = 0
+        y_map = {}
         for index, hull in enumerate(self.field_contours[:8]):
             y, x, h, w = cv2.boundingRect(hull)
+            y_map[index] = y
             rotation = (index - 4) * (math.pi * 2 / 8.0)
             dist = self.y_to_dist(y * 2)
             if dist < closest_dist:
@@ -185,7 +190,19 @@ class ImageRecognition:
             # print("rot:", rotation, "dist:", dist, "xy:", math.sin(rotation) * dist, math.cos(rotation) * dist)
             dx += math.sin(rotation) * dist
             dy += math.cos(rotation) * dist
-        return PolarPoint(closest_angle, closest_dist), Point(dx / 8.0, dy / 8.0)
+
+        bigger, smaller, goal_angle_adjust = None, None, 0.0
+        if 4 in y_map and 6 in y_map:
+            left_side = y_map[4]
+            right_side = y_map[6]
+            bigger = max(left_side, right_side)
+            smaller = min(left_side, right_side)
+            factor = min(bigger / smaller, 3)
+            sign = -1 if left_side < right_side else 1
+            goal_angle_adjust = sign * factor
+            logger.info('GOAL_ANGLE ADJUST: %s / %s -> %s', bigger, smaller, goal_angle_adjust)
+
+        return PolarPoint(closest_angle, closest_dist), Point(dx / 8.0, dy / 8.0), goal_angle_adjust, bigger, smaller
 
     def _position_robot(self):
         return None, None

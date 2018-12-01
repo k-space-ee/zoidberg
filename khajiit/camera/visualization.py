@@ -57,12 +57,14 @@ class Visualizer(ManagedThread):
             points = [(points[-1][0] - 3840, points[-1][1])] + points
             prev = None
             for i, point in enumerate(points):
-                cv2.putText(frame, "%dy" % point[1], point, cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 4)
+                color = (128, 255, 128)
+                if i in (4, 5, 6):
+                    color = (255, 0, 255)
+                cv2.putText(frame, "%dy" % point[1], point, cv2.FONT_HERSHEY_SIMPLEX, 2, color, 4)
+
                 if prev is not None:
-                    color = (128, 255, 128)
-                    if i in (5, 6):
-                        color = (255, 0, 255)
-                    cv2.line(frame, prev, point, color, 4)
+                    cv2.line(frame, prev, point, (128, 255, 128), 4)
+
                 prev = point
 
         # Visualize balls
@@ -114,9 +116,10 @@ class Visualizer(ManagedThread):
             if r.goal_yellow:
                 dist_str = "DIST B-%.0f P-%.0f" % (dist, r.goal_yellow.dist * 100)
             cv2.putText(frame, dist_str, (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
-            cv2.putText(frame, "PWM %.0f" % (pwm), (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
-            cv2.putText(frame, "ANG %.0f" % (angle), (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
-            cv2.putText(frame, "Y %.0f" % (y), (50, 400), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
+            cv2.putText(frame, "PWM %.0f" % pwm, (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
+            cv2.putText(frame, "ANG %.0f" % angle, (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
+            cv2.putText(frame, "Y %.0f" % y, (50, 400), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
+            cv2.putText(frame, "ADJ %.0f" % r.goal_angle_adjust, (50, 400), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
 
         if r.goal_yellow and r.goal_blue:
             logger.info(f"goal_yellow: %.0f goal_blue: %.0f", r.goal_yellow.dist * 100, r.goal_blue.dist * 100)
