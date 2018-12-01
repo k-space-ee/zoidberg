@@ -11,6 +11,7 @@ class ControllerNode(messenger.Node):
         self.silent = silent
         if not mock:
             self.controller = Controller()
+            self.controller.try_reconnect()
 
         self.logger.info("Start")
         if run:

@@ -1,18 +1,19 @@
 import logging
-import threading
+from threading import Thread
 from time import time, sleep
 from typing import Optional
 
 import yaml
 
 import uavcan
+from uavcan import UAVCANException
 
 from serial_wrapper import find_serial
 
 logger = logging.getLogger("canbus")
 
 
-class CanBusMotor:
+class CanBusMotor(Thread):
     # TODO: this has the ability to not constantly update the speed, we should use that
 
     def __init__(self, kill=True) -> None:
@@ -28,18 +29,21 @@ class CanBusMotor:
 
         self.reconnect()
 
-        self.thread = threading.Thread(target=self.run, daemon=True)
-        self.thread.start()
+        Thread.__init__(self, daemon=True)
+        self.start()
 
     def run(self):
         while True:
             try:
-                self.node.spin(timeout=1)  # Spin forever or until an exception is thrown
-            except Exception as ex:
+                self.node.spin(1)  # Spin forever or until an exception is thrown
+            except (Exception, UAVCANException) as ex:
                 logger.error('Node error: %s', ex)
                 if self.node:
+                    logger.error('Closing node')
                     self.node.close()
-                self.node = None
+
+                self.node: Optional[uavcan.node.Node] = None
+                sleep(2)
                 self.reconnect()
 
     def reconnect(self):
@@ -52,27 +56,31 @@ class CanBusMotor:
 
             serial_device = next(iter(zubax), None)
             logger.info(f"Zubax controller determined, {zubax}")
-            self.node = node = uavcan.make_node(
-                serial_device,
-                node_id=10,
-                bitrate=1000000,
-            )
+            try:
+                self.node: Optional[uavcan.node.Node] = uavcan.make_node(
+                    serial_device,
+                    node_id=10,
+                    bitrate=1000000,
+                )
 
-            # setup
-            node_monitor = uavcan.app.node_monitor.NodeMonitor(node)
-            dynamic_node_id_allocator = uavcan.app.dynamic_node_id.CentralizedServer(node, node_monitor)
+                # setup
+                node_monitor = uavcan.app.node_monitor.NodeMonitor(self.node)
+                dynamic_node_id_allocator = uavcan.app.dynamic_node_id.CentralizedServer(self.node, node_monitor)
 
-            # Waiting for at least one other node to appear online (our local node is already online).
-            while len(dynamic_node_id_allocator.get_allocation_table()) <= 1:
-                print('Waiting for other nodes to become online...')
-                node.spin(timeout=1)
+                # Waiting for at least one other node to appear online (our local node is already online).
+                while len(dynamic_node_id_allocator.get_allocation_table()) <= 1:
+                    print('Waiting for other nodes to become online...')
+                    self.node.spin(timeout=1)
 
-            # how fast can we blast this?
-            node.periodic(0.05, self.update)
-            node.add_handler(uavcan.equipment.esc.Status, self.listen)
-            logger.info('New zubax node: %s', serial_device)
-
-            return
+                # how fast can we blast this?
+                self.node.periodic(0.05, self.update)
+                self.node.add_handler(uavcan.equipment.esc.Status, self.listen)
+                logger.info('New zubax node: %s', serial_device)
+                return
+            except Exception as e:
+                logger.error("Opening zubax failed %s", e)
+                sleep(1)
+                continue
 
     @property
     def speed(self):

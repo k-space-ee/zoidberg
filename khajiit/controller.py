@@ -13,7 +13,6 @@ class Controller:
     # safe values 0.2 0.05
     def __init__(self, factor=0.2, maximum=0.08):
         self.motor_serial = None
-        self.try_reconnect()
 
         self.factor = factor
         self.maximum = maximum
