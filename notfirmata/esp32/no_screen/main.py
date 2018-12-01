@@ -5,10 +5,11 @@ from machine import Pin, PWM, Timer, I2C, reset
 # 2. ampy -p /dev/ttyUSB0 put main.py
 # 3. Reset the device
 
-# killer = Pin(4, mode=Pin.OUT)
+killer = Pin(16, mode=Pin.OUT)
+killer.value(0)
 
 timer_motors = Timer(1)
-motors_enable = Pin(16, mode=Pin.OUT)
+motors_enable = Pin(5, mode=Pin.OUT)
 motors_enable.value(0)
 motor1_speed = PWM(Pin(2, mode=Pin.OUT), freq=6000, duty=102)
 motor2_speed = PWM(Pin(12, mode=Pin.OUT), freq=6000, duty=102)
