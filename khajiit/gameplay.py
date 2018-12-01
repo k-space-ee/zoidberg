@@ -488,6 +488,7 @@ class Gameplay:
             self.target_angle_adjusts = [self.recognition.angle_adjust] + self.target_angle_adjusts[:10]
             self.target_angle_adjust = sum(self.target_angle_adjusts) / len(self.target_angle_adjusts)
 
+        logger.info("adjust: %s %s", self.recognition.h_smaller, self.recognition.h_bigger)
         logger.info("adjust is: %.2f", self.target_angle_adjust)
         return self.target_angle_adjust
 
