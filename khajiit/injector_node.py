@@ -43,11 +43,18 @@ class InjectorNode(messenger.Node):
             None,
         )
         if injector_serial:
+            self.sleep()
+            self.sleep()
+            self.sleep()
             self.logger.info("Opening %s", injector_serial)
 
-            self.injector = serial.Serial(
-                port=injector_serial,
-                baudrate=115200, xonxoff=True, timeout=0.01)
+            try:
+                self.injector = serial.Serial(
+                    port=injector_serial,
+                    baudrate=115200, xonxoff=True, timeout=1)
+            except Exception as e:
+                self.logger.error("Failed to open, %s", e)
+                return
 
             self.sleep()
             self.read_config()
