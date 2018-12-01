@@ -1,5 +1,5 @@
 import logging
-from threading import Thread
+import threading
 from time import time, sleep
 from typing import Optional
 
@@ -13,7 +13,7 @@ from serial_wrapper import find_serial
 logger = logging.getLogger("canbus")
 
 
-class CanBusMotor(Thread):
+class CanBusMotor:
     # TODO: this has the ability to not constantly update the speed, we should use that
 
     def __init__(self, kill=True) -> None:
@@ -27,12 +27,12 @@ class CanBusMotor(Thread):
 
         self.node: Optional[uavcan.node.Node] = None
 
-        self.reconnect()
-
-        Thread.__init__(self, daemon=True)
-        self.start()
+        self.thread = threading.Thread(target=self.run, daemon=True)
+        self.thread.start()
 
     def run(self):
+        self.reconnect()
+
         while True:
             try:
                 self.node.spin(1)  # Spin forever or until an exception is thrown
