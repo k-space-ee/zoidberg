@@ -197,7 +197,7 @@ class Gameplay:
 
     @property
     def goal_to_ball_angle(self):
-        if not self.target_goal or not self.last_closest_ball:
+        if not self.target_goal or not self.balls:
             return
 
         ball = self.balls[0]
@@ -675,8 +675,8 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
             return ForceCenter(self.actor)
 
     def VEC_NO_FLANK(self):
-        if self.actor.goal_to_ball_angle is None:
-            logger.error("NO FLANK: %s %s", str(self.actor.target_goal), str(self.actor.last_closest_ball))
+        if self.actor.goal_to_ball_angle is None and self.elapsed_time > 1:
+            logger.error("NO FLANK: %s %s", str(self.actor.target_goal), str(self.actor.balls))
             return Patrol(self.actor)
 
     def VEC_NO_BALLS(self):
