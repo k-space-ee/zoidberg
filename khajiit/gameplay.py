@@ -382,6 +382,7 @@ class Gameplay:
             self.desired_kicker_seed_cache = self.desired_kicker_seed_cache[-3:]
 
             speed = sum(self.desired_kicker_seed_cache) / len(self.desired_kicker_seed_cache)
+            speed -= 100 * abs(self.target_angle_adjust) / 2
             return speed
         return 0
 
