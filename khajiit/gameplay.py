@@ -671,7 +671,7 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
                 return Shoot(self.actor)
 
     def VEC_TOO_CLOSE(self):
-        logger.info('VEC_TOO_CLOSE %.2f %.2f', self.actor.own_goal_dist, self.actor.target_goal_distance)
+        logger.info('VEC_TOO_CLOSE %.2f %.2f', self.actor.own_goal_dist or 0, self.actor.target_goal_distance or 0)
         if self.actor.too_close:
             return ForceCenter(self.actor)
 
