@@ -448,7 +448,7 @@ class Gameplay:
         x, y, _ = self.closest_edge
 
         # logger.info("{} == {}?".format(self.field_center_angle, Point(-x, -y).angle_deg))
-        self.motors.set_xyw(-y / 3, -x / 3, 0)
+        self.motors.set_xyw(-y / 2, -x / 2, 0)
 
     @property
     def last_closest_ball(self) -> PolarPoint:
