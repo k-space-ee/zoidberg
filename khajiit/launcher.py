@@ -61,8 +61,8 @@ def image_server(silent=False):
 launcer = Launcher()
 
 launcer.launch(messenger.core)
-launcer.launch(server)
 launcer.launch(image_server, silent=True)
+launcer.launch(server)
 launcer.launch(ControllerNode, mock=args.mock, silent=True)
 launcer.launch(KickerNode, mock=args.mock, silent=True)
 launcer.launch(GameplayNode, mock=args.mock)
