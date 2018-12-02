@@ -25,7 +25,6 @@ class RemoteRF(messenger.Node):
         logger.info("REMOTERF THREAD STARTED")
         string = ""
         while True:
-            logger.info("step")
             field = ConfigManager.get_value("game|global|field_id")
             ack_packet = "a{}{}ACK------".format(
                 ConfigManager.get_value("game|global|field_id"),

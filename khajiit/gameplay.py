@@ -378,11 +378,11 @@ class Gameplay:
             speed = dist_to_rpm(distance)
             speed = abs(speed)
             speed = min(maximum, speed)
+            speed -= 150 * min(abs(self.target_angle_adjust) / 1.4, 2)
             self.desired_kicker_seed_cache.append(speed)
             self.desired_kicker_seed_cache = self.desired_kicker_seed_cache[-3:]
 
             speed = sum(self.desired_kicker_seed_cache) / len(self.desired_kicker_seed_cache)
-            speed -= 100 * abs(self.target_angle_adjust) / 2
             return speed
         return 0
 
@@ -671,8 +671,8 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
                 return Shoot(self.actor)
 
     def VEC_TOO_CLOSE(self):
-        logger.info('VEC_TOO_CLOSE %.2f %.2f', self.actor.own_goal_dist or 0, self.actor.target_goal_distance or 0)
         if self.actor.too_close:
+            logger.info('VEC_TOO_CLOSE %.2f %.2f', self.actor.own_goal_dist or 0, self.actor.target_goal_distance or 0)
             return ForceCenter(self.actor)
 
     def VEC_NO_FLANK(self):
