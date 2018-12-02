@@ -143,10 +143,11 @@ class Gameplay:
 
     @property
     def too_close(self):
-        min_dist = 0.35
-        if self.target_goal and self.target_goal.dist < min_dist:
+        min_dist = 55
+        if self.target_goal and self.target_goal_distance < min_dist:
             return True
-        if self.own_goal and self.own_goal.dist < min_dist:
+
+        if self.own_goal and self.own_goal_dist < min_dist:
             return True
 
     @property
@@ -618,9 +619,9 @@ class Patrol(RetreatMixin, TimeoutMixin, StateNode):
         if self.actor.balls and not self.actor.danger_zone and self.actor.target_goal:
             return Flank(self.actor)
 
-    def VEC_SEE_BALLS_AND_SHOULD_DRIVE(self):
-        if self.actor.balls and self.actor.danger_zone and self.actor.target_goal:
-            return Drive(self.actor)
+    # def VEC_SEE_BALLS_AND_SHOULD_DRIVE(self):
+    #     if self.actor.balls and self.actor.danger_zone and self.actor.target_goal:
+    #         return Drive(self.actor)
 
 
 class Flank(RetreatMixin, DangerZoneMixin, StateNode):
@@ -637,7 +638,7 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
                     factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
 
             elif self.actor.is_in_super_shoot_zone():
-                factor = 1.5 + abs_angle / 9 / 2
+                factor = max(1.5 + abs_angle / 9 / 2, 1.7) * 0.9
 
         self.actor.flank(movement_factor=factor)
         self.actor.kick()
@@ -669,10 +670,10 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
             else:
                 return Shoot(self.actor)
 
-    # def VEC_TOO_CLOSE(self):
-    # if self.actor.too_close or self.actor.too_close_to_edge:
-    # print("too close")
-    # return ForceCenter(self.actor)
+    def VEC_TOO_CLOSE(self):
+        logger.info('VEC_TOO_CLOSE %.2f %.2f', self.actor.own_goal_dist, self.actor.target_goal_distance)
+        if self.actor.too_close:
+            return ForceCenter(self.actor)
 
     def VEC_NO_FLANK(self):
         if self.actor.goal_to_ball_angle is None:
