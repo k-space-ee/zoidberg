@@ -2,19 +2,19 @@ global:
   fps: 30
   rotate: 1
   cameras: 8
-  exposure: 60
-  gain: 12
-  saturation: 40
+  exposure: 70
+  gain: 10
+  saturation: 60
   kicker offset: 2210
 
-camera1:
+camera8:
   path: pci-0000:00:14.0-usb-0:2.4:1.0-video-index0
 
-camera7:
-  path: pci-0000:00:14.0-usb-0:1.2:1.0-video-index0
+camera2:
+  path: pci-0000:00:14.0-usb-0:1.3:1.0-video-index0
 
-camera8:
-  path: pci-0000:00:14.0-usb-0:1.1:1.0-video-index0
+camera1:
+  path: pci-0000:00:14.0-usb-0:1.4:1.0-video-index0
 
 camera6:
   path: pci-0000:00:14.0-usb-0:3.3:1.0-video-index0
@@ -28,6 +28,6 @@ camera4:
 camera3:
   path: pci-0000:00:14.0-usb-0:4.2:1.0-video-index0
 
-camera2:
+camera7:
   path: pci-0000:00:14.0-usb-0:2.3:1.0-video-index0
 
