@@ -1,6 +1,6 @@
 # Woop-woop-woop
 
-This is the source code repository of software stack used by the robot Zoidberg on Robotex 2018 basketball 1vs1 competition.
+This is the source code repository of software stack used by the robot Zoidberg on Robotex 2018 basketball 1vs1 competition built by [k-space.ee](https://k-space.ee) hackerspace members Fred-Eric Kirsi and Marek Juhanson.
 
 <img src="doc/woopwoop.jpg"/>
 
