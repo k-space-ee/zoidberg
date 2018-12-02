@@ -220,7 +220,7 @@ class Grabber(Thread):
 
             if not self.vd:
                 # give some time for cameras to recover
-                sleep(2)
+                sleep(0.03)
                 # Check if /dev/v4l/by-path/bla symlink exists
                 if not os.path.exists(self.path):
                     logger.info("Waiting for %s to become available", self.path)
@@ -290,7 +290,7 @@ class Grabber(Thread):
         self.ready.clear()
         # clear cached frames
         logger.info("%s dying because %s", self.path, reason)
-        sleep(1)
+        sleep(0.03)
 
     def stop(self):
         self.running = False

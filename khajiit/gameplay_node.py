@@ -48,7 +48,7 @@ class GameplayNode(messenger.Node):
         super().__init__('gameplay', existing_loggers=['gameplay'], **kwargs)
 
         self.mock = mock
-        ConfigManager.set_value('game|global|gameplay status', 'disabled')
+        # ConfigManager.set_value('game|global|gameplay status', 'disabled')
         self.config = ConfigManager.get_value('game')
         self.gameplay = Gameplay(self.config, Controller())
 
