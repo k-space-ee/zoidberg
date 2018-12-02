@@ -1,18 +1,22 @@
 from multiprocessing import Process
 from typing import List
+from argparse import ArgumentParser
 
 import messenger
 from controller_node import ControllerNode
 from gameplay_node import GameplayNode
 from injector_node import InjectorNode
 from kicker_node import KickerNode
-from argparse import ArgumentParser
+from remoterf import RemoteRF
+
 
 parser = ArgumentParser()
 parser.add_argument("-m", "--mock", dest="mock", action="store_true", default=False,
                     help="no actual actuators are invoked", )
 parser.add_argument("-n", "--nuke", dest="nuke", action="store_true", default=False,
                     help="nuke ros on exit", )
+parser.add_argument("-r", "--remote", dest="remote", action="store_true", default=False,
+                    help="listen to remote", )
 args = parser.parse_args()
 
 
@@ -63,5 +67,7 @@ launcer.launch(ControllerNode, mock=args.mock, silent=True)
 launcer.launch(KickerNode, mock=args.mock, silent=True)
 launcer.launch(GameplayNode, mock=args.mock)
 launcer.launch(InjectorNode, mock=args.mock)
+if args.remote:
+    launcer.launch(RemoteRF, mock=args.mock)
 
 launcer.spin()
