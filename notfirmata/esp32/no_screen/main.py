@@ -1,20 +1,12 @@
 from machine import Pin, PWM, Timer, I2C, reset
-from time import sleep_ms
 # How to use this
 # 1. Flash MicroPython on the board
 # 2. ampy -p /dev/ttyUSB0 put main.py
 # 3. Reset the device
 
-killer = Pin(16, mode=Pin.OUT)
-killer.value(0)
 
 timer_motors = Timer(1)
-motors_enable = Pin(5, mode=Pin.OUT)
-sleep_ms(100)
-motors_enable.value(0)
-sleep_ms(100)
-motors_enable.value(1)
-sleep_ms(100)
+motors_enable = Pin(16, mode=Pin.OUT)
 motors_enable.value(0)
 
 motor1_speed = PWM(Pin(2, mode=Pin.OUT), freq=6000, duty=102)
@@ -56,10 +48,3 @@ def set_abce(a, b, c, e):
 
 motors_enable.value(1)
 set_abce(0, 0, 0, 60)
-
-sleep_ms(100)
-motors_enable.value(1)
-sleep_ms(100)
-motors_enable.value(0)
-sleep_ms(100)
-motors_enable.value(1)

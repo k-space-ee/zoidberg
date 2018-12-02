@@ -129,7 +129,7 @@ class Gameplay:
     @property
     def target_goal_angle(self) -> Optional[float]:
         if self.target_goal:
-            return self.target_goal.angle_deg - self.target_angle_adjust * 1.5
+            return self.target_goal.angle_deg - self.target_angle_adjust * 3
 
     @property
     def target_goal_dist(self) -> Centimeter:
