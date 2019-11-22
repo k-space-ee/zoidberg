@@ -5,7 +5,7 @@ from typing import Callable, Dict, Optional, List
 import rospy
 import rosnode
 from geometry_msgs.msg import Twist
-from std_msgs.msg import String, Int32
+from std_msgs.msg import String, Int32, Float64
 from rosgraph_msgs.msg import Log
 
 from time import time, sleep
@@ -73,6 +73,7 @@ class Messages:
     motion = TwistWrapper
     string = String
     integer = Int32
+    float = Float64
     logging = Log
 
 
