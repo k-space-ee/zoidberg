@@ -55,6 +55,7 @@ class CanBusMotor:
                 continue
 
             serial_device = next(iter(zubax), None)
+            print(serial_device)
             logger.info(f"Zubax controller determined, {zubax}")
             try:
                 self.node: Optional[uavcan.node.Node] = uavcan.make_node(
@@ -96,7 +97,7 @@ class CanBusMotor:
     def update(self):
         if time() - self.last_edit > 0.8:
             if self._speed:
-                print(self.last_raw)
+                pass
             if self.kill:
                 self._speed = 0
             else:
