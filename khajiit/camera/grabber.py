@@ -104,21 +104,21 @@ class Grabber(Thread):
         fcntl.ioctl(vd, VIDIOC_QUERYCAP, cp)
         self.driver = "".join((chr(c) for c in cp.driver if c))
 
-        logger.info("Disabling auto white balance for %s", self.path)
+        # logger.info("Disabling auto white balance for %s", self.path)
         ctrl = v4l2_control()
         ctrl.id = V4L2_CID_AUTO_WHITE_BALANCE
         ctrl.value = 0
         fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
 
         if self.saturation is not None:
-            logger.info("Setting saturation for %s to %d", self.path, self.saturation)
+            # logger.info("Setting saturation for %s to %d", self.path, self.saturation)
             ctrl = v4l2_control()
             ctrl.id = V4L2_CID_SATURATION
             ctrl.value = self.saturation
             fcntl.ioctl(vd, VIDIOC_S_CTRL, ctrl)
 
         if self.exposure is not None:
-            logger.info("Setting exposure for %s to %d", self.path, self.exposure)
+            # logger.info("Setting exposure for %s to %d", self.path, self.exposure)
             # Disable auto exposure
             ctrl = v4l2_control()
             ctrl.id = V4L2_CID_EXPOSURE_AUTO
@@ -133,7 +133,7 @@ class Grabber(Thread):
 
         else:
             # Enable auto exposure
-            logger.info("Setting auto exposure for %s", self.path)
+            # logger.info("Setting auto exposure for %s", self.path)
             ctrl = v4l2_control()
             ctrl.id = V4L2_CID_EXPOSURE_AUTO
             ctrl.value = V4L2_EXPOSURE_AUTO
@@ -153,7 +153,7 @@ class Grabber(Thread):
 
         if self.gain is not None:
             # Disable autogain
-            logger.info("Setting gain for %s to %d", self.path, self.gain)
+            # logger.info("Setting gain for %s to %d", self.path, self.gain)
             ctrl = v4l2_control()
             ctrl.id = V4L2_CID_AUTOGAIN
             ctrl.value = 0
@@ -167,7 +167,7 @@ class Grabber(Thread):
 
         else:
             # Enable autogain
-            logger.info("Setting autogain for %s", self.path)
+            # logger.info("Setting autogain for %s", self.path)
             ctrl = v4l2_control()
             ctrl.id = V4L2_CID_AUTOGAIN
             ctrl.value = 1
@@ -188,7 +188,12 @@ class Grabber(Thread):
         req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
         req.memory = V4L2_MEMORY_MMAP
         req.count = 4  # nr of buffer frames
-        fcntl.ioctl(vd, VIDIOC_REQBUFS, req)
+        try:
+            fcntl.ioctl(vd, VIDIOC_REQBUFS, req)
+        except Exception as e:
+            vd.close()
+            raise e
+
         self.buffers = []
 
         # Setup buffers
@@ -237,9 +242,7 @@ class Grabber(Thread):
                     self.vd = None
 
                 if self.vd is None:
-                    print("TIME TO NUKE")
-                    # import os
-                    # os.system('killall python3')
+                    os.system('rosnode kill image_server')
 
             # get image from the driver queue
             buf = v4l2_buffer()
@@ -294,6 +297,9 @@ class Grabber(Thread):
         # clear cached frames
         logger.info("%s dying because %s", self.path, reason)
         sleep(0.03)
+
+    def restart(self):
+        self.die("restart")
 
     def stop(self):
         self.running = False

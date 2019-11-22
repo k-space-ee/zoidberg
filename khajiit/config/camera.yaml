@@ -1,10 +1,10 @@
 global:
-  fps: 30
+  fps: 15
   rotate: 1
   cameras: 8
   exposure: 70
-  gain: 18
-  saturation: 60
+  gain: 16
+  saturation: 65
   kicker offset: 2210
 
 camera1:

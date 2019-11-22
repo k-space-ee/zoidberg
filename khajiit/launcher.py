@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from multiprocessing import Process
+from time import sleep
 from typing import List
 from argparse import ArgumentParser
 
@@ -8,8 +9,8 @@ from controller_node import ControllerNode
 from gameplay_node import GameplayNode
 from injector_node import InjectorNode
 from kicker_node import KickerNode
+from realsense_node import RealSenseNode
 from remoterf import RemoteRF
-
 
 parser = ArgumentParser()
 parser.add_argument("-m", "--mock", dest="mock", action="store_true", default=False,
@@ -33,11 +34,13 @@ class Launcher:
         print(f'Started node {node}')
 
     def spin(self):
+        keyboard = False
         try:
             for process in reversed(self.nodes):
                 process.join()
                 process.terminate()
         except KeyboardInterrupt:
+            keyboard = True
             print("\nKeyboard interrupt")
             if args.nuke:
                 import os
@@ -47,6 +50,8 @@ class Launcher:
             process.terminate()
 
         print("Game over!")
+        if keyboard:
+            exit()
 
 
 def server():
@@ -59,16 +64,31 @@ def image_server(silent=False):
     image_server.main(silent)
 
 
-launcer = Launcher()
+def image_server_launc(silent=False):
+    # the image server kills itself when the cameras fail so that we could restart it here :)
+    launcher = Launcher()
 
-launcer.launch(messenger.core)
-launcer.launch(image_server, silent=True)
-launcer.launch(server)
-launcer.launch(ControllerNode, mock=args.mock, silent=True)
-launcer.launch(KickerNode, mock=args.mock, silent=True)
-launcer.launch(GameplayNode, mock=args.mock)
-launcer.launch(InjectorNode, mock=args.mock)
-if args.remote:
-    launcer.launch(RemoteRF, mock=args.mock)
+    for i in range(100):
+        launcher.launch(image_server, silent=silent)
 
-launcer.spin()
+        launcher.spin()
+        print("IMAGE SERVER RESTART == ", i)
+        sleep(1)
+
+
+if __name__ == '__main__':
+
+    launcer = Launcher()
+
+    launcer.launch(messenger.core)
+    launcer.launch(image_server_launc, silent=True)
+    launcer.launch(server)
+    launcer.launch(ControllerNode, mock=args.mock, silent=True)
+    launcer.launch(KickerNode, mock=args.mock, silent=True)
+    launcer.launch(GameplayNode, mock=args.mock)
+    launcer.launch(InjectorNode, mock=args.mock)
+    launcer.launch(RealSenseNode, mock=args.mock)
+    if args.remote:
+        launcer.launch(RemoteRF, mock=args.mock)
+
+    launcer.spin()

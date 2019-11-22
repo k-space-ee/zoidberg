@@ -97,8 +97,8 @@ def main(silent=False):
     visualizer.enable()
 
     logger.info("Started IMAGE server at http://{}:{}".format(ip, port))
-    server.serve_forever()
-
+    server.start()
+    node.spin()
 
 if __name__ == '__main__':
     main()

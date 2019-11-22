@@ -144,6 +144,7 @@ class Node:
     def __init__(self, name: str, disable_signals=True, existing_loggers=None) -> None:
         # TODO: disabled signals so that the damn rosnodes would die peacefully
         self.node = rospy.init_node(name, anonymous=False, disable_signals=disable_signals)
+        rospy.on_shutdown(self.shutdown)
 
         self.logdebug = LoggerWrapper.debug
         self.logdebug_throttle = LoggerWrapper.debug_throttle
@@ -159,6 +160,9 @@ class Node:
 
         self.register_existing_loggers(*(existing_loggers or []))
         self._rate = None
+
+    def shutdown(self):
+        exit()
 
     @staticmethod
     def register_existing_loggers(*loggers):

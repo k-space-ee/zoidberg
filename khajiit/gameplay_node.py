@@ -63,6 +63,9 @@ class GameplayNode(messenger.Node):
         self.kicker_listener = messenger.Listener(
             '/canbus_message', messenger.Messages.string, callback=self.kicker_callback)
 
+        self.realsense_distance_listener = messenger.Listener(
+            '/distance/realsense', messenger.Messages.float, callback=self.distance_callback)
+
         self.logger.info("Start gameplay")
         if run:
             self.spin()
@@ -81,6 +84,9 @@ class GameplayNode(messenger.Node):
         package = self.kicker_listener.package
         if package:
             self.gameplay.kicker_speed = package.get('rpm', 0)
+
+    def distance_callback(self, *_):
+        self.gameplay.target_goal_distance = self.realsense_distance_listener.last_reading.data
 
     def command_callback(self, *_):
         package = self.command_listener.package

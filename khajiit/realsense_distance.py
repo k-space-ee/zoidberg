@@ -65,11 +65,14 @@ class CaptureDistance:
         align_to = rs.stream.color
         self.align = rs.align(align_to)
 
-        self.pipeline.wait_for_frames()
-        sleep(1)
-
-        sensors = sum([dev.query_sensors() for dev in rs.context().query_devices()], [])
-        color_sensor = next(sensor for sensor in sensors if sensor.get_info(rs.camera_info.name) == "RGB Camera")
+        for i in range(10):
+            try:
+                self.pipeline.wait_for_frames()
+                sensors = sum([dev.query_sensors() for dev in rs.context().query_devices()], [])
+                color_sensor = next(sensor for sensor in sensors if sensor.get_info(rs.camera_info.name) == "RGB Camera")
+                break
+            except:
+                sleep(1)
 
         print("Setting RGB camera sensor settings")
         # exposure: 166.0
@@ -153,7 +156,7 @@ class CaptureDistance:
                 distance_raw = np.sum(depth_cut) / area
                 distance_raw = self.average_raw(distance_raw) or 1
 
-                self.area = self.average_area(area)
+                self.area = self.average_area(area) or 0
                 self.distance = Distance.transform(distance_raw)
 
                 bg_removed = cv.bitwise_and(color_image, color_image, mask=full_mask)

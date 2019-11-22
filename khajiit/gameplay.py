@@ -370,9 +370,9 @@ class Gameplay:
 
     def get_desired_kicker_speed(self):
         distance = self.target_goal_distance
-        maximum = 8000
-        if self.is_in_super_shoot_zone():
-            maximum = 7000
+        maximum = 11000
+        # if self.is_in_super_shoot_zone():
+        #     maximum = 7000
 
         if distance:
             speed = dist_to_rpm(distance)
@@ -478,9 +478,10 @@ class Gameplay:
         return PolarPoint(a, d)
 
     def set_target_goal_distance(self) -> Centimeter:
-        if self.target_goal:
-            self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
-            self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
+        # if self.target_goal:
+        #     self.target_goal_distance
+            # self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
+            # self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
         return self.target_goal_distance
 
     def set_target_goal_angle_adjust(self) -> float:
