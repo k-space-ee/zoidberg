@@ -232,11 +232,14 @@ class Grabber(Thread):
                 except OSError as e:
                     logger.error("OSError: Failed to open: %s\n%s", self.path, e)
                     self.vd = None
-                    continue
                 except Exception as e:
                     logger.error("Exception: Failed to open: %s\n%s", self.path, e)
                     self.vd = None
-                    continue
+
+                if self.vd is None:
+                    print("TIME TO NUKE")
+                    # import os
+                    # os.system('killall python3')
 
             # get image from the driver queue
             buf = v4l2_buffer()

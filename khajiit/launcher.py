@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 from multiprocessing import Process
 from typing import List
 from argparse import ArgumentParser
