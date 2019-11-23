@@ -1,3 +1,5 @@
+from time import time
+
 import messenger
 from config_manager import ConfigManager, Settings
 from gameplay import Gameplay, RecognitionState
@@ -64,7 +66,12 @@ class GameplayNode(messenger.Node):
             '/canbus_message', messenger.Messages.string, callback=self.kicker_callback)
 
         self.realsense_distance_listener = messenger.Listener(
-            '/distance/realsense', messenger.Messages.float, callback=self.distance_callback)
+            '/distance/realsense', messenger.Messages.float, callback=self.realsense_distance_callback)
+
+        self.tfmini_distance_listener = messenger.Listener(
+            '/distance/tfmini', messenger.Messages.float, callback=self.tfmini_distance_callback)
+
+        self.realsense_active = time()
 
         self.logger.info("Start gameplay")
         if run:
@@ -85,8 +92,17 @@ class GameplayNode(messenger.Node):
         if package:
             self.gameplay.kicker_speed = package.get('rpm', 0)
 
-    def distance_callback(self, *_):
+    def realsense_distance_callback(self, *_):
+        self.realsense_active = time()
         self.gameplay.target_goal_distance = self.realsense_distance_listener.last_reading.data
+
+    def tfmini_distance_callback(self, *_):
+        angle = self.gameplay.target_goal_angle
+        if self.gameplay.alligned:
+            timeout = time() - self.realsense_active > 1
+            self.loginfo_throttle(2, f"TF-MINI is setting DISTANCE, RS:{not timeout} ANGLE:{angle}")
+            if timeout:
+                self.gameplay.target_goal_distance = self.tfmini_distance_listener.last_reading.data
 
     def command_callback(self, *_):
         package = self.command_listener.package

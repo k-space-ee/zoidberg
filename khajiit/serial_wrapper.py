@@ -1,9 +1,9 @@
 import serial.tools.list_ports
 
 
-def find_serial(name) -> dict:
+def find_serial(name, location=None) -> dict:
     ports = serial.tools.list_ports.comports()
-    result = dict((port.device, port) for port in ports if port.product and name.lower() in port.product.lower())
+    result = dict((port.device, port) for port in ports if port.product and name.lower() in port.product.lower() and (location is None or port.location == location))
     return result
 
 

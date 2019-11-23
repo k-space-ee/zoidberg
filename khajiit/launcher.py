@@ -11,6 +11,7 @@ from injector_node import InjectorNode
 from kicker_node import KickerNode
 from realsense_node import RealSenseNode
 from remoterf import RemoteRF
+from tfmini import TFMiniNode
 
 parser = ArgumentParser()
 parser.add_argument("-m", "--mock", dest="mock", action="store_true", default=False,
@@ -64,10 +65,25 @@ def image_server(silent=False):
     image_server.main(silent)
 
 
-def image_server_launc(silent=False):
+class RestartWrapper:
+    def __init__(self, node, **kwargs) -> None:
+        self.node = node
+        self.kwargs = kwargs
+
+    def __call__(self, *args, **kwargs):
+        # the node kills itself when the cameras fail so that we could restart it here :)
+
+        launcher = Launcher()
+        for i in range(100):
+            launcher.launch(self.node, **self.kwargs)
+            launcher.spin()
+            print(self.node, "RESTART == ", i)
+            sleep(1)
+
+
+def image_server_launcher(silent=False):
     # the image server kills itself when the cameras fail so that we could restart it here :)
     launcher = Launcher()
-
     for i in range(100):
         launcher.launch(image_server, silent=silent)
 
@@ -77,17 +93,18 @@ def image_server_launc(silent=False):
 
 
 if __name__ == '__main__':
-
     launcer = Launcher()
 
     launcer.launch(messenger.core)
-    launcer.launch(image_server_launc, silent=True)
+    launcer.launch(image_server_launcher, silent=True)
+    # launcer.launch(RestartWrapper(RealSenseNode, mock=args.mock))
     launcer.launch(server)
     launcer.launch(ControllerNode, mock=args.mock, silent=True)
     launcer.launch(KickerNode, mock=args.mock, silent=True)
     launcer.launch(GameplayNode, mock=args.mock)
     launcer.launch(InjectorNode, mock=args.mock)
-    launcer.launch(RealSenseNode, mock=args.mock)
+    launcer.launch(RestartWrapper(TFMiniNode, mock=args.mock))
+
     if args.remote:
         launcer.launch(RemoteRF, mock=args.mock)
 

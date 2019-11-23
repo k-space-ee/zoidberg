@@ -15,17 +15,23 @@ class RealSenseNode(messenger.Node):
 
         if not mock:
             self.sensor = CaptureDistance()
+            self.iter = iter(self.sensor)
 
         if run:
             print("realsense looper")
-            self.loop(30)
+            self.loop(35)
 
     def step(self):
         if self.mock:
             return
 
+        is_running = next(self.iter, None)
+        if not is_running:
+            exit()
+
         self.publisher.publish(self.sensor.distance)
-        self.loginfo_throttle(1, f"dist: {self.sensor.distance or 0:.1f} area: {self.sensor.area:.1f}, fps: {self.sensor.fps:.0f}")
+        delay = 0.5 if self.sensor.distance else 1
+        self.loginfo_throttle(delay, f"dist: {self.sensor.distance or 0:.1f} area: {self.sensor.area:.1f}, fps: {self.sensor.fps:.0f}")
 
 
 if __name__ == '__main__':

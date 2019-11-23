@@ -1,4 +1,3 @@
-import threading
 from time import sleep, time
 
 import pyrealsense2 as rs
@@ -7,8 +6,10 @@ from pyrealsense2.pyrealsense2 import STDepthTableControl, depth_sensor as Depth
 import numpy as np
 import cv2 as cv
 
-from shared import get_image_publisher, ImageSubscriber
+from shared import get_image_publisher
 from utils import StreamingMovingAverage
+import os
+
 
 # https://github.com/IntelRealSense/librealsense/issues/3139
 
@@ -24,14 +25,16 @@ class Distance:
 
 class CaptureDistance:
 
-    def __init__(self, lower=(96, 59, 53, ), upper=(160, 255, 130, ), callback=None) -> None:
+    def __init__(self, lower=(96, 59, 53,), upper=(160, 255, 130,), callback=None) -> None:
         self.lower, self.upper = lower, upper
-        self.callback = callback
+
+        # os.system('rosnode kill image_server')
+
         self.pipeline = rs.pipeline()
         config = rs.config()
 
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 15)
+        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 15)
 
         # set depth units, this should give us better resolution sub 5m?
         device = rs.context().query_devices()[0]
@@ -53,12 +56,13 @@ class CaptureDistance:
 
         for i in range(10):
             try:
-                self.pipeline.wait_for_frames()
                 sensors = sum([dev.query_sensors() for dev in rs.context().query_devices()], [])
-                color_sensor = next(sensor for sensor in sensors if sensor.get_info(rs.camera_info.name) == "RGB Camera")
+                color_sensor = next(
+                    sensor for sensor in sensors if sensor.get_info(rs.camera_info.name) == "RGB Camera")
                 break
-            except:
-                sleep(1)
+            except Exception as e:
+                print(e)
+                sleep(0.3)
 
         print("Setting RGB camera sensor settings")
         # exposure: 166.0
@@ -93,24 +97,34 @@ class CaptureDistance:
         self.fps = 0
         self.area = 0
 
-        self.thread = threading.Thread(target=self.run, daemon=True)
-        self.thread.start()
-
     def broadcast(self, color: np.ndarray):
         if self.color is None:
             self.color = get_image_publisher("shm://depth-color", color.shape, np.uint8)
         self.color[:, :, :] = color
 
     def run(self):
+        for is_running in self:
+            print(self.distance, self.fps)
+            if not is_running:
+                break
+
+    def __iter__(self):
         try:
             start = time()
             while True:
-                frames = self.pipeline.wait_for_frames()
+                try:
+                    frames = self.pipeline.wait_for_frames()
+                except Exception as e:
+                    print("NO FRAMES?", e)
+                    yield
+                    continue
+
                 aligned_frames = self.align.process(frames)
                 aligned_depth_frame = aligned_frames.get_depth_frame()  # aligned_depth_frame is a 640x480 depth image
                 color_frame = aligned_frames.get_color_frame()
 
                 if not aligned_depth_frame or not color_frame:
+                    yield
                     continue
 
                 depth_image = np.asanyarray(aligned_depth_frame.get_data())
@@ -158,10 +172,12 @@ class CaptureDistance:
                 self.broadcast(images)
                 self.fps = self.average_fps(1 / (time() - start))
                 start = time()
+                yield True
         finally:
             self.pipeline.stop()
+        yield False
 
 
 if __name__ == '__main__':
-    capture = CaptureDistance((96, 59, 53, ),(160, 255, 130, ))
+    capture = CaptureDistance((96, 59, 53,), (160, 255, 130,))
     capture.run()

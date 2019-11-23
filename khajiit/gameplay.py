@@ -65,7 +65,7 @@ class Gameplay:
         self.last_kick = time()
 
         self.recent_closest_balls = []
-        self.last_ball_id = None  # timestamp
+        self.last_ball_id = 0  # timestamp
         self.ball_ids: Dict[PolarPoint, float] = {}  # PolarPoint: timestamp
 
         self.kicker_speed = 0
@@ -126,14 +126,24 @@ class Gameplay:
 
     def update_ball_ids(self):
         new_id_map = {}
+        distances = []
         for ball in reversed(self.balls):
+            minimum = 999
             for old_ball, timestamp in self.ball_ids.items():
                 distance = get_distance(ball, old_ball)
-                if distance < 0.4:
+                minimum = min(minimum, distance)
+                if distance < 0.1:
+                    distances.append(distance)
                     new_id_map[ball] = timestamp
                     break
             else:
+                self.logger.warning(f"!!!fail {ball.dist}, {ball.angle_deg}, {minimum}")
+
                 new_id_map[ball] = time()
+
+        distances = list(sorted(distances, reverse=True))[:5]
+        self.logger.info(f"!!! distances  {distances}")
+
         self.ball_ids = new_id_map
 
     def update_recent_closest_balls(self):
@@ -160,10 +170,13 @@ class Gameplay:
         }.get(last_id)
 
         if last_persistent_ball:
-            self.logger.info_throttle(1, f"Last persistent ball {last_id}: dist: {last_persistent_ball.dist}")
+            self.logger.info_throttle(0.1, f"!!!Last persistent ball {last_id}: dist: {last_persistent_ball.dist}")
             return last_persistent_ball
 
         # no last target found
+        if not self.balls:
+            return None
+
         closest = self.balls[0]
         timestamp = self.ball_ids.get(closest, time())
         self.last_ball_id = timestamp
@@ -194,7 +207,8 @@ class Gameplay:
     @property
     def target_goal_angle(self) -> Optional[float]:
         if self.target_goal:
-            return self.target_goal.angle_deg - self.target_angle_adjust
+            # TODO: IMPORTANT!!!!
+            return self.target_goal.angle_deg # - self.target_angle_adjust
 
     @property
     def target_goal_dist(self) -> Centimeter:
@@ -305,19 +319,6 @@ class Gameplay:
     def blind_spot_for_shoot(self):
         return (not self.own_goal or self.own_goal.dist > 3.0) and self.closest_edge[2] < 1.2
 
-    def drive_towards_target_goal(self, backtrack=True, speed_factor=0.8):
-        rotation = self.rotation_for_goal() or 0
-        angle = self.target_goal_angle or 0
-        factor = abs(math.tanh(angle / 10))
-        factor = min(factor, 0.4)
-
-        # TODO: stupid backtrack, when angle wrong, drive back and try again
-        if abs(angle) > 7 and backtrack:
-            logger.error("backtrack %.1f", angle)
-            return self.motors.set_xyw(0, -0.08 * speed_factor - abs(factor) / 6, rotation * factor * 2)
-
-        return self.motors.set_xyw(0, 0.16 * speed_factor - abs(factor) / 6, rotation * factor * 2)
-
     def rotate(self, degrees):
         delta = degrees / 360
         # TODO enable full rotating
@@ -375,25 +376,43 @@ class Gameplay:
         # TODO: falloff when goal angle and dist decreases
         return round(x * factor * 0.8, 6), round(y * factor * 0.8, 6)
 
+    def drive_towards_target_goal(self, backtrack=True, speed_factor=0.8):
+        rotation = self.rotation_for_goal() or 0
+        angle = self.target_goal_angle or 0
+
+        factor = abs(math.tanh(angle / 40))
+        factor = min(factor, 0.4)
+
+        # TODO: stupid backtrack, when angle wrong, drive back and try again
+        if abs(angle) > 7 and backtrack:
+            logger.error("backtrack %.1f", angle)
+            return self.motors.set_xyw(0, -0.08 * speed_factor - abs(factor) / 6, rotation * factor * 2)
+
+        return self.motors.set_xyw(0, 0.16 * speed_factor - abs(factor) / 6, rotation)
+
     def rotation_for_goal(self):
         """ The rotation needed to align with the goal """
         goal_angle = self.target_goal_angle
         if goal_angle is not None:
             maximum = 50
             angle = min(goal_angle, maximum)
-            factor = abs(math.tanh(angle / 30))
+            factor = abs(math.tanh(angle / 40))
             rotate = -angle * factor / maximum
-            rotate = max(0.05, abs(rotate)) * [-1, 1][rotate > 0]
+
+            sign = [-1, 1][rotate > 0]
+            rotate_max = max(0.01, abs(rotate)) * sign
             # print('rotate %.02f %.02f %.02f' % (angle, factor, rotate))
-            return rotate
+            # logger.critical(f"ROTATO: {rotate:.3f} {rotate_max:.3f}")
+            return rotate_max
 
     def align_to_goal(self, factor=1):
         rotation = self.rotation_for_goal() or 0
 
         if abs(rotation) > 0.4:
             rotation = rotation / abs(rotation) * 0.4
+
         r_speed = rotation * factor
-        return self.motors.set_xyw(0, 0, r_speed)
+        return self.motors.set_xyw(0, 0.02, r_speed)
 
     def flank(self, movement_factor=1):
         rotation = self.rotation_for_goal() or 0
@@ -525,7 +544,7 @@ class Gameplay:
 
         # logger.info("adjust: %s %s", self.recognition.h_smaller, self.recognition.h_bigger)
 
-        self.logger.info_throttle(1, "adjust is: %.2f", self.target_angle_adjust)
+        self.logger.info_throttle(1, f"adjust is: {self.target_angle_adjust:.2f}")
         return self.target_angle_adjust
 
     def step(self, recognition, *args):
