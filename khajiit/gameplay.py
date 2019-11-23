@@ -1,14 +1,15 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from camera.line_fit import dist_to_rpm
+from utils import StreamingMovingAverage
 
 logger = logging.getLogger("gameplay")
 from camera.image_recognition import Point, PolarPoint
 import math
 from time import time
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 try:
     dataclass  # python 3.7.1
@@ -63,7 +64,9 @@ class Gameplay:
         self.last_kick = time()
 
         self.recent_closest_balls = []
-        self.has_ball = False
+        self.last_ball_id = None  # timestamp
+        self.ball_ids: Dict[PolarPoint, float] = {}  # PolarPoint: timestamp
+
         self.kicker_speed = 0
 
         self.desired_kicker_seed_cache = []
@@ -111,12 +114,70 @@ class Gameplay:
             balls.append(ball)
 
         if len(self.recognition.balls) != len(balls + too_close + suspicious):
-            logger.info("FUUUCK")
+            logger.warning("GamePlay: weird ball detection case")
 
         # logger.info("Normal{} too_cose{} suspicious{}".format(len(balls), len(too_close), len(suspicious)))
 
         # logger.info("WASD{} {}".format(len(self.recognition.balls), len(balls + too_close)))
         return balls + too_close + suspicious
+
+    def update_ball_ids(self):
+        new_id_map = {}
+        for ball in reversed(self.balls):
+            for old_ball, timestamp in self.ball_ids.items():
+                distance = get_distance(ball, old_ball)
+                if distance < 0.4:
+                    new_id_map[ball] = timestamp
+                    break
+            else:
+                new_id_map[ball] = time()
+        self.ball_ids = new_id_map
+
+    def update_recent_closest_balls(self):
+        if self.closest_ball and self.closest_ball.dist < 0.5 and self.closest_ball.angle_deg_abs < 15:
+            self.recent_closest_balls = [self.closest_ball] + self.recent_closest_balls[:4]
+        else:
+            # remove one when no match
+            self.recent_closest_balls = self.recent_closest_balls[:-1]
+
+    @property
+    def closest_ball(self) -> PolarPoint:
+        # don't consider old targets
+        last_id = self.last_ball_id if time() - self.last_ball_id < 2 else None
+        # check only N actually close balls
+        closest_balls = self.balls[0:3]
+        # assign ids to balls
+        self.update_ball_ids()
+
+        # if last target is in the 3 closest balls, get it
+        last_persistent_ball = {
+            timestamp: ball
+            for ball, timestamp in self.ball_ids.items()
+            if ball in closest_balls
+        }.get(last_id)
+
+        if last_persistent_ball:
+            return last_persistent_ball
+
+        # no last target found
+        closest = self.balls[0]
+        timestamp = self.ball_ids.get(closest, time())
+        self.last_ball_id = timestamp
+        return closest
+
+    @property
+    def average_closest_ball(self) -> Optional[PolarPoint]:
+        """ Used in state logic for transition """
+        if not self.recent_closest_balls:
+            return
+
+        A, D = [], []
+        for b in self.recent_closest_balls:
+            A.append(b.angle_rad)
+            D.append(b.dist)
+        a = sum(A) / len(A)
+        d = sum(D) / len(D)
+        return PolarPoint(a, d)
 
     @property
     def own_goal(self):
@@ -449,34 +510,6 @@ class Gameplay:
 
         self.motors.set_xyw(-y / 1, -x / 1, 0)
 
-    @property
-    def last_closest_ball(self) -> PolarPoint:
-        return self.recent_closest_balls[0] if self.recent_closest_balls else None
-
-    def update_recent_closest_balls(self):
-        if self.closest_ball and self.closest_ball.dist < 0.5 and self.closest_ball.angle_deg_abs < 15:
-            self.recent_closest_balls = [self.closest_ball] + self.recent_closest_balls[:4]
-        else:
-            self.recent_closest_balls = self.recent_closest_balls[:-1]
-
-    @property
-    def closest_ball(self) -> PolarPoint:
-        if self.balls:
-            return self.balls[0]
-
-    @property
-    def average_closest_ball(self) -> PolarPoint:
-        if not self.recent_closest_balls:
-            return
-
-        A, D = [], []
-        for b in self.recent_closest_balls:
-            A.append(b.angle_rad)
-            D.append(b.dist)
-        a = sum(A) / len(A)
-        d = sum(D) / len(D)
-        return PolarPoint(a, d)
-
     def set_target_goal_distance(self) -> Centimeter:
         # if self.target_goal:
         #     self.target_goal_distance
@@ -519,12 +552,14 @@ class StateNode:
     is_recovery = False
     recovery_counter = 0
     recovery_factor = 0.5
+    average_pool_size = 7
 
     def __init__(self, actor: Gameplay):
-        self.transitions = dict(self.exctract_transistions())
+        self.transitions = OrderedDict(self.exctract_transistions())
         self.actor = actor
         self.time = time()
         self.timers = defaultdict(time)
+        self.average_pool = StreamingMovingAverage(self.average_pool_size)
 
     @property
     def elapsed_time(self):
@@ -728,8 +763,8 @@ class FindGoal(StateNode):
         if self.actor.target_goal:
             return TargetGoal(self.actor)
 
-    def VEC_LOST_BALL(self):
-        if not self.actor.has_ball:
+    def VEC_NO_CHANGE(self):
+        if self.elapsed_time > 0.75:
             return Patrol(self.actor)
 
 
@@ -739,8 +774,8 @@ class DriveToCenter(RetreatMixin, StateNode):
     def animate(self):
         self.actor.drive_to_field_center()
 
-    def VEC_LOST_BALL(self):
-        if not self.actor.has_ball:
+    def VEC_NO_CHANGE(self):
+        if self.elapsed_time > 0.75:
             return Patrol(self.actor)
 
     def VEC_IN_CENTER(self):
@@ -749,7 +784,7 @@ class DriveToCenter(RetreatMixin, StateNode):
 
 
 class TargetGoal(RetreatMixin, StateNode):
-    # instead drive infront of own goal to fuck around with opponnentos
+    # instead drive infront of own goal to fuck around with opponents
 
     VISITS = []
 
@@ -773,8 +808,8 @@ class TargetGoal(RetreatMixin, StateNode):
         if self.actor.alligned:
             return Focus(self.actor)
 
-    def VEC_LOST_BALL(self):
-        if not self.actor.has_ball:
+    def VEC_NO_CHANGE(self):
+        if self.elapsed_time > 0.75:
             return Patrol(self.actor)
 
     def VEC_LOST_GOAL(self):
@@ -798,15 +833,14 @@ class Focus(StateNode):
 
 class OutOfBounds(StateNode):
     is_recovery = True
+    average_pool_size = 15
 
     def animate(self):
-        if self.actor.has_ball and abs(self.actor.field_center_angle) > 15 and self.time + 0.5 > time():
-            self.actor.rotate(self.actor.field_center_angle)
-        else:
-            self.actor.drive_to_field_center()
+        self.actor.drive_to_field_center()
 
     def VEC_DONE_CENTERING(self):
         _, _, length = self.actor.closest_edge
+        length = self.average_pool(length)
         if length > 1.2 and not self.forced_recovery_time:
             return Patrol(self.actor)
 

@@ -11,7 +11,7 @@ logger = logging.getLogger("esp32")
 class Controller:
     # Ctrl-C doesn't work well,  Lauri tested b"\x03" +
     # safe values 0.2 0.05
-    def __init__(self, factor=0.2, maximum=0.08):
+    def __init__(self, factor=0.2, maximum=0.065):
         self.motor_serial = None
 
         self.factor = factor
