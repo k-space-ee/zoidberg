@@ -50,7 +50,8 @@ class RecognitionState:
 
 
 class Gameplay:
-    def __init__(self, config, controller):
+    def __init__(self, config, controller, logger):
+        self.logger = logger
         self.motors = controller
         self.state = Patrol(self)
         self.recognition = RecognitionState()
@@ -73,6 +74,8 @@ class Gameplay:
 
         self.target_angle_adjusts = []
         self.target_angle_adjust = 0
+
+        self.avg_closest_goal = StreamingMovingAverage(4)
 
     @property
     def field_id(self):
@@ -150,13 +153,14 @@ class Gameplay:
         self.update_ball_ids()
 
         # if last target is in the 3 closest balls, get it
-        last_persistent_ball = {
+        last_persistent_ball: PolarPoint = {
             timestamp: ball
             for ball, timestamp in self.ball_ids.items()
             if ball in closest_balls
         }.get(last_id)
 
         if last_persistent_ball:
+            self.logger.info_throttle(1, f"Last persistent ball {last_id}: dist: {last_persistent_ball.dist}")
             return last_persistent_ball
 
         # no last target found
@@ -205,11 +209,9 @@ class Gameplay:
     @property
     def too_close(self):
         min_dist = 55
-        if self.target_goal and self.target_goal_distance < min_dist:
-            return True
-
-        if self.own_goal and self.own_goal_dist < min_dist:
-            return True
+        distance = min(self.target_goal_distance or 400, self.own_goal_dist or 400)
+        distance = self.avg_closest_goal(distance)
+        return distance < min_dist
 
     @property
     def alligned(self):
@@ -253,16 +255,18 @@ class Gameplay:
 
         in_line = self.goal_to_ball_angle
 
-        if in_line and abs(in_line) < 13:
-            return True
+        return in_line and abs(in_line) < 13
 
     @property
-    def goal_to_ball_angle(self):
-        if not self.target_goal or not self.balls:
-            return
+    def goal_to_ball_angle(self) -> Optional[float]:
+        return self.goal_to_ball_angle_f()
 
-        ball = self.balls[0]
-        goal = self.target_goal
+    def goal_to_ball_angle_f(self, ball=None) -> Optional[float]:
+        # we use closest ball, but this might need to be very up to date, so raw self.balls[0]?
+        ball = ball or self.closest_ball
+
+        if not self.target_goal or not ball:
+            return
 
         vg = self.target_goal_angle
         vb = ball.angle_deg
@@ -323,7 +327,7 @@ class Gameplay:
         self.motors.set_xyw(y, x, 0)
 
     def drive_to_ball(self, use_falloff):
-        ball = self.average_closest_ball or self.balls[0]
+        ball = self.average_closest_ball
 
         if ball:
             dist = ball.dist
@@ -336,12 +340,12 @@ class Gameplay:
             self.motors.set_xyw(by, bx, 0)
 
     def flank_vector(self):
-        angle = self.goal_to_ball_angle
+        ball = self.closest_ball
+
+        angle = self.goal_to_ball_angle_f(ball)
         if angle is None:
             logger.info("not flank vector")
             return
-
-        ball = self.balls[0]
 
         dist = ball.dist
 
@@ -385,8 +389,6 @@ class Gameplay:
 
     def align_to_goal(self, factor=1):
         rotation = self.rotation_for_goal() or 0
-        goal_angle = self.target_goal_angle
-        shooting_angle = self.goal_to_ball_angle or 999
 
         if abs(rotation) > 0.4:
             rotation = rotation / abs(rotation) * 0.4
@@ -425,7 +427,7 @@ class Gameplay:
         return time() - self.last_kick < 1
 
     def is_in_super_shoot_zone(self) -> bool:
-        if self.target_goal_dist and self.target_goal_dist > 290 or self.own_goal and self.own_goal_dist < 150:
+        if self.target_goal_dist and self.target_goal_dist > 400 or self.own_goal and self.own_goal_dist < 75:
             return True
         return False
 
@@ -465,11 +467,10 @@ class Gameplay:
         self.motors.set_xyw(0, 0, 0)
 
     def drive_to_ball(self):
-        if not self.balls:
-            return
+        ball = self.average_closest_ball
 
-        ball = self.balls[0]
-        # logger.info("%f" % ball.dist)
+        if not ball:
+            return
 
         x, y = ball.x, ball.y
         min_speed = 0.3
@@ -523,7 +524,8 @@ class Gameplay:
             self.target_angle_adjust = sum(self.target_angle_adjusts) / len(self.target_angle_adjusts)
 
         # logger.info("adjust: %s %s", self.recognition.h_smaller, self.recognition.h_bigger)
-        # logger.info("adjust is: %.2f", self.target_angle_adjust)
+
+        self.logger.info_throttle(1, "adjust is: %.2f", self.target_angle_adjust)
         return self.target_angle_adjust
 
     def step(self, recognition, *args):
@@ -736,11 +738,11 @@ class Shoot(StateNode):
 
 class SuperShoot(Shoot):
     def animate(self):
-        self.actor.drive_towards_target_goal(backtrack=False, speed_factor=3)
+        self.actor.drive_towards_target_goal(backtrack=False, speed_factor=1.7)
         self.actor.kick()
 
     def VEC_DONE_SHOOT(self):
-        if self.elapsed_time > 0.5:
+        if self.elapsed_time > 0.7:
             logger.info("Begone thot!!!")
             return Flank(self.actor)
 

@@ -50,7 +50,7 @@ class GameplayNode(messenger.Node):
         self.mock = mock
         # ConfigManager.set_value('game|global|gameplay status', 'disabled')
         self.config = ConfigManager.get_value('game')
-        self.gameplay = Gameplay(self.config, Controller())
+        self.gameplay = Gameplay(self.config, Controller(), self.logger)
 
         self.strategy_publisher = messenger.Publisher('/strategy', messenger.Messages.string)
 
