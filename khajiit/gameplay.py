@@ -1,5 +1,6 @@
 import logging
 from typing import List, Optional, Dict
+from uuid import uuid4
 
 from camera.line_fit import dist_to_rpm
 from utils import StreamingMovingAverage
@@ -49,6 +50,17 @@ class RecognitionState:
         return RecognitionState(balls, goal_yellow, goal_blue, closest_edge, angle_adjust, h_bigger, h_smaller)
 
 
+def new_id() -> str:
+    return str(uuid4())
+
+
+@dataclass
+class BallIdentifier:
+    ball: PolarPoint
+    id: str = new_id
+    timestamp: float = time
+
+
 class Gameplay:
     def __init__(self, config, controller, logger):
         self.logger = logger
@@ -65,8 +77,8 @@ class Gameplay:
         self.last_kick = time()
 
         self.recent_closest_balls = []
-        self.last_ball_id = 0  # timestamp
-        self.ball_ids: Dict[PolarPoint, float] = {}  # PolarPoint: timestamp
+        self.last_ball_id: Optional[BallIdentifier] = None  # timestamp
+        self.ball_ids: Dict[str, BallIdentifier] = {}  # uuid: BallIdentifier
 
         self.kicker_speed = 0
 
@@ -93,18 +105,19 @@ class Gameplay:
     def config_goal(self):
         return self.config.prop("global").prop("target goal color", default='blue')
 
-    @property
-    def balls(self):
+    def balls(self, input_balls=None):
         balls = []
         goals = []
+        too_close = []
+        suspicious = []
+
         if self.own_goal:
             goals.append(self.own_goal)
         if self.target_goal:
             goals.append(self.target_goal)
 
-        too_close = []
-        suspicious = []
-        for ball in self.recognition.balls:
+        input_balls = sorted(input_balls, key=lambda b: b.dist)
+        for ball in (input_balls or self.recognition.balls):
             if ball.suspicious:
                 suspicious.append(ball)
                 continue
@@ -119,30 +132,29 @@ class Gameplay:
         if len(self.recognition.balls) != len(balls + too_close + suspicious):
             logger.warning("GamePlay: weird ball detection case")
 
-        # logger.info("Normal{} too_cose{} suspicious{}".format(len(balls), len(too_close), len(suspicious)))
-
-        # logger.info("WASD{} {}".format(len(self.recognition.balls), len(balls + too_close)))
         return balls + too_close + suspicious
 
     def update_ball_ids(self):
         new_id_map = {}
-        distances = []
-        for ball in reversed(self.balls):
-            minimum = 999
-            for old_ball, timestamp in self.ball_ids.items():
-                distance = get_distance(ball, old_ball)
-                minimum = min(minimum, distance)
-                if distance < 0.1:
-                    distances.append(distance)
-                    new_id_map[ball] = timestamp
-                    break
-            else:
-                self.logger.warning(f"!!!fail {ball.dist}, {ball.angle_deg}, {minimum}")
 
-                new_id_map[ball] = time()
+        for uuid, old_iball in self.ball_ids.items():
+            # case 1: old_ball in currently recognized balls
+            minimum = None
+            for ball in reversed(self.balls()):
+                distance = get_distance(ball, old_iball.ball)
+                if distance < 0.4 and (minimum is None or distance < minimum):
+                    minimum = distance
+                    # refresh the timeout for this ball
+                    new_id_map[uuid] = BallIdentifier(ball, uuid, time())
 
-        distances = list(sorted(distances, reverse=True))[:5]
-        self.logger.info(f"!!! distances  {distances}")
+            # case 2: old ball currently not visible, check timestamp for purging
+            if minimum is None:
+                self.logger.warning(
+                    f"!!!Fail {old_iball.id[:5]}, {old_iball.ball.dist:.1f},{old_iball.ball.angle_deg:.1f}, {minimum}")
+
+                # 200ms
+                if time() - old_iball.timestamp < 0.2:
+                    new_id_map[uuid] = old_iball  # don't update timestamp
 
         self.ball_ids = new_id_map
 
@@ -156,30 +168,32 @@ class Gameplay:
     @property
     def closest_ball(self) -> PolarPoint:
         # don't consider old targets
-        last_id = self.last_ball_id if time() - self.last_ball_id < 2 else None
+        last_id = self.last_ball_id if self.last_ball_id and (time() - self.last_ball_id.timestamp < 1) else None
+
         # check only N actually close balls
-        closest_balls = self.balls[0:3]
+        closest_balls = self.balls[0:4]
+
         # assign ids to balls
         self.update_ball_ids()
 
         # if last target is in the 3 closest balls, get it
-        last_persistent_ball: PolarPoint = {
-            timestamp: ball
-            for ball, timestamp in self.ball_ids.items()
-            if ball in closest_balls
-        }.get(last_id)
+        last_persistent_ball: BallIdentifier = {
+            uuid: iball
+            for uuid, iball in self.ball_ids.items()
+            # if ball in closest_balls
+        }.get(last_id.id)
 
         if last_persistent_ball:
-            self.logger.info_throttle(0.1, f"!!!Last persistent ball {last_id}: dist: {last_persistent_ball.dist}")
-            return last_persistent_ball
+            self.logger.info_throttle(1, f"Last persistent ball {last_id[:5]}: dist: {last_persistent_ball.ball.dist}")
+            return last_persistent_ball.ball
 
         # no last target found
-        if not self.balls:
-            return None
+        closest_mem = next(iter(self.balls([bi.ball for bi in self.ball_ids.values()])), None)
+        closest_rec = closest_balls[0] if closest_balls else None
+        closest = closest_mem or closest_rec
 
-        closest = self.balls[0]
-        timestamp = self.ball_ids.get(closest, time())
-        self.last_ball_id = timestamp
+        last_id = {bi.ball: bi.id for bi in self.ball_ids.values()}.get(closest)
+        self.last_ball_id = last_id
         return closest
 
     @property
@@ -208,7 +222,7 @@ class Gameplay:
     def target_goal_angle(self) -> Optional[float]:
         if self.target_goal:
             # TODO: IMPORTANT!!!!
-            return self.target_goal.angle_deg # - self.target_angle_adjust
+            return self.target_goal.angle_deg  # - self.target_angle_adjust
 
     @property
     def target_goal_dist(self) -> Centimeter:
@@ -533,8 +547,8 @@ class Gameplay:
     def set_target_goal_distance(self) -> Centimeter:
         # if self.target_goal:
         #     self.target_goal_distance
-            # self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
-            # self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
+        # self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
+        # self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
         return self.target_goal_distance
 
     def set_target_goal_angle_adjust(self) -> float:
