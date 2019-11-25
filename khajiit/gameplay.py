@@ -1,9 +1,9 @@
 import logging
-from typing import List, Optional, Dict
+from typing import Optional, Dict
 from uuid import uuid4
 
 from camera.line_fit import dist_to_rpm
-from utils import StreamingMovingAverage
+from utils import StreamingMovingAverage, RecognitionState, Centimeter
 
 logger = logging.getLogger("gameplay")
 from camera.image_recognition import Point, PolarPoint
@@ -12,42 +12,12 @@ from time import time
 
 from collections import defaultdict, OrderedDict
 
-try:
-    dataclass  # python 3.7.1
-except:
-    from dataclasses import dataclass
-
 
 def get_distance(point_a, point_b):
     A = point_a.x * point_a.dist, point_a.y * point_a.dist
     B = point_b.x * point_b.dist, point_b.y * point_b.dist
     dist = ((A[0] - B[0]) ** 2 + (A[1] - B[1]) ** 2) ** 0.5
     return dist
-
-
-Centimeter = float
-
-
-@dataclass
-class RecognitionState:
-    """Class for keeping track of the recognition state."""
-    balls: List[PolarPoint] = list
-    goal_yellow: Optional[PolarPoint] = None
-    goal_blue: Optional[PolarPoint] = None
-    closest_edge: Optional[PolarPoint] = None
-    angle_adjust: float = None
-    h_bigger: int = None
-    h_smaller: int = None
-
-    @staticmethod  # for some reason type analysis didn't work for classmethod
-    def from_dict(packet: dict) -> 'RecognitionState':
-        balls: List[PolarPoint] = [PolarPoint(**b) for b in packet.get('balls', [])]
-        goal_yellow: Optional[PolarPoint] = packet.get('goal_yellow') and PolarPoint(**packet['goal_yellow'])
-        goal_blue: Optional[PolarPoint] = packet.get('goal_blue') and PolarPoint(**packet['goal_blue'])
-        closest_edge: Optional[PolarPoint] = packet.get('closest_edge') and PolarPoint(**packet['closest_edge'])
-        angle_adjust, h_bigger, h_smaller = packet.get('goal_angle_adjust')
-
-        return RecognitionState(balls, goal_yellow, goal_blue, closest_edge, angle_adjust, h_bigger, h_smaller)
 
 
 def new_id() -> str:

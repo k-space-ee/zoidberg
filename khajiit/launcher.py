@@ -65,6 +65,11 @@ def image_server(silent=False):
     image_server.main(silent)
 
 
+def octocamera_node(silent=False):
+    import octocamera_node
+    octocamera_node.main(silent)
+
+
 class RestartWrapper:
     def __init__(self, node, **kwargs) -> None:
         self.node = node
@@ -81,23 +86,14 @@ class RestartWrapper:
             sleep(1)
 
 
-def image_server_launcher(silent=False):
-    # the image server kills itself when the cameras fail so that we could restart it here :)
-    launcher = Launcher()
-    for i in range(100):
-        launcher.launch(image_server, silent=silent)
-
-        launcher.spin()
-        print("IMAGE SERVER RESTART == ", i)
-        sleep(1)
-
-
 if __name__ == '__main__':
     launcer = Launcher()
 
     launcer.launch(messenger.core)
-    launcer.launch(image_server_launcher, silent=True)
+    launcer.launch(RestartWrapper(octocamera_node, silent=True))
+    launcer.launch(image_server, silent=True)
     # launcer.launch(RestartWrapper(RealSenseNode, mock=args.mock))
+
     launcer.launch(server)
     launcer.launch(ControllerNode, mock=args.mock, silent=True)
     launcer.launch(KickerNode, mock=args.mock, silent=True)

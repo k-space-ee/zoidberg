@@ -220,6 +220,7 @@ class Grabber(Thread):
         return vd
 
     def run(self):
+        wait_count = 0
         while self.running:
             self.ready.clear()
 
@@ -229,9 +230,11 @@ class Grabber(Thread):
                 # Check if /dev/v4l/by-path/bla symlink exists
                 if not os.path.exists(self.path):
                     logger.info("Waiting for %s to become available", self.path)
-                    self.wake.wait()
+                    self.wake.wait(timeout=0.1)
                     self.wake.clear()
-                    continue
+                    wait_count += 1
+                    if wait_count < 5:
+                        continue
                 try:
                     self.vd = self.open()
                 except OSError as e:
@@ -244,6 +247,7 @@ class Grabber(Thread):
                 if self.vd is None:
                     os.system('rosnode kill image_server')
 
+            wait_count = 0
             # get image from the driver queue
             buf = v4l2_buffer()
             buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE

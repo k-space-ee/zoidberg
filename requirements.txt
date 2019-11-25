@@ -12,3 +12,5 @@ uavcan
 git+https://gitlab.com/noppo/gevent-websocket
 
 rospkg
+
+opencv_python  # better to install from source

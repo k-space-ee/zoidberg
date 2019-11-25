@@ -18,6 +18,11 @@ def get_image_publisher(channel: str, shape: tuple, dtype) -> np.ndarray:
     return sa.create(channel, shape, dtype)
 
 
+def attach(channel: str) -> np.ndarray:
+    frame: np.ndarray = sa.attach(channel)
+    return frame
+
+
 class ImageSubscriber(Thread):
     """
     Spin-wait, could be replaced with pub-sub events

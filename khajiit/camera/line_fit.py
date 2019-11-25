@@ -10,11 +10,18 @@ def function_fit(func, X, Y):
     f = lambda x: func(x, *constants)
 
     delta = 0
+    squared_error = 0
+    elem, d_max = 2 ** 20, 0
     for _x, _y in zip(X, Y):
         d = (f(_x) - _y)
         delta += abs(d)
+        if abs(d) > d_max:
+            d_max = abs(d)
+            elem = _x, f(_x)
+        squared_error = d ** 2
 
-    print(", ".join(str(c) for c in constants), "average delta:", delta / len(X), '\n')
+    print(", ".join(str(c) for c in constants), "\naverage delta:", delta / len(X), '\nsquared error', squared_error,'\n')
+    print("max", d_max, elem)
     return f
 
 
@@ -35,64 +42,26 @@ def interpolate(X, Y, kind='slinear', backup=inverse):
     return interpolate
 
 
-inv = lambda x, a, b, c: a / x + b / x ** 4 + c
-
-# distance
-Y = list(range(40, 360, 20))
-
-# vertical pos 
-Xa = [
-    227,  # 40
-    150,
-    121,
-    98,  # 100
-    80.5,
-    68.5,
-    60.5,
-    53.2,
-    47.0,  # 200
-    43,
-    39,
-    35.5,
-    32.5,
-    29.2,  # 300
-    27.0,
-    25.2,
+rpm_distance = [
+    # (5300, 59),
+    # (5400, 76),
+    # (5500, 89),
+    (5600, 107),
+    (6040, 140),
+    (8800, 350),
+    (9300, 390), # 6 / 9,
+    (10010, 450), # 6 / 9,
 ]
 
-# height values
-Xb = [
-    211,  # 40
-    160,
-    121,
-    100,  # 100
-    84.5,
-    73.0,
-    64,
-    57.3,
-    51.9,  # 200
-    47.7,
-    44.0,
-    41,
-    37.5,
-    35.5,  # 300
-    33,
-    30.5,
-]
+XX = [dist for rpm, dist in rpm_distance]
+YY = [rpm for rpm, dist in rpm_distance]
 
-# function that takes vertical pos and gives distance
-# vertical_to_dist = function_fit(inv, Xa, Y)
-# height_to_dist = function_fit(inv, Xb, Y)
-
-goal_distance = [
-    (420, 50),
-    (178, 100),
-    (112, 150),
-    (80, 200),
-    (62, 250),
-    (50, 300),
-    (42, 350),
-]
+rpm_throw_function = lambda x, a, b, c, d, e: a ** x * b + c * x ** (1 + d) + e
+dist_to_rpm = function_fit(
+    rpm_throw_function,
+    XX,
+    YY,
+)
 
 goal_distance = [
     (442, 47),
@@ -110,10 +79,9 @@ goal_distance = [
     (126, 170),
     (118, 188),
     (114, 200),
-    (108, 210),  #
+    (108, 210),
     (104, 221),
     (96, 241),
-    # (90, 257),
     (84, 300),
     (80, 330),
     (72, 390),
@@ -122,281 +90,22 @@ goal_distance = [
 gX = [e[0] for e in goal_distance]
 gY = [e[1] for e in goal_distance]
 ginv = lambda x, a, b, c: a / x + b / x ** 2 + c
-# ginv = lambda x, a, b, c, d: ((b + (800 - x)) * (d + (800 - x))) / (c * (b + (800 - x)) + a * (d + (800 - x)))
-print("goal_to_dist")
 goal_to_dist = function_fit(ginv, gX, gY)
 for k, v in goal_distance:
     calc = round(goal_to_dist(k))
-    print([k], v, calc, [v - calc])
-
-# 20 deg tuesday, low voltage
-pwm_distance = [
-    (56, 1),
-    (57, 50),
-    (58, 90),
-    (59, 110),
-    (60, 140),
-    (61, 160),
-    (62, 170),
-    (63, 180),
-    (64, 200),
-    (65, 210),
-    (66, 220),
-    (67, 230),
-    (69, 240),
-    (70, 250),
-    (71, 260),
-    (72, 270),
-    (73, 280),
-    (78, 290),
-    (82, 310),
-    (90, 360),
-]
-
-# 12.5 deg, ~13,1v
-pwm_distance = [
-    # (50, 1),
-    (50, 50),
-    (51, 50),
-    (52, 50),
-    (53, 100),
-    (54, 100),
-    (57, 150),
-    (58, 150),
-    (62, 200),
-    (63, 200),
-    (67, 250),
-    (68, 250),
-    (76, 300),
-    (77, 300),
-    (78, 300),
-]
-# throw_function = lambda x, a, b: a * (b + x / 100) ** 2 + 50
-
-# # 12.5 deg, ~13,1v
-# pwm_distance = [
-#     (56, 20),
-#     (57, 50),
-#     (57, 50),
-#     (58, 100),
-#     (59, 100),
-#     (61, 150),
-#     (62, 150),
-#     (64, 200),
-#     (65, 200),
-#     (66, 200),
-#     (71, 250),
-#     (72, 250),
-#     (73, 250),
-#     (77, 300),
-#     (78, 300),
-#     (79, 300),
-# ]
-
-# distance
-# X = [dist for pwm, dist in pwm_distance]
-# # pwm
-# Y = [pwm for pwm, dist in pwm_distance]
-#
-# throw_function = lambda x, a, b, c: a * (b + x / 100) ** 2 + 50 + c
-# dist_to_pwm = function_fit(
-#     throw_function,
-#     X,
-#     Y,
-# )
-#
-# dist_to_pwm_interpolated = interpolate(
-#     X,
-#     Y,
-#     backup=throw_function,
-# )
-
-rpm_distance = [
-    (5550, 60),
-    (5600, 70),
-    (5650, 80),
-    (5750, 90),
-    (5850, 100),
-    (6000, 110),
-    (6100, 120),
-    (6300, 130),
-    (6450, 140),
-    (7350, 175),
-    (7600, 190),
-    (8750, 255),
-    (9050, 280),
-]
-
-rpm_distance = [
-    # (5550, 40),
-    (5550, 59),
-    (5680, 76),
-    (5850, 89),
-    # (6250, 132),
-    (6675, 162),
-    (7100, 221),
-    # (7950, 241),
-    (9050, 330),
-]
-
-rpm_distance = [
-    (5300, 59),
-    (5400, 76),
-    (5500, 89),
-    (5600, 107),
-    (5900, 132),
-    (5950, 140),
-    (6250, 162),
-    (6720, 188),
-    (7050, 221),
-    # (7350, 255),
-    (8000, 300),
-    (8500, 350),
-]
-
-# distance
-X = [dist for rpm, dist in rpm_distance]
-# rpm
-Y = [rpm for rpm, dist in rpm_distance]
-
-rpm_throw_function = lambda x, a, b, c, d, e: a * x + b * x ** 3 + d * x ** 5 + e * x ** 4 + c
-print("DIST to RPM")
-dist_to_rpm = function_fit(
-    rpm_throw_function,
-    X,
-    Y,
-)
-
-for v, k in rpm_distance + [[9500, 350]]:
-    calc = round(dist_to_rpm(k))
-    print([k], v, calc, [v - calc])
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    full_plot, axarr = plt.subplots(2, 1)
+    XX_SPACE = np.linspace(round(min(XX)) * .8, round(max(XX)) * 1.2, 100)
+    plt.figure(figsize=(12, 12))
+    plt.grid()
+    plt.plot(XX_SPACE, [dist_to_rpm(x) for x in XX_SPACE], '-')
 
-    xp = np.linspace(round(min(X) - 30), round(max(X) + 30), 300)
-    axarr[0].plot(X, Y, '.', )
-    axarr[0].plot(xp, dist_to_rpm(xp), '-')
+    plt.plot(XX, YY, 'o')
 
-    xp = np.linspace(round(min(gX) - 30), round(max(gX) + 30), 300)
-    axarr[1].plot(gX, gY, '.', )
-    axarr[1].plot(xp, goal_to_dist(xp), '-')
-
+    plt.errorbar(XX, YY, [(dist_to_rpm(x) - y) * 2 for x, y in zip(XX, YY)])
     plt.show()
 
-    # xp = np.linspace(round(min(gX) - 30), round(max(gX) + 30), 300)
-    # plt.plot(gX, gY, '.', )
-    # plt.plot(xp, goal_to_dist(xp), '-')
-    # plt.show()
-
-    exit()
-
-    # old examples
-
-    Y = list(range(30, 331, 5))
-    X = [
-        317, 279, 248, 224, 203, 185, 172, 160, 150, 141, 133, 125, 118,
-        112.5, 107, 102, 98.5, 94, 90.3, 87.1, 83.2, 80, 77.9, 75, 72.3,
-        70.3, 68, 65.9, 64.4, 62.3, 60.5, 59.5, 58.1, 56, 54.9, 53.8, 52.4,
-        51, 49.6, 48.2, 47.8, 46.1,
-        45.3, 44.4,  # 240
-        43.5, 42.7,
-        42., 41.3,
-        40.75, 40.17,
-        39.3, 38.8,
-        38.2, 37.5,
-        37.1, 36.1,
-        35.4, 35.1,
-        34.5, 34,
-        33.4,
-    ]
-
-    f = function_fit(inverse, X, Y)
-
-    plt.plot(X, Y, '.', )
-    xp = np.linspace(round(X[0]), round(X[-1]), 300)
-    plt.plot(xp, f(xp), '-')
-    plt.show()
-
-    X = list(range(40, 331, 10))
-    Y = [
-        77, 77, 77, 77.5, 78.5, 78.9, 79, 79, 79.5, 79.5, 81, 82, 82, 82, 83, 83,
-        83.5, 84.7, 86, 86.3, 87.7, 88.5, 89, 90.5,
-        91.5,  # 280
-        96.5,
-        99.5,  # 300
-        100,
-        102.5,
-        106,
-    ]
-
-    f = interpolate(X, Y, backup=None)
-
-    plt.plot(X, Y, '.', )
-    xp = np.linspace(round(X[0]), round(X[-1]), 300)
-    plt.plot(xp, f(xp), '-')
-    plt.show()
-
-    inv = lambda x, a, b, c: b / x ** 4 + c
-
-    Y = list(range(40, 360, 20))
-    Xa = [
-        227,  # 40
-        150,
-        121,
-        98,  # 100
-        80.5,
-        68.5,
-        60.5,
-        53.2,
-        47.0,  # 200
-        43,
-        39,
-        35.5,
-        32.5,
-        29.2,  # 300
-        27.0,
-        25.2,
-    ]
-
-    Xb = [
-        211,  # 40
-        160,
-        121,
-        100,  # 100
-        84.5,
-        73.0,
-        64,
-        57.3,
-        51.9,  # 200
-        47.7,
-        44.0,
-        41,
-        37.5,
-        35.5,  # 300
-        33,
-        30.5,
-    ]
-
-    fa = function_fit(inv, Xa, Y)
-    fb = function_fit(inv, Xb, Y)
-    # fc = lambda x: (fa(x) + fb(x)) / 2
-
-    xp = np.linspace(round(Xa[0]) - 20, round(Xa[-1]) + 20, 300)
-
-    # for xa, xb in zip(Xa, Xb):
-    #     ya, yb = 
-
-    Ya = [fa(x) for x in Xa]
-    Yb = [fb(x) for x in Xb]
-    Yc = [(fa(xa) + fb(xb)) / 2 for xa, xb in zip(Xa, Xb)]
-
-    print(sum(abs(y1 - y2) for y1, y2 in zip(Y, Yc)) / len(Y))
-
-    plt.plot(Y, '-')
-    plt.plot(Ya, '-')
-    plt.plot(Yb, '-')
-    plt.plot(Yc, '.')
-    plt.show()
+    for i in range(350, 500, 10):
+        print(f"{i} -> {dist_to_rpm(i):.0f}")

@@ -7,6 +7,7 @@ import numpy as np
 import math
 import logging
 
+from shared import get_image_publisher
 from .line_fit import goal_to_dist
 from .managed_threading import ManagedThread, ThreadManager
 
@@ -159,7 +160,10 @@ class ImageRecognition:
             goal_yellow=self.goal_yellow and self.goal_yellow.serialize(),
             goal_blue=self.goal_blue and self.goal_blue.serialize(),
             closest_edge=self.closest_edge and self.closest_edge.serialize(),
-            goal_angle_adjust=[self.goal_angle_adjust, self.h_bigger, self.h_smaller]
+            goal_angle_adjust=[self.goal_angle_adjust, self.h_bigger, self.h_smaller],
+            field_contours=[cv2.boundingRect(hull) for hull in self.field_contours],
+            goal_yellow_rect=self.goal_yellow_rect,
+            goal_blue_rect=self.goal_blue_rect,
         )
 
     @staticmethod
@@ -486,17 +490,22 @@ class ImageRecognition:
 class ImageRecognizer(ManagedThread):
     last_frame = None
 
-    def __init__(self, upstream_producer=None, framedrop=0, lossy=True, config_manager=None, publisher=None, produce_rate=0):
+    def __init__(self, upstream_producer=None, framedrop=0, lossy=True, config_manager=None, publisher=None):
         super().__init__(upstream_producer, framedrop, lossy)
         self.camera_config = {}
         self.color_config = {}
         self.config_manager = config_manager
         self.publisher = publisher
-        self.produce_rate = produce_rate
         self.counter = 0
         self.refresh_config()
         self.roundtrip_start = time()
         self.silent = False
+        self.br_color = None
+
+    def broadcast(self, color: np.ndarray):
+        if self.br_color is None:
+            self.br_color = get_image_publisher("shm://recognizer-color", color.shape, np.uint8)
+        self.br_color[:, :, :] = color
 
     def log_roundtrip(self):
         roundtrip = 1 / (time() - self.roundtrip_start)
@@ -520,10 +529,7 @@ class ImageRecognizer(ManagedThread):
         )
 
         self.counter += 1
-        if self.produce_rate and (self.counter % self.produce_rate) == 0:
-            # TODO: critical, whut is this
-            self.produce(r, self.grabber)
-            self.last_frame = r
+        self.broadcast(r.frame)
 
         if self.publisher:
             serialized = dict(**r.serialize(), fps=self.average_fps, lat=self.average_latency)
