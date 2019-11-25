@@ -60,13 +60,16 @@ class PolarPoint(Point):
     Polar coordinate (radians, meters)
     """
 
-    def __init__(self, angle_rad=None, dist=None, suspicious=False, **_):
+    def __init__(self, angle_rad=None, dist=None, suspicious=False, radius=8, vx=0, vy=0, **_):
         self.angle_rad = angle_rad  # radians
         self.dist = dist  # distance in meters
         self.angle_deg = math.degrees(self.angle_rad)
         self.x = self.dist * math.cos(self.angle_rad)
         self.y = self.dist * math.sin(self.angle_rad)
         self.suspicious = suspicious
+        self.radius = radius
+        self.vx = vx
+        self.vy = vy
 
     @property
     def angle_deg_abs(self):
@@ -84,13 +87,15 @@ class PolarPoint(Point):
             x=self.x,
             y=self.y,
             suspicious=self.suspicious,
+            radius=self.radius,
+            vx=self.vx,
+            vy=self.vy,
         )
 
 
 class ImageRecognition:
     GOAL_FIELD_DILATION = 50
     GOAL_BOTTOM = 200
-
     # Ball search scope vertically
     BALLS_BOTTOM = 300
 
@@ -301,6 +306,7 @@ class ImageRecognition:
         mask = mask[:3840]
 
         assert mask.shape == (3840, 320), "got instead %s" % repr(mask.shape)
+
         return mask, hulls
 
     def _recognize_markers(self):
@@ -395,6 +401,7 @@ class ImageRecognition:
         Return mask for balls and list of balls
         """
         mask = cv2.inRange(self.frame[:3840, :self.BALLS_BOTTOM], self.BALL_LOWER, self.BALL_UPPER)
+        mask = cv2.erode(mask, None, iterations=1)
         mask = cv2.bitwise_and(mask, self.field_mask[:3840, :self.BALLS_BOTTOM])
         mask = np.vstack([mask, mask[:480]])
         cnts = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
@@ -415,7 +422,7 @@ class ImageRecognition:
             cy = (y << 1) + h  # bottom half is really bad seen and reflects field color (h >> 1)
 
             # TODO: is this dependent on the size?
-            relative = PolarPoint(self.x_to_rad(cx), self.y_to_dist(cy + radius))
+            relative = PolarPoint(self.x_to_rad(cx), self.y_to_dist(cy + radius), radius=radius, vx=cx, vy=cy)
 
             # TODO: most likely we dont need suspicious logic anymore, as balls are thrown in a basket.
             suspicious = False
@@ -462,7 +469,7 @@ class ImageRecognition:
             return self.camera_height / j + self.camera_mount_radius
         return 99999999  # infinity to prevent division by zero
 
-    def deg_to_x(self, d):
+    def deg_to_x(self, d, offset=None):
         """
         Convert degrees from the kicker to panorama image x coordinate
         """
@@ -500,12 +507,26 @@ class ImageRecognizer(ManagedThread):
         self.refresh_config()
         self.roundtrip_start = time()
         self.silent = False
-        self.br_color = None
 
-    def broadcast(self, color: np.ndarray):
+        self.br_color = None
+        self.br_field_mask = None
+        self.br_balls_mask = None
+        self.br_goal_blue_mask = None
+        self.br_goal_yellow_mask = None
+
+    def broadcast(self, color: np.ndarray, field_mask: np.ndarray, balls_mask: np.ndarray, goal_blue_mask: np.ndarray, goal_yellow_mask: np.ndarray):
         if self.br_color is None:
-            self.br_color = get_image_publisher("shm://recognizer-color", color.shape, np.uint8)
+            self.br_color = get_image_publisher("shm://recognizer-color", color.shape, color.dtype)
+            self.br_field_mask = get_image_publisher("shm://recognizer-field_mask", field_mask.shape, field_mask.dtype)
+            self.br_balls_mask = get_image_publisher("shm://recognizer-balls_mask", balls_mask.shape, balls_mask.dtype)
+            self.br_goal_blue_mask = get_image_publisher("shm://recognizer-goal_blue_mask", goal_blue_mask.shape, goal_blue_mask.dtype)
+            self.br_goal_yellow_mask = get_image_publisher("shm://recognizer-goal_yellow_mask", goal_yellow_mask.shape, goal_yellow_mask.dtype)
+
         self.br_color[:, :, :] = color
+        self.br_field_mask[:, :] = field_mask
+        self.br_balls_mask[:, :] = balls_mask
+        self.br_goal_blue_mask[:, :] = goal_blue_mask
+        self.br_goal_yellow_mask[:, :] = goal_yellow_mask
 
     def log_roundtrip(self):
         roundtrip = 1 / (time() - self.roundtrip_start)
@@ -529,7 +550,7 @@ class ImageRecognizer(ManagedThread):
         )
 
         self.counter += 1
-        self.broadcast(r.frame)
+        self.broadcast(r.frame, r.field_mask, r.balls_mask, r.goal_blue_mask, r.goal_yellow_mask)
 
         if self.publisher:
             serialized = dict(**r.serialize(), fps=self.average_fps, lat=self.average_latency)

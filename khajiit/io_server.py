@@ -122,6 +122,7 @@ def command(websocket):
         gameplay_status = game_package.get('is_enabled', None)
         target_goal_angle = round(game_package.get('target_goal_angle') or 0, 3)
         average_rpm = canbus_package.get('average_rpm', 0)
+        closest_ball = game_package.get('closest_ball', None)
 
         if action == "gamepad":
             controls = response.get("data")
@@ -149,28 +150,28 @@ def command(websocket):
 
                     if delta:
                         rpm = max(0, min(rpm + delta * 50, 15000))
-                        logger.info("PWM+: %.0f", rpm)
+                        logger.info_throttle(1, "PWM+: %.0f", rpm)
 
                     if controls.get("controller0.button0", None):
-                        logger.info(f"drive_towards_target_goal: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
+                        logger.info_throttle(1, f"drive_towards_target_goal: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
                         kicker_publisher.publish(rpm)
                         # no driving backwards when angle error
                         command_publisher.command(drive_towards_target_goal=dict(backtrack=False, speed_factor=0.8))
 
                     if controls.get("controller0.button5", None):
-                        logger.info(f"kick: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
+                        logger.info_throttle(1, f"kick: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
                         kicker_publisher.publish(rpm)
 
                     if controls.get("controller0.button6", None):
-                        logger.info("Drive to center")
+                        logger.info_throttle(1, "Drive to center")
                         command_publisher.command(drive_to_field_center=None)
 
                     if controls.get("controller0.button7", None):
-                        logger.info(f"Flank {target_goal_angle}")
+                        logger.info_throttle(1, f"Flank {target_goal_angle} {closest_ball.get('dist')} {closest_ball.get('angle_deg')}")
                         command_publisher.command(flank=None)
 
                     if controls.get("controller0.button2", None):
-                        logger.info(f"align_to_goal: {target_goal_angle} speed:{average_rpm}")
+                        logger.info_throttle(1, f"align_to_goal: {target_goal_angle} speed:{average_rpm}")
                         command_publisher.command(align_to_goal=dict(factor=1))
 
                 last_press_history = [*last_press_history, time() - last_press][-30:]
@@ -178,9 +179,8 @@ def command(websocket):
                 if counter % 30 == 1:
                     average = sum(last_press_history) / len(last_press_history)
                     if not gameplay_status:
-                        logger.info("Last press %.3f ago on average", average)
                         format = dict((k, v if type(v) == bool else round(v, 1)) for k, v in controls.items())
-                        logger.info("Last press %s", format)
+                        logger.info_throttle(0.3, f"Last press {average:.3f} ago on average, {format}")
 
         elif action == "set_settings":
             for k, v in response.items():

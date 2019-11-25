@@ -1,40 +1,40 @@
 ball:
   chroma blue:
-  - 20
-  - 45
+  - 51
+  - 80
   chroma red:
-  - 110
-  - 145
+  - 140
+  - 169
   luma:
-  - 95
-  - 208
+  - 41
+  - 145
 field:
   chroma blue:
   - 0
-  - 55
+  - 53
   chroma red:
   - 164
   - 227
   luma:
-  - 42
-  - 255
+  - 69
+  - 181
 goal A:
   chroma blue:
-  - 88
-  - 124
+  - 102
+  - 114
   chroma red:
-  - 122
-  - 142
+  - 135
+  - 156
   luma:
-  - 17
+  - 38
   - 102
 goal B:
   chroma blue:
-  - 44
-  - 44
+  - 82
+  - 95
   chroma red:
-  - 126
-  - 212
+  - 163
+  - 177
   luma:
-  - 97
-  - 162
+  - 70
+  - 115

@@ -6,7 +6,7 @@ from camera.grabber import PanoramaGrabber
 
 listener_wrapper = messenger.CallbackListenerWrapper()
 
-node = messenger.Node('image_server')
+node = messenger.Node('octocamera')
 settings_change = messenger.Listener('/settings_changed', messenger.Messages.string, callback=listener_wrapper.update)
 recognition_publisher = messenger.Publisher('/recognition', messenger.Messages.string)
 
@@ -18,6 +18,8 @@ grabber = PanoramaGrabber(config)
 image_recognizer = ImageRecognizer(
     grabber, config_manager=ConfigManager, publisher=recognition_publisher)
 
+# settings listeners
+listener_wrapper.listeners.append(image_recognizer.refresh_config)
 
 def main(silent=False):
     if not silent:

@@ -235,17 +235,18 @@ class Grabber(Thread):
                     wait_count += 1
                     if wait_count < 5:
                         continue
-                try:
-                    self.vd = self.open()
-                except OSError as e:
-                    logger.error("OSError: Failed to open: %s\n%s", self.path, e)
-                    self.vd = None
-                except Exception as e:
-                    logger.error("Exception: Failed to open: %s\n%s", self.path, e)
-                    self.vd = None
+                else:
+                    try:
+                        self.vd = self.open()
+                    except OSError as e:
+                        logger.error("OSError: Failed to open: %s\n%s", self.path, e)
+                        self.vd = None
+                    except Exception as e:
+                        logger.error("Exception: Failed to open: %s\n%s", self.path, e)
+                        self.vd = None
 
                 if self.vd is None:
-                    os.system('rosnode kill image_server')
+                    os.system('rosnode kill octocamera')
 
             wait_count = 0
             # get image from the driver queue

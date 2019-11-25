@@ -153,9 +153,34 @@ oled.text("booting..", 10, 10)
 oled.show()
 
 
+from machine import Pin, ADC
+from time import sleep
+
+pot = ADC(Pin(36))
+pot.atten(ADC.ATTN_11DB)       #Full range: 3.3v
+
+moving_average = []
+while True:
+  pot_value = pot.read()
+  moving_average = ([pot_value] + moving_average)[:20]
+  pot_value = int(sum(moving_average) / len(moving_average) / 10)
+  print(pot_value, pot_value < 14)
+  sleep(0.01)
+
+
+from time import sleep_ms
+from machine import Pin, PWM, Timer, I2C, reset
+esc = PWM(Pin(4, mode=Pin.OUT), freq=50, duty=0);esc.duty(70);
+while True:
+    sleep_ms(1000)
+    esc.duty(40)
+    sleep_ms(1000)
+    esc.duty(110)
+
+
 # Turn off ESC pin
 timer_thrower = Timer(2)
-esc = PWM(Pin(26, mode=Pin.OUT), freq=50, duty=0);
+esc = PWM(Pin(265, mode=Pin.OUT), freq=50, duty=0);esc.duty(70);
 sleep_ms(2000)
 oled.text("booting...", 10, 10)
 oled.show()

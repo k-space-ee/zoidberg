@@ -19,10 +19,20 @@ def recognition_callback(*args):
         visualizer.recognition = RecognitionState.from_dict(package)
 
 
+def strategy_callback(*args):
+    package = strategy_listener.package
+    if package and visualizer:
+        visualizer.gamestate = package
+
+
 recognition_listener = messenger.Listener(
-    '/recognition', messenger.Messages.string, callback=self.callback)
+    '/recognition', messenger.Messages.string, callback=recognition_callback)
+
+strategy_listener = messenger.Listener(
+    '/strategy', messenger.Messages.string, callback=strategy_callback)
 
 from gevent import monkey
+
 monkey.patch_all(thread=False)
 
 from time import sleep
@@ -43,10 +53,9 @@ visualizer = Visualizer(config)
 
 
 def generator(type_str):
-    visualizer.enable()
     visualizer.type_str = type_str
     while True:
-        sleep(0.015)  # Fix this stupid thingie
+        sleep(0.050)  # Fix this stupid thingie
         if visualizer.jpeg:
             yield b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'
             yield visualizer.jpeg
@@ -88,7 +97,7 @@ def main(silent=False):
 
     server = pywsgi.WSGIServer((ip, port), app)
 
-    visualizer.start()
+    visualizer.thread.start()
 
     logger.info("Started IMAGE server at http://{}:{}".format(ip, port))
     server.start()

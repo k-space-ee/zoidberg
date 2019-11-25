@@ -48,7 +48,7 @@ class RecognitionState:
         goal_yellow: Optional[PolarPoint] = packet.get('goal_yellow') and PolarPoint(**packet['goal_yellow'])
         goal_blue: Optional[PolarPoint] = packet.get('goal_blue') and PolarPoint(**packet['goal_blue'])
         closest_edge: Optional[PolarPoint] = packet.get('closest_edge') and PolarPoint(**packet['closest_edge'])
-        angle_adjust, h_bigger, h_smaller = packet.get('goal_angle_adjust')
+        angle_adjust, h_bigger, h_smaller = packet.get('goal_angle_adjust', [None, None, None])
         field_contours = packet.get('field_contours', [])
         goal_yellow_rect = packet.get('goal_yellow_rect', [])
         goal_blue_rect = packet.get('goal_blue_rect', [])

@@ -3,7 +3,7 @@ from typing import Optional, Dict
 from uuid import uuid4
 
 from camera.line_fit import dist_to_rpm
-from utils import StreamingMovingAverage, RecognitionState, Centimeter
+from utils import StreamingMovingAverage, RecognitionState, Centimeter, dataclass
 
 logger = logging.getLogger("gameplay")
 from camera.image_recognition import Point, PolarPoint
@@ -27,8 +27,8 @@ def new_id() -> str:
 @dataclass
 class BallIdentifier:
     ball: PolarPoint
-    id: str = new_id
-    timestamp: float = time
+    id: str
+    timestamp: float
 
 
 class Gameplay:
@@ -36,7 +36,7 @@ class Gameplay:
         self.logger = logger
         self.motors = controller
         self.state = Patrol(self)
-        self.recognition = RecognitionState()
+        self.recognition = RecognitionState.from_dict({})
         self.closest_edges = []
         self.safe_distance_to_goals = 1.4
         self.config = config
@@ -86,7 +86,7 @@ class Gameplay:
         if self.target_goal:
             goals.append(self.target_goal)
 
-        input_balls = sorted(input_balls, key=lambda b: b.dist)
+        input_balls = input_balls and sorted(input_balls, key=lambda b: b.dist)
         for ball in (input_balls or self.recognition.balls):
             if ball.suspicious:
                 suspicious.append(ball)
@@ -107,24 +107,30 @@ class Gameplay:
     def update_ball_ids(self):
         new_id_map = {}
 
-        for uuid, old_iball in self.ball_ids.items():
+        for ball in reversed(self.balls()):
             # case 1: old_ball in currently recognized balls
-            minimum = None
-            for ball in reversed(self.balls()):
+            minimum = 9999
+            best = None
+            for uuid, old_iball in self.ball_ids.items():
                 distance = get_distance(ball, old_iball.ball)
-                if distance < 0.4 and (minimum is None or distance < minimum):
+                # TODO: 0.4 * old_iball.ball.dist / 10
+                if distance < 0.05 and distance < minimum:
                     minimum = distance
-                    # refresh the timeout for this ball
-                    new_id_map[uuid] = BallIdentifier(ball, uuid, time())
+                    best = old_iball
 
-            # case 2: old ball currently not visible, check timestamp for purging
-            if minimum is None:
-                self.logger.warning(
-                    f"!!!Fail {old_iball.id[:5]}, {old_iball.ball.dist:.1f},{old_iball.ball.angle_deg:.1f}, {minimum}")
+            if best:
+                # refresh the timeout for this ball
+                new_id_map[best.id] = BallIdentifier(ball, best.id, time())
 
-                # 200ms
-                if time() - old_iball.timestamp < 0.2:
-                    new_id_map[uuid] = old_iball  # don't update timestamp
+            else:
+                new = BallIdentifier(ball=ball, id=new_id(), timestamp=time())
+                new_id_map[new.id] = new
+
+        for uuid, iball in list(new_id_map.items()):
+            # 200ms
+            if time() - iball.timestamp > 0.2:
+                self.logger.info(f"!!! Killed {iball.id}")
+                del new_id_map[uuid]
 
         self.ball_ids = new_id_map
 
@@ -141,7 +147,7 @@ class Gameplay:
         last_id = self.last_ball_id if self.last_ball_id and (time() - self.last_ball_id.timestamp < 1) else None
 
         # check only N actually close balls
-        closest_balls = self.balls[0:4]
+        closest_balls = (self.balls() or [])[:4]
 
         # assign ids to balls
         self.update_ball_ids()
@@ -151,10 +157,10 @@ class Gameplay:
             uuid: iball
             for uuid, iball in self.ball_ids.items()
             # if ball in closest_balls
-        }.get(last_id.id)
+        }.get(last_id and last_id.id)
 
         if last_persistent_ball:
-            self.logger.info_throttle(1, f"Last persistent ball {last_id[:5]}: dist: {last_persistent_ball.ball.dist}")
+            self.logger.info_throttle(1, f"Last persistent ball {last_id.id[:5]}: dist: {last_persistent_ball.ball.dist}")
             return last_persistent_ball.ball
 
         # no last target found
@@ -162,7 +168,7 @@ class Gameplay:
         closest_rec = closest_balls[0] if closest_balls else None
         closest = closest_mem or closest_rec
 
-        last_id = {bi.ball: bi.id for bi in self.ball_ids.values()}.get(closest)
+        last_id = {bi.ball: bi for bi in self.ball_ids.values()}.get(closest)
         self.last_ball_id = last_id
         return closest
 
@@ -398,7 +404,7 @@ class Gameplay:
         r_speed = rotation * factor
         return self.motors.set_xyw(0, 0.02, r_speed)
 
-    def flank(self, movement_factor=1):
+    def flank(self, movement_factor=0.5):  # TODO: IMPORTANT
         rotation = self.rotation_for_goal() or 0
         goal_angle = self.target_goal_angle
         shooting_angle = self.goal_to_ball_angle or 999
@@ -408,7 +414,6 @@ class Gameplay:
             return
 
         if abs(goal_angle) > max(abs(shooting_angle * 3), 10):
-            # print("angle too big", goal_angle, shooting_angle)
             return self.motors.set_xyw(0, 0, rotation)
 
         flank = self.flank_vector()
@@ -421,7 +426,6 @@ class Gameplay:
         maximum = 50
         angle = min(goal_angle, maximum)
         factor = abs(math.tanh(angle / 1.5))
-        # print("traget ANGLE", goal_angle, factor)
 
         self.motors.set_xyw(y * movement_factor, x * movement_factor, rotation / 1.4 * factor)
 
@@ -517,8 +521,8 @@ class Gameplay:
     def set_target_goal_distance(self) -> Centimeter:
         # if self.target_goal:
         #     self.target_goal_distance
-        # self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
-        # self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
+            # self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
+            # self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
         return self.target_goal_distance
 
     def set_target_goal_angle_adjust(self) -> float:

@@ -131,15 +131,19 @@ class GameplayNode(messenger.Node):
         if r_state:
             self.gameplay.step(r_state)
 
+            gp = self.gameplay
             self.strategy_publisher.command(
-                is_enabled=self.gameplay.is_enabled,
-                target_goal_angle=self.gameplay.target_goal_angle,
-                goal=self.gameplay.config_goal,
-                field=self.gameplay.field_id,
-                robot=self.gameplay.robot_id,
-                state=str(self.gameplay.state),
-                dist=self.gameplay.target_goal_distance,
-                angle=self.gameplay.target_goal_angle,
+                is_enabled=gp.is_enabled,
+                target_goal_angle=gp.target_goal_angle,
+                goal=gp.config_goal,
+                field=gp.field_id,
+                robot=gp.robot_id,
+                state=str(gp.state),
+                dist=gp.target_goal_distance,
+                angle=gp.target_goal_angle,
+                average_closest_ball=gp.average_closest_ball and gp.average_closest_ball.serialize(),
+                closest_ball=gp.closest_ball and gp.closest_ball.serialize(),
+                pwm=gp.get_desired_kicker_speed(),
             )
 
             # if self.gameplay.is_enabled:
