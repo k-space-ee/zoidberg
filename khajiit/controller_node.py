@@ -7,6 +7,7 @@ class ControllerNode(messenger.Node):
     def __init__(self, mock=False, run=True, silent=False, **kwargs) -> None:
         super().__init__('motion_node', existing_loggers=['esp32'], **kwargs)
         self.listener = messenger.Listener('/movement', messenger.Messages.motion, callback=self.callback)
+        self.commands = messenger.Listener('/controller', messenger.Messages.string, callback=self.command)
         self.mock = mock
         self.silent = silent
         if not mock:
@@ -16,6 +17,10 @@ class ControllerNode(messenger.Node):
         self.logger.info("Start")
         if run:
             self.spin()
+
+    def command(self, command):
+        self.logcritical(f"Got command: {command}")
+        self.controller.command(command)
 
     def callback(self, last_reading):
         linear = last_reading.linear

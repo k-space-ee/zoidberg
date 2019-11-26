@@ -143,6 +143,7 @@ class GameplayNode(messenger.Node):
                 angle=gp.target_goal_angle,
                 average_closest_ball=gp.average_closest_ball and gp.average_closest_ball.serialize(),
                 closest_ball=gp.closest_ball and gp.closest_ball.serialize(),
+                id_balls=[bi.serialize() for bi in gp.sorted_id_balls],
                 pwm=gp.get_desired_kicker_speed(),
             )
 

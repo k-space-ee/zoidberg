@@ -141,10 +141,12 @@ class Publisher:
 
 
 class Node:
-    def __init__(self, name: str, disable_signals=True, existing_loggers=None) -> None:
+    def __init__(self, name: str, disable_signals=True, existing_loggers=None, on_shutdown=None) -> None:
         # TODO: disabled signals so that the damn rosnodes would die peacefully
         self.node = rospy.init_node(name, anonymous=False, disable_signals=disable_signals)
-        rospy.on_shutdown(self.shutdown)
+        self.name = name
+        self.on_shutdown = rospy.on_shutdown
+        self.on_shutdown(on_shutdown or self.shutdown)
 
         self.logdebug = LoggerWrapper.debug
         self.logdebug_throttle = LoggerWrapper.debug_throttle
@@ -162,7 +164,8 @@ class Node:
         self._rate = None
 
     def shutdown(self):
-        exit()
+        print("Node SHUTDOWN", self.name)
+        exit(0)
 
     @staticmethod
     def register_existing_loggers(*loggers):

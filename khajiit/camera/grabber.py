@@ -83,9 +83,12 @@ class Grabber(Thread):
         self.queues = set()
         self.frame = None
         if observer:
-            observer.schedule(CaptureHotplugHandler(self), "/dev/v4l/by-path", recursive=False)
+            try:
+                observer.schedule(CaptureHotplugHandler(self), "/dev/v4l/by-path", recursive=False)
+            except:
+                logger.error("Hotplug disabled for %s", self.path)
         else:
-            logger.warning("Hotplug disabled for %s", self.path)
+            logger.error("Hotplug disabled for %s", self.path)
 
     def get_queue(self):
         """
@@ -222,19 +225,21 @@ class Grabber(Thread):
     def run(self):
         wait_count = 0
         while self.running:
+            sleep(0.005)
             self.ready.clear()
 
             if not self.vd:
                 # give some time for cameras to recover
-                sleep(0.03)
+                sleep(0.1)
                 # Check if /dev/v4l/by-path/bla symlink exists
                 if not os.path.exists(self.path):
-                    logger.info("Waiting for %s to become available", self.path)
-                    self.wake.wait(timeout=0.1)
+                    # logger.info("Waiting for %s to become available", self.path)
+                    self.wake.wait(timeout=0.2)
                     self.wake.clear()
                     wait_count += 1
-                    if wait_count < 5:
+                    if wait_count < 2:
                         continue
+
                 else:
                     try:
                         self.vd = self.open()
@@ -245,7 +250,8 @@ class Grabber(Thread):
                         logger.error("Exception: Failed to open: %s\n%s", self.path, e)
                         self.vd = None
 
-                if self.vd is None:
+                if not self.vd:
+                    self.die("FUCK this")
                     os.system('rosnode kill octocamera')
 
             wait_count = 0
@@ -278,13 +284,20 @@ class Grabber(Thread):
                 self.timestamp = now
                 self.alive = True
                 self.frame_count += 1
+                sleep(0.005)
                 fcntl.ioctl(self.vd, VIDIOC_QBUF, buf)  # requeue the buffer
             except OSError:
                 self.die("Camera unplugged")
+                os.system('rosnode kill octocamera')
                 self.frame = None
             except IOError:
+                self.die("Camera unplugged")
+                os.system('rosnode kill octocamera')
                 logger.info("%s dropped frame!", self.path)
                 self.dropped_count += 1
+            except BaseException:
+                self.die("BaseException")
+                os.system('rosnode kill octocamera')
 
         # Graceful shutdown
         if self.vd:
@@ -293,15 +306,21 @@ class Grabber(Thread):
 
     def die(self, reason):
         if self.vd:
-            self.vd.close()
-        self.vd = 0
+            fcntl.ioctl(self.vd, VIDIOC_STREAMOFF, v4l2_buf_type(V4L2_BUF_TYPE_VIDEO_CAPTURE))
+            try:
+                self.vd.close()
+            except:
+                pass
+            
+        self.vd = None
         self.alive = False
         self.error_count += 1
         self.frame = None
         self.ready.clear()
+        self.running = False
         # clear cached frames
         logger.info("%s dying because %s", self.path, reason)
-        sleep(0.03)
+        sleep(0.1)
 
     def restart(self):
         self.die("restart")
@@ -313,7 +332,7 @@ class Grabber(Thread):
     def disable(self):
         if self.vd:
             self.vd.close()
-        self.vd = 0
+        self.vd = None
         self.frame = None
 
 

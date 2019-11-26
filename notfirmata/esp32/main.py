@@ -154,7 +154,14 @@ oled.show()
 
 
 from machine import Pin, ADC
-from time import sleep
+from time import sleep, sleep_ms
+
+p = Pin(5, mode=Pin.OUT)
+
+def restart():
+    p.value(1)
+    sleep_ms(1000)
+    p.value(0)
 
 pot = ADC(Pin(36))
 pot.atten(ADC.ATTN_11DB)       #Full range: 3.3v

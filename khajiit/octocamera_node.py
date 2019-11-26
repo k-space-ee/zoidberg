@@ -1,12 +1,34 @@
+from time import sleep
+
 import messenger
 from config_manager import ConfigManager
 
 from camera.image_recognition import ImageRecognizer
 from camera.grabber import PanoramaGrabber
 
+def kill():
+    if grabber and grabber.slaves:
+        cameras = list(grabber.slaves)
+        for camera in cameras:
+            camera.stop()
+
+        sleep(0.030)
+        for camera in cameras:
+            camera.die("rospy shutdown")
+
+    if manager and manager.threads:
+        for t in manager.threads:
+            try:
+                t.stop()
+            except:
+                print("BLOOP!?")
+    print("KILL DONE")
+    exit(0)
+
+
 listener_wrapper = messenger.CallbackListenerWrapper()
 
-node = messenger.Node('octocamera')
+node = messenger.Node('octocamera', on_shutdown=kill)
 settings_change = messenger.Listener('/settings_changed', messenger.Messages.string, callback=listener_wrapper.update)
 recognition_publisher = messenger.Publisher('/recognition', messenger.Messages.string)
 
@@ -20,6 +42,9 @@ image_recognizer = ImageRecognizer(
 
 # settings listeners
 listener_wrapper.listeners.append(image_recognizer.refresh_config)
+
+manager = None  # type: ThreadManager
+
 
 def main(silent=False):
     if not silent:

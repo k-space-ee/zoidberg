@@ -109,13 +109,22 @@ class Visualizer:
                         cv.line(frame, prev, point, (0, 0, 255), 4)
                     prev = point
 
+            for ball in self.gamestate.get("id_balls", []):
+                x, y = point = int(closest_ball.get('vx', 0)), int(closest_ball.get('vy', 0))
+                radius = ball.get('radius', 8)
+                id = ball.get('id', '')[:5]
+                alive = ball.get('alive', 0)
+
+                cv.circle(frame, point, radius, (255, 0, 255), 3)
+                cv.putText(frame, f"{id}-{alive:.1f}", (x + 20, y - 20), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 4)
+
             closest_ball = self.gamestate.get("closest_ball")
             if closest_ball:
-                # TODO: WRITE ID
                 prev = (self.kicker_offset, 640)
-                point = int(closest_ball.get('vx', 0)), int(closest_ball.get('vy', 0))
+                x, y = point = int(closest_ball.get('vx', 0)), int(closest_ball.get('vy', 0))
                 cv.circle(frame, point, closest_ball.get('radius', 8), (0, 255, 0), 8)
                 cv.line(frame, prev, point, (0, 255, 0), 4)
+                cv.putText(frame, f"{closest_ball.id}", (x + 20, y - 20), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 4)
 
             # Visualize goals
             if rec.goal_yellow:

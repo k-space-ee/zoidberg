@@ -14,7 +14,7 @@ class TFMiniNode(messenger.Node):
         self.publisher = messenger.Publisher('/distance/tfmini', messenger.Messages.float)
 
         result = find_serial("USB-Serial Controller")
-        self.device = list(result.keys()).pop()
+        self.device = next(iter(result.keys()), None)
         print(repr(self.device), ": starting TF-mini")
         self.ser = None
 
@@ -22,12 +22,28 @@ class TFMiniNode(messenger.Node):
 
         self.average = StreamingMovingAverage(5)
         self.average_fps = StreamingMovingAverage(20)
-        self.ser = serial.Serial(self.device, 115200, timeout=1)
-        if self.ser.is_open == False:
-            self.ser.open()
+
+        while not self.open():
+            sleep(2)
 
         if run:
             self.run()
+
+    def open(self):
+        try:
+            result = find_serial("USB-Serial Controller")
+            self.device = next(iter(result.keys()), None)
+            if not self.device:
+                return False
+            self.ser = serial.Serial(self.device, 115200, timeout=1)
+            if self.ser.is_open == False:
+                self.ser.open()
+            sleep(0.1)
+            self.ser.in_waiting
+            return True
+        except:
+            self.logger.error_throttle(1, "tf-mini can't open!")
+            return False
 
     def run(self):
         try:
@@ -51,6 +67,9 @@ class TFMiniNode(messenger.Node):
                     start = time()
 
                 sleep(0.001)
+        except OSError:
+            self.logger.error("OSError!")
+            self.ser.close()
         finally:
             self.ser.close()
 

@@ -70,7 +70,7 @@ class CanBusMotor:
 
                 # Waiting for at least one other node to appear online (our local node is already online).
                 while len(dynamic_node_id_allocator.get_allocation_table()) <= 1:
-                    print('Waiting for other nodes to become online...')
+                    logger.error('Waiting for other nodes to become online...')
                     self.node.spin(timeout=1)
 
                 # how fast can we blast this?

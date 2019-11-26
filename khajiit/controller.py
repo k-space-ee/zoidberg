@@ -36,7 +36,9 @@ class Controller:
         if self.motor_serial:
             self.motor_serial.close()
         self.motor_serial = None
-        while self.motor_serial is None:
+        for i in range(10):
+            if self.motor_serial is not None:
+                break
             controller_serial = next(iter(find_serial('CP2102')), None)
             logger.info("Opening %s", controller_serial)
 
@@ -52,6 +54,14 @@ class Controller:
             except Exception as e:
                 logger.error('Reconnect failed: %s', e)
                 sleep(1)
+
+    def command(self, command):
+        motor_serial = self.motor_serial
+        try:
+            motor_serial.write(command.encode("ascii"))
+        except Exception as e:
+            logger.error("Command failed: %s", e)
+            self.try_reconnect()
 
     def apply(self):
         # check if our state is valid

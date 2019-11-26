@@ -30,6 +30,13 @@ class BallIdentifier:
     id: str
     timestamp: float
 
+    @property
+    def alive(self):
+        return time()-self.timestamp
+
+    def serialize(self):
+        return dict(id=self.id, alive=time()-self.timestamp, **self.ball.serialize())
+
 
 class Gameplay:
     def __init__(self, config, controller, logger):
@@ -86,7 +93,6 @@ class Gameplay:
         if self.target_goal:
             goals.append(self.target_goal)
 
-        input_balls = input_balls and sorted(input_balls, key=lambda b: b.dist)
         for ball in (input_balls or self.recognition.balls):
             if ball.suspicious:
                 suspicious.append(ball)
@@ -111,9 +117,9 @@ class Gameplay:
             # case 1: old_ball in currently recognized balls
             minimum = 9999
             best = None
+            max_delta = 0.4 * ball.dist / 10
             for uuid, old_iball in self.ball_ids.items():
                 distance = get_distance(ball, old_iball.ball)
-                # TODO: 0.4 * old_iball.ball.dist / 10
                 if distance < 0.05 and distance < minimum:
                     minimum = distance
                     best = old_iball
@@ -128,8 +134,8 @@ class Gameplay:
 
         for uuid, iball in list(new_id_map.items()):
             # 200ms
-            if time() - iball.timestamp > 0.2:
-                self.logger.info(f"!!! Killed {iball.id}")
+            if iball.alive > 0.2:
+                self.logger.info(f"!!! Killed {iball.id} {iball.alive}")
                 del new_id_map[uuid]
 
         self.ball_ids = new_id_map
@@ -142,9 +148,13 @@ class Gameplay:
             self.recent_closest_balls = self.recent_closest_balls[:-1]
 
     @property
+    def sorted_id_balls(self):
+        return sorted(self.ball_ids.values(), key=lambda b: b.ball.dist)
+
+    @property
     def closest_ball(self) -> PolarPoint:
         # don't consider old targets
-        last_id = self.last_ball_id if self.last_ball_id and (time() - self.last_ball_id.timestamp < 1) else None
+        last_id = self.last_ball_id if self.last_ball_id and self.last_ball_id.alive < 2 else None
 
         # check only N actually close balls
         closest_balls = (self.balls() or [])[:4]
@@ -164,7 +174,8 @@ class Gameplay:
             return last_persistent_ball.ball
 
         # no last target found
-        closest_mem = next(iter(self.balls([bi.ball for bi in self.ball_ids.values()])), None)
+        sorted_id_balls = self.balls([bi.ball for bi in self.sorted_id_balls])
+        closest_mem = next(iter(sorted_id_balls), None)
         closest_rec = closest_balls[0] if closest_balls else None
         closest = closest_mem or closest_rec
 

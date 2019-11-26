@@ -1,9 +1,13 @@
-from machine import Pin, PWM, Timer, I2C, reset
+from machine import Pin, PWM, Timer, I2C, reset, ADC
+from time import sleep_ms
+
 # How to use this
 # 1. Flash MicroPython on the board
 # 2. ampy -p /dev/ttyUSB0 put main.py
 # 3. Reset the device
 
+# relay
+p = Pin(5, mode=Pin.OUT)
 
 timer_motors = Timer(1)
 motors_enable = Pin(16, mode=Pin.OUT)
@@ -44,6 +48,12 @@ def set_abc(a, b, c):
 
 def set_abce(a, b, c, e):
     set_abc(a, b, c)
+
+
+def restart():
+    p.value(1)
+    sleep_ms(1000)
+    p.value(0)
 
 
 motors_enable.value(1)

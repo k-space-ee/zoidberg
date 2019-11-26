@@ -83,14 +83,57 @@ class RestartWrapper:
             launcher.launch(self.node, **self.kwargs)
             launcher.spin()
             print(self.node, "RESTART == ", i)
-            sleep(1)
+            sleep(3)
+
+
+def nuke_usb():
+    node = messenger.Node('nuke_node')
+    controller = messenger.Publisher('/controller', messenger.Messages.string)
+    sleep(0.1)
+    controller.publish('restart()')
+    sleep(0.1)
+    print("SEEEENDING##!#!##!#!#!#!")
+
+
+class NukingWrapper(RestartWrapper):
+    def __call__(self, *args, **kwargs):
+        # the node kills itself when the cameras fail so that we could restart it here :)
+        import subprocess
+
+        def count_cameras():
+            df = subprocess.check_output("lsusb").decode('utf8')
+            devices = []
+            for i in df.split('\n'):
+                if not i: continue
+                devices.append(i)
+            cameras = [d.strip() for d in devices if "OmniVision" in d]
+            # print(*[d[-32:] for d in cameras], sep='\n')
+            return len(cameras)
+
+        launcher = Launcher()
+        for i in range(1, 100):
+            launcher.launch(self.node, **self.kwargs)
+            launcher.spin()
+            print(self.node, "RESTART == ", i)
+            if i % 1 == 0:
+                while count_cameras() != 8:
+                    launcer.launch(nuke_usb)
+                    sleep(0.5)
+                    launcher.spin()
+
+                    print("NUKE NOWWWWWWW~~~~~~")
+                    for i in range(10):
+                        sleep(0.5)
+                        if count_cameras() == 8:
+                            break
+            sleep(0.5)
 
 
 if __name__ == '__main__':
     launcer = Launcher()
 
     launcer.launch(messenger.core)
-    launcer.launch(RestartWrapper(octocamera_node, silent=True))
+    launcer.launch(NukingWrapper(octocamera_node, silent=True))
     launcer.launch(image_server, silent=True)
     # launcer.launch(RestartWrapper(RealSenseNode, mock=args.mock))
 
@@ -101,7 +144,7 @@ if __name__ == '__main__':
     launcer.launch(InjectorNode, mock=args.mock)
     launcer.launch(RestartWrapper(TFMiniNode, mock=args.mock))
 
-    if args.remote:
-        launcer.launch(RemoteRF, mock=args.mock)
+    # if args.remote:
+    #     launcer.launch(RemoteRF, mock=args.mock)
 
     launcer.spin()
