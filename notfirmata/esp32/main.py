@@ -177,6 +177,9 @@ while True:
 
 from time import sleep_ms
 from machine import Pin, PWM, Timer, I2C, reset
+
+# p = Pin(5, mode=Pin.OUT)
+
 esc = PWM(Pin(4, mode=Pin.OUT), freq=50, duty=0);esc.duty(70);
 while True:
     sleep_ms(1000)
