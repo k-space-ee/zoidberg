@@ -58,6 +58,7 @@ class Controller:
     def command(self, command):
         motor_serial = self.motor_serial
         try:
+            command = f"{command}\n\r"
             motor_serial.write(command.encode("ascii"))
         except Exception as e:
             logger.error("Command failed: %s", e)
