@@ -19,8 +19,8 @@ class ControllerNode(messenger.Node):
             self.spin()
 
     def command(self, command):
-        self.logcritical(f"Got command: {command}")
-        self.controller.command(command)
+        self.logcritical(f"Got command: {command.data}")
+        self.controller.command(command.data)
 
     def callback(self, last_reading):
         linear = last_reading.linear
