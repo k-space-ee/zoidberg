@@ -103,7 +103,7 @@ class CanBusMotor:
             else:
                 self.last_edit = time()
 
-        message = uavcan.equipment.esc.RPMCommand(rpm=[int(self._speed), int(self._speed)])
+        message = uavcan.equipment.esc.RPMCommand(rpm=[int(self._speed), int(self._speed), 1700])
         self.node.broadcast(message)
 
     def listen(self, msg):

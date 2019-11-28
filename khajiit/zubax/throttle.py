@@ -8,7 +8,8 @@ def publish_throttle_setpoint():
     # Generating a sine wave
     setpoint = int(512 * (math.sin(time.time()) + 2))
     # Commanding ESC with indices 0, 1, 2, 3 only
-    commands = [3000, 3000, 3000, 3000]
+    commands = [3000, 1700, 3000, 3000]
+    print(uavcan.equipment.esc)
     message = uavcan.equipment.esc.RPMCommand(rpm=commands)
     node.broadcast(message)
 
@@ -17,7 +18,7 @@ if __name__ == '__main__':
     # Initializing a UAVCAN node instance.
     # In this example we're using an SLCAN adapter on the port '/dev/ttyACM0'.
     # PyUAVCAN also supports other types of adapters, refer to the docs to learn more.
-    node = uavcan.make_node('/dev/ttyACM0', node_id=10, bitrate=1000000)
+    node = uavcan.make_node('/dev/ttyACM1', node_id=10, bitrate=1000000)
 
     # Initializing a dynamic node ID allocator.
     # This would not be necessary if the nodes were configured to use static node ID.
