@@ -8,8 +8,8 @@ def publish_throttle_setpoint():
     # Generating a sine wave
     setpoint = int(512 * (math.sin(time.time()) + 2))
     # Commanding ESC with indices 0, 1, 2, 3 only
-    commands = [setpoint, setpoint, setpoint, setpoint]
-    message = uavcan.equipment.esc.RawCommand(cmd=commands)
+    commands = [3000, 3000, 3000, 3000]
+    message = uavcan.equipment.esc.RPMCommand(rpm=commands)
     node.broadcast(message)
 
 
