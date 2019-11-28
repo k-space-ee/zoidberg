@@ -110,7 +110,7 @@ class Visualizer:
                     prev = point
 
             for ball in self.gamestate.get("id_balls", []):
-                x, y = point = int(closest_ball.get('vx', 0)), int(closest_ball.get('vy', 0))
+                x, y = point = int(ball.get('vx', 0)), int(ball.get('vy', 0))
                 radius = ball.get('radius', 8)
                 id = ball.get('id', '')[:5]
                 alive = ball.get('alive', 0)
