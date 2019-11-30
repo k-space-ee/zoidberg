@@ -102,8 +102,9 @@ class CanBusMotor:
                 self._speed = 0
             else:
                 self.last_edit = time()
-
-        message = uavcan.equipment.esc.RPMCommand(rpm=[int(self._speed), int(self._speed), 1700])
+        min_speed = 3000
+        kick_speed = max(int(self._speed), min_speed)
+        message = uavcan.equipment.esc.RPMCommand(rpm=[kick_speed, 3000])
         self.node.broadcast(message)
 
     def listen(self, msg):
@@ -118,9 +119,10 @@ class CanBusMotor:
 
         self.last_raw = uavcan.to_yaml(msg)
         self.last_msg = yaml.load(self.last_raw)
-        self.rpm = (self.rpm + [self.last_msg.get('rpm', 0)])[-10:]
-        self.last_rpm = round(sum(self.rpm) / len(self.rpm))
-        self.last_msg['average_rpm'] = self.last_rpm
+        if self.last_msg.get('esc_index', None) == 0:
+            self.rpm = (self.rpm + [self.last_msg.get('rpm', 0)])[-10:]
+            self.last_rpm = round(sum(self.rpm) / len(self.rpm))
+            self.last_msg['average_rpm'] = self.last_rpm
 
 
 if __name__ == '__main__':

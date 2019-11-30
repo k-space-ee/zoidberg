@@ -105,8 +105,8 @@ class Gameplay:
             # else:
             balls.append(ball)
 
-        if len(self.recognition.balls) != len(balls + too_close + suspicious):
-            logger.warning("GamePlay: weird ball detection case")
+        # if len(self.recognition.balls) != len(balls + too_close + suspicious):
+            # logger.warning("GamePlay: weird ball detection case")  # gameplay not running?
 
         return balls + too_close + suspicious
 
@@ -159,6 +159,8 @@ class Gameplay:
         # check only N actually close balls
         closest_balls = (self.balls() or [])[:4]
 
+        # return closest_balls[0] if closest_balls else None
+
         # assign ids to balls
         self.update_ball_ids()
 
@@ -170,7 +172,7 @@ class Gameplay:
         }.get(last_id and last_id.id)
 
         if last_persistent_ball:
-            self.logger.info_throttle(1, f"Last persistent ball {last_id.id[:5]}: dist: {last_persistent_ball.ball.dist}")
+            # self.logger.info_throttle(1, f"Last persistent ball {last_id.id[:5]}: dist: {last_persistent_ball.ball.dist}")
             return last_persistent_ball.ball
 
         # no last target found
@@ -460,11 +462,13 @@ class Gameplay:
             speed = abs(speed)
             speed = min(maximum, speed)
             speed -= 150 * min(abs(self.target_angle_adjust) / 1.4, 2)
+
             self.desired_kicker_seed_cache.append(speed)
             self.desired_kicker_seed_cache = self.desired_kicker_seed_cache[-3:]
 
             speed = sum(self.desired_kicker_seed_cache) / len(self.desired_kicker_seed_cache)
-            return speed
+            return max(speed, 4100)
+
         return 0
 
     @property
@@ -543,7 +547,7 @@ class Gameplay:
 
         # logger.info("adjust: %s %s", self.recognition.h_smaller, self.recognition.h_bigger)
 
-        self.logger.info_throttle(1, f"adjust is: {self.target_angle_adjust:.2f}")
+        # self.logger.info_throttle(1, f"adjust is: {self.target_angle_adjust:.2f}")
         return self.target_angle_adjust
 
     def step(self, recognition, *args):

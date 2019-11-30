@@ -42,21 +42,21 @@ def interpolate(X, Y, kind='slinear', backup=inverse):
     return interpolate
 
 
-rpm_distance = [
-    # (5300, 59),
-    # (5400, 76),
-    # (5500, 89),
-    (5600, 107),
-    (6040, 140),
-    (8800, 350),
-    (9300, 390), # 6 / 9,
-    (10010, 450), # 6 / 9,
+rpm_distance = [  # min should be 4100
+    (4400, 80),
+    (5025, 150),
+    (5800, 200),
+    (6470, 250),
+    (7200, 300),
+    (7700, 400),
 ]
+
+rpm_throw_function = lambda x, a, b, c, d, e: e + a ** x * b + c * x ** (1 + d)
 
 XX = [dist for rpm, dist in rpm_distance]
 YY = [rpm for rpm, dist in rpm_distance]
 
-rpm_throw_function = lambda x, a, b, c, d, e: a ** x * b + c * x ** (1 + d) + e
+# rpm_throw_function = lambda x, a, b, c, d, e: a ** x * b + c * x ** (1 + d) + e
 dist_to_rpm = function_fit(
     rpm_throw_function,
     XX,

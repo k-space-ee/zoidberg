@@ -118,7 +118,7 @@ class NukingWrapper(RestartWrapper):
             if i % 1 == 0:
                 while count_cameras() != 8:
                     launcer.launch(nuke_usb)
-                    sleep(0.5)
+                    sleep(0.7)
                     launcher.spin()
 
                     print("NUKE NOWWWWWWW~~~~~~")
@@ -126,7 +126,7 @@ class NukingWrapper(RestartWrapper):
                         sleep(0.5)
                         if count_cameras() == 8:
                             break
-            sleep(0.5)
+            sleep(0.8)
 
 
 if __name__ == '__main__':

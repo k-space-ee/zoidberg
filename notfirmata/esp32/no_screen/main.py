@@ -34,14 +34,15 @@ toggle(motor2_speed)
 toggle(motor3_speed)
 
 # relay
-p = Pin(4, mode=Pin.OUT, value=0)
+p = Pin(5, mode=Pin.OUT, value=0)
+p.value(0)
 
 # # ball sensor
 pot = ADC(Pin(36))
 pot.atten(ADC.ATTN_11DB)  # Full range: 3.3v
 
 # ball loader
-loader = PWM(Pin(5, mode=Pin.OUT), freq=50, duty=0)
+loader = PWM(Pin(4, mode=Pin.OUT), freq=50, duty=0)
 toggle(loader)
 
 for i in range(2):
@@ -79,7 +80,7 @@ def set_abce(a, b, c, e):
 
 def restart():
     p.value(1)
-    sleep_ms(1000)
+    sleep_ms(1500)
     p.value(0)
 
 

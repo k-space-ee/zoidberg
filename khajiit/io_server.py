@@ -122,7 +122,7 @@ def command(websocket):
         gameplay_status = game_package.get('is_enabled', None)
         target_goal_angle = round(game_package.get('target_goal_angle') or 0, 3)
         average_rpm = canbus_package.get('average_rpm', 0)
-        closest_ball = game_package.get('closest_ball', None)
+        closest_ball = game_package.get('closest_ball') or {}
 
         if action == "gamepad":
             controls = response.get("data")
@@ -150,7 +150,7 @@ def command(websocket):
 
                     if delta:
                         rpm = max(0, min(rpm + delta * 50, 15000))
-                        logger.info_throttle(1, "PWM+: %.0f", rpm)
+                        logger.info(f"PWM+: {rpm:.0f}")
 
                     if controls.get("controller0.button0", None):
                         logger.info_throttle(1, f"drive_towards_target_goal: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
@@ -159,7 +159,7 @@ def command(websocket):
                         command_publisher.command(drive_towards_target_goal=dict(backtrack=False, speed_factor=0.8))
 
                     if controls.get("controller0.button5", None):
-                        logger.info_throttle(1, f"kick: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
+                        logger.info_throttle(0.3, f"kick: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
                         kicker_publisher.publish(rpm)
 
                     if controls.get("controller0.button6", None):
@@ -180,7 +180,7 @@ def command(websocket):
                     average = sum(last_press_history) / len(last_press_history)
                     if not gameplay_status:
                         format = dict((k, v if type(v) == bool else round(v, 1)) for k, v in controls.items())
-                        logger.info_throttle(0.3, f"Last press {average:.3f} ago on average, {format}")
+                        logger.info_throttle(5, f"Last press {average:.3f} ago on average, {format}")
 
         elif action == "set_settings":
             for k, v in response.items():

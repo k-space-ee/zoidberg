@@ -153,8 +153,8 @@ class ImageRecognition:
         # self.robot, self.orientation = self._position_robot()
 
         self.balls_mask, self.balls = self._recognize_balls()
-        self.closest_edge, self.field_center,\
-            self.goal_angle_adjust, self.h_bigger, self.h_smaller = self._recognize_closest_edge()
+        self.closest_edge, self.field_center, \
+        self.goal_angle_adjust, self.h_bigger, self.h_smaller = self._recognize_closest_edge()
 
         assert abs(self.x_to_deg(self.deg_to_x(50)) - 50) < 0.1, self.x_to_deg(self.deg_to_x(50))
         assert abs(self.y_to_dist(self.dist_to_y(2.0)) - 2.0) < 0.1
@@ -281,6 +281,9 @@ class ImageRecognition:
 
         mask = cv2.inRange(self.frame[:3840], lower, upper)
         mask = np.vstack([mask, mask[:overlap]])
+        mask[:, :30] = 0
+        mask[:, 300:] = 0
+        mask[:, 250:300] = 1
 
         # iterate over cameras because otherwise convex hull wraps around distorted field edges
         # field edges are straight lines within single camera scope
@@ -514,13 +517,16 @@ class ImageRecognizer(ManagedThread):
         self.br_goal_blue_mask = None
         self.br_goal_yellow_mask = None
 
-    def broadcast(self, color: np.ndarray, field_mask: np.ndarray, balls_mask: np.ndarray, goal_blue_mask: np.ndarray, goal_yellow_mask: np.ndarray):
+    def broadcast(self, color: np.ndarray, field_mask: np.ndarray, balls_mask: np.ndarray, goal_blue_mask: np.ndarray,
+                  goal_yellow_mask: np.ndarray):
         if self.br_color is None:
             self.br_color = get_image_publisher("shm://recognizer-color", color.shape, color.dtype)
             self.br_field_mask = get_image_publisher("shm://recognizer-field_mask", field_mask.shape, field_mask.dtype)
             self.br_balls_mask = get_image_publisher("shm://recognizer-balls_mask", balls_mask.shape, balls_mask.dtype)
-            self.br_goal_blue_mask = get_image_publisher("shm://recognizer-goal_blue_mask", goal_blue_mask.shape, goal_blue_mask.dtype)
-            self.br_goal_yellow_mask = get_image_publisher("shm://recognizer-goal_yellow_mask", goal_yellow_mask.shape, goal_yellow_mask.dtype)
+            self.br_goal_blue_mask = get_image_publisher("shm://recognizer-goal_blue_mask", goal_blue_mask.shape,
+                                                         goal_blue_mask.dtype)
+            self.br_goal_yellow_mask = get_image_publisher("shm://recognizer-goal_yellow_mask", goal_yellow_mask.shape,
+                                                           goal_yellow_mask.dtype)
 
         self.br_color[:, :, :] = color
         self.br_field_mask[:, :] = field_mask
@@ -557,6 +563,7 @@ class ImageRecognizer(ManagedThread):
             self.publisher.command(**serialized)
 
         self.log_roundtrip()
+
 
 class Player(ManagedThread):
     """

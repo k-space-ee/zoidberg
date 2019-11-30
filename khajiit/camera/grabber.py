@@ -233,11 +233,11 @@ class Grabber(Thread):
                 sleep(0.1)
                 # Check if /dev/v4l/by-path/bla symlink exists
                 if not os.path.exists(self.path):
-                    # logger.info("Waiting for %s to become available", self.path)
+                    logger.critical("Waiting for %s to become available", self.path)
                     self.wake.wait(timeout=0.2)
                     self.wake.clear()
                     wait_count += 1
-                    if wait_count < 2:
+                    if wait_count < 3:
                         continue
 
                 else:

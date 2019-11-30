@@ -5,7 +5,7 @@ global:
   exposure: 75
   gain: 12
   saturation: 45
-  kicker offset: 2210
+  kicker offset: 2180
 
 camera1:
   path: pci-0000:00:14.0-usb-0:2.4:1.0-video-index0
