@@ -67,7 +67,7 @@ def video_combined(type_str):
 @sockets.route('/')
 def command(websocket):
     # send logging history to ws
-    for buf in websocket_log_handler.queue:
+    for buf in list(websocket_log_handler.queue):
         websocket.send(buf)
 
     def send_settings_packet():

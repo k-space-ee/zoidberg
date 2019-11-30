@@ -113,3 +113,4 @@ l = loader.duty
 
 motors_enable.value(1)
 set_abce(0, 0, 0, 60)
+restart()

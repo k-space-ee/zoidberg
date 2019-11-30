@@ -50,6 +50,7 @@ class Gameplay:
 
         self.target_goal_distances = [100]
         self.target_goal_distance: Centimeter = 100
+        self.lidar_distance: Centimeter = 100
 
         self.last_kick = time()
 
@@ -452,7 +453,7 @@ class Gameplay:
         return False
 
     def get_desired_kicker_speed(self):
-        distance = self.target_goal_distance
+        distance = self.lidar_distance or self.target_goal_distance
         maximum = 11000
         # if self.is_in_super_shoot_zone():
         #     maximum = 7000
@@ -534,10 +535,11 @@ class Gameplay:
         self.motors.set_xyw(-y / 1, -x / 1, 0)
 
     def set_target_goal_distance(self) -> Centimeter:
+        if self.target_goal:
+            self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
+            self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
         # if self.target_goal:
-        #     self.target_goal_distance
-            # self.target_goal_distances = [self.target_goal_dist] + self.target_goal_distances[:10]
-            # self.target_goal_distance = sum(self.target_goal_distances) / len(self.target_goal_distances)
+        #     self.target_goal_distance = self.target_goal.dist
         return self.target_goal_distance
 
     def set_target_goal_angle_adjust(self) -> float:

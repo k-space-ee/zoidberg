@@ -349,8 +349,10 @@ class ImageRecognition:
         field = self.frame[:3840, :self.BALLS_BOTTOM - self.GOAL_FIELD_DILATION]
         mask = cv2.inRange(field, lower, upper)
 
-        mask = cv2.erode(mask, None, iterations=4)
+        mask = cv2.erode(mask, None, iterations=3)
         mask = cv2.bitwise_and(mask, self.field_mask[:, self.GOAL_FIELD_DILATION:self.BALLS_BOTTOM])
+        mask[:, :10] = 0
+        mask[:, 250:] = 0
 
         rect = None
         rects = []

@@ -98,11 +98,14 @@ class GameplayNode(messenger.Node):
 
     def tfmini_distance_callback(self, *_):
         angle = self.gameplay.target_goal_angle
-        if self.gameplay.alligned:
-            timeout = time() - self.realsense_active > 1
-            self.loginfo_throttle(2, f"TF-MINI is setting DISTANCE, RS:{not timeout} ANGLE:{angle}")
-            if timeout:
-                self.gameplay.target_goal_distance = self.tfmini_distance_listener.last_reading.data
+        distance = float(self.tfmini_distance_listener.last_reading.data)
+        if angle and abs(angle) <= 3.5:
+            # timeout = time() - self.realsense_active > 1
+            # self.loginfo_throttle(1, f"TF-MINI is setting DISTANCE, RS:{not timeout} ANGLE:{angle}")
+            self.loginfo_throttle(1, f"TF-MINI is setting DISTANCE, RS:{distance:.0f} ANGLE:{angle:.1f} {self.gameplay.get_desired_kicker_speed()}")
+            # if timeout:
+            # self.gameplay.target_goal_distance = distance
+        self.gameplay.lidar_distance = distance
 
     def command_callback(self, *_):
         package = self.command_listener.package
