@@ -30,7 +30,7 @@ class RealSenseNode(messenger.Node):
             exit()
 
         self.publisher.publish(self.sensor.distance)
-        delay = 0.5 if self.sensor.distance else 1
+        delay = 2.5 if self.sensor.distance else 4
         self.loginfo_throttle(delay, f"dist: {self.sensor.distance or 0:.1f} area: {self.sensor.area:.1f}, fps: {self.sensor.fps:.0f}")
 
 

@@ -22,8 +22,8 @@ class KickerNode(messenger.Node):
         if not self.mock:
             self.controller.speed = speed.data
             if self.controller.last_msg:
-                self.publisher.command(**self.controller.last_msg)
                 last_rpm = self.controller.last_rpm
+                self.publisher.command(last_rpm=last_rpm, **self.controller.last_msg)
 
         if not self.silent:
             self.loginfo_throttle(1, f"set rpm {speed}, current: {last_rpm}")

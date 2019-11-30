@@ -121,8 +121,9 @@ def command(websocket):
 
         gameplay_status = game_package.get('is_enabled', None)
         target_goal_angle = round(game_package.get('target_goal_angle') or 0, 3)
-        average_rpm = canbus_package.get('average_rpm', 0)
+        canbus_rpm = canbus_package.get('last_rpm') or 0
         closest_ball = game_package.get('closest_ball') or {}
+        dist = game_package.get('dist') or 0
 
         if action == "gamepad":
             controls = response.get("data")
@@ -153,13 +154,13 @@ def command(websocket):
                         logger.info(f"PWM+: {rpm:.0f}")
 
                     if controls.get("controller0.button0", None):
-                        logger.info_throttle(1, f"drive_towards_target_goal: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
+                        logger.info_throttle(1, f"drive_towards_target_goal: {target_goal_angle} rpm:{rpm} speed:{canbus_rpm}")
                         kicker_publisher.publish(rpm)
                         # no driving backwards when angle error
                         command_publisher.command(drive_towards_target_goal=dict(backtrack=False, speed_factor=0.8))
 
                     if controls.get("controller0.button5", None):
-                        logger.info_throttle(0.3, f"kick: {target_goal_angle} rpm:{rpm} speed:{average_rpm}")
+                        logger.info_throttle(0.3, f"kick: {target_goal_angle} rpm:{rpm} speed:{canbus_rpm}")
                         kicker_publisher.publish(rpm)
 
                     if controls.get("controller0.button6", None):
@@ -170,8 +171,12 @@ def command(websocket):
                         logger.info_throttle(1, f"Flank {target_goal_angle} {closest_ball.get('dist')} {closest_ball.get('angle_deg')}")
                         command_publisher.command(flank=None)
 
+                    if controls.get("controller0.button4", None):
+                        logger.info_throttle(1, f"GmaeShoot {target_goal_angle:.1f} {dist:.0f} {canbus_rpm:.0f}")
+                        command_publisher.command(kick=None)
+
                     if controls.get("controller0.button2", None):
-                        logger.info_throttle(1, f"align_to_goal: {target_goal_angle} speed:{average_rpm}")
+                        logger.info_throttle(1, f"align_to_goal: {target_goal_angle} speed:{canbus_rpm}")
                         command_publisher.command(align_to_goal=dict(factor=1))
 
                 last_press_history = [*last_press_history, time() - last_press][-30:]

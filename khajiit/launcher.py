@@ -135,7 +135,7 @@ if __name__ == '__main__':
     launcer.launch(messenger.core)
     launcer.launch(NukingWrapper(octocamera_node, silent=True))
     launcer.launch(image_server, silent=True)
-    # launcer.launch(RestartWrapper(RealSenseNode, mock=args.mock))
+    launcer.launch(RestartWrapper(RealSenseNode, mock=args.mock))
 
     launcer.launch(server)
     launcer.launch(ControllerNode, mock=args.mock, silent=True)

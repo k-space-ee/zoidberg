@@ -122,7 +122,6 @@ class CanBusMotor:
         if self.last_msg.get('esc_index', None) == 0:
             self.rpm = (self.rpm + [self.last_msg.get('rpm', 0)])[-10:]
             self.last_rpm = round(sum(self.rpm) / len(self.rpm))
-            self.last_msg['average_rpm'] = self.last_rpm
 
 
 if __name__ == '__main__':

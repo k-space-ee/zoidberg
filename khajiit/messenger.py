@@ -180,9 +180,13 @@ class Node:
     def sleep(self):
         self._rate and self._rate.sleep()
 
+    @staticmethod
+    def is_alive():
+        return not rospy.is_shutdown()
+
     def loop(self, hz=10):
         self.rate(hz)
-        while not rospy.is_shutdown():
+        while self.is_alive():
             self.step()
             self._rate.sleep()
 

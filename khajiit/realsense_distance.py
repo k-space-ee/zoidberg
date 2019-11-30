@@ -25,7 +25,7 @@ class Distance:
 
 class CaptureDistance:
 
-    def __init__(self, lower=(96, 59, 53,), upper=(160, 255, 130,), callback=None) -> None:
+    def __init__(self, lower=(96, 59, 53,), upper=(160, 255, 130), callback=None) -> None:
         self.lower, self.upper = lower, upper
 
         # os.system('rosnode kill image_server')
@@ -33,11 +33,11 @@ class CaptureDistance:
         self.pipeline = rs.pipeline()
         config = rs.config()
 
-        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 15)
-        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 15)
+        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
-        # set depth units, this should give us better resolution sub 5m?
-        device = rs.context().query_devices()[0]
+        # set dep-th units, this should give us better resolution sub 5m?
+        device: rs.device = rs.context().query_devices()[0]
         advnc_mode = rs.rs400_advanced_mode(device)
         depth_table_control_group: STDepthTableControl = advnc_mode.get_depth_table()
         depth_table_control_group.depthUnits = 500
@@ -96,6 +96,7 @@ class CaptureDistance:
         self.distance = None
         self.fps = 0
         self.area = 0
+        sleep(2)
 
     def broadcast(self, color: np.ndarray):
         if self.color is None:
@@ -112,10 +113,13 @@ class CaptureDistance:
         try:
             start = time()
             while True:
-                try:
-                    frames = self.pipeline.wait_for_frames()
-                except Exception as e:
-                    print("NO FRAMES?", e)
+                for try_nr in range(2):
+                    try:
+                        frames = self.pipeline.wait_for_frames()
+                        break
+                    except Exception as e:
+                        print("NO FRAMES?", e)
+                else:
                     yield
                     continue
 

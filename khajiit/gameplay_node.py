@@ -94,18 +94,19 @@ class GameplayNode(messenger.Node):
 
     def realsense_distance_callback(self, *_):
         self.realsense_active = time()
-        self.gameplay.target_goal_distance = self.realsense_distance_listener.last_reading.data
+        self.gameplay.real_distance = self.realsense_distance_listener.last_reading.data
 
     def tfmini_distance_callback(self, *_):
         angle = self.gameplay.target_goal_angle
         distance = float(self.tfmini_distance_listener.last_reading.data)
-        if angle and abs(angle) <= 3.5:
-            # timeout = time() - self.realsense_active > 1
+        # if angle and abs(angle) <= 3.5:
+        #     timeout = time() - self.realsense_active > 1
             # self.loginfo_throttle(1, f"TF-MINI is setting DISTANCE, RS:{not timeout} ANGLE:{angle}")
-            self.loginfo_throttle(1, f"TF-MINI is setting DISTANCE, RS:{distance:.0f} ANGLE:{angle:.1f} {self.gameplay.get_desired_kicker_speed()}")
+            # self.loginfo_throttle(1, f"TF-MINI is setting DISTANCE, RS:{distance:.0f} ANGLE:{angle:.1f} {self.gameplay.get_desired_kicker_speed()}")
             # if timeout:
-            # self.gameplay.target_goal_distance = distance
-        self.gameplay.lidar_distance = distance
+            #     self.gameplay.target_goal_distance = distance
+        # self.gameplay.real_distance = distance
+        pass
 
     def command_callback(self, *_):
         package = self.command_listener.package
@@ -148,6 +149,7 @@ class GameplayNode(messenger.Node):
                 closest_ball=gp.closest_ball and gp.closest_ball.serialize(),
                 id_balls=[bi.serialize() for bi in gp.sorted_id_balls],
                 pwm=gp.get_desired_kicker_speed(),
+                real_distance=gp.real_distance,
             )
 
             # if self.gameplay.is_enabled:

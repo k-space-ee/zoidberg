@@ -32,10 +32,10 @@ class BallIdentifier:
 
     @property
     def alive(self):
-        return time()-self.timestamp
+        return time() - self.timestamp
 
     def serialize(self):
-        return dict(id=self.id, alive=time()-self.timestamp, **self.ball.serialize())
+        return dict(id=self.id, alive=time() - self.timestamp, **self.ball.serialize())
 
 
 class Gameplay:
@@ -50,7 +50,7 @@ class Gameplay:
 
         self.target_goal_distances = [100]
         self.target_goal_distance: Centimeter = 100
-        self.lidar_distance: Centimeter = 100
+        self.real_distance: Centimeter = 100
 
         self.last_kick = time()
 
@@ -107,7 +107,7 @@ class Gameplay:
             balls.append(ball)
 
         # if len(self.recognition.balls) != len(balls + too_close + suspicious):
-            # logger.warning("GamePlay: weird ball detection case")  # gameplay not running?
+        # logger.warning("GamePlay: weird ball detection case")  # gameplay not running?
 
         return balls + too_close + suspicious
 
@@ -453,7 +453,7 @@ class Gameplay:
         return False
 
     def get_desired_kicker_speed(self):
-        distance = self.lidar_distance or self.target_goal_distance
+        distance = self.real_distance or self.target_goal_distance
         maximum = 11000
         # if self.is_in_super_shoot_zone():
         #     maximum = 7000
@@ -553,20 +553,19 @@ class Gameplay:
         return self.target_angle_adjust
 
     def step(self, recognition, *args):
-        if not recognition or not self.is_enabled:
+        if not recognition:
             return
 
         self.recognition = recognition
-
         self.set_target_goal_distance()
         self.set_target_goal_angle_adjust()
-
-        self.state = self.state.tick()
-
-        self.kick()
-
         self.update_recent_closest_balls()
 
+        if not self.is_enabled:
+            return
+
+        self.state = self.state.tick()
+        self.kick()
         self.motors.apply()
 
     def start(self):

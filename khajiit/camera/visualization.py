@@ -153,12 +153,14 @@ class Visualizer:
                     cv.rectangle(frame, (rect[0], rect[1]), (rect[2] + rect[0], rect[3] + rect[1]), (255, 32, 32), 8)
 
             dist = self.gamestate.get('dist')
+            real_distance = self.gamestate.get('real_distance') or 0
+
             pwm = self.gamestate.get('pwm')
             angle = self.gamestate.get('angle')
             angle_adj = rec.angle_adjust
 
             if dist is not None:
-                cv.putText(frame, f"DIST {dist:.0f}", (50, 100), cv.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
+                cv.putText(frame, f"DIST {dist:.0f} {real_distance:.0f}", (50, 100), cv.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
             if pwm is not None:
                 cv.putText(frame, f"PWM {pwm:.0f}", (50, 200), cv.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 0), 12)
             if angle is not None:
@@ -188,7 +190,10 @@ class Visualizer:
             sliced = converted[:const.BALLS_BOTTOM * 2 - const.GOAL_FIELD_DILATION * 2, :]
             goal_yellow_mask = np.swapaxes(np.repeat(br_goal_yellow_mask, 2, axis=1), 0, 1)
             goal_yellow_mask = np.hstack([goal_yellow_mask, goal_yellow_mask[:, :480]])
-            goal_yellow_cutout = cv.bitwise_and(sliced, sliced, mask=goal_yellow_mask)
+            # goal_yellow_cutout = cv.bitwise_and(sliced, sliced, mask=goal_yellow_mask)
+            goal_yellow_cutout = cv.cvtColor(goal_yellow_mask, cv.COLOR_GRAY2BGR) * 255
+            goal_yellow_cutout = cv.cvtColor(goal_yellow_mask, cv.COLOR_GRAY2BGR) * 255
+
             cv.line(goal_yellow_cutout, (0, 0), (5000, 0), (255, 255, 255), 2)
             cv.putText(goal_yellow_cutout, "yellow goal detection", (80, goal_yellow_cutout.shape[0] >> 1),
                        cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
@@ -197,7 +202,9 @@ class Visualizer:
             sliced = converted[:const.BALLS_BOTTOM * 2 - const.GOAL_FIELD_DILATION * 2, :]
             goal_blue_mask = np.swapaxes(np.repeat(br_goal_blue_mask, 2, axis=1), 0, 1)
             goal_blue_mask = np.hstack([goal_blue_mask, goal_blue_mask[:, :480]])
-            goal_blue_cutout = cv.bitwise_and(sliced, sliced, mask=goal_blue_mask)
+            # goal_blue_cutout = cv.bitwise_and(sliced, sliced, mask=goal_blue_mask)
+            goal_blue_cutout = cv.cvtColor(goal_blue_mask, cv.COLOR_GRAY2BGR) * 255
+
             cv.line(goal_blue_cutout, (0, 0), (5000, 0), (255, 255, 255), 2)
             cv.putText(goal_blue_cutout, "blue goal detection", (80, goal_blue_cutout.shape[0] >> 1),
                        cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)

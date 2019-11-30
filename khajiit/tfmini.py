@@ -16,7 +16,7 @@ class TFMiniNode(messenger.Node):
         result = self.get_serial()
         self.device = next(iter(result.keys()), None)
         print(repr(self.device), ": starting TF-mini")
-        self.ser = None
+        self.ser: Optional[serial.Serial] = None
 
         self.fps = self.distance = 0
 
@@ -38,7 +38,7 @@ class TFMiniNode(messenger.Node):
             self.device = next(iter(result.keys()), None)
             if not self.device:
                 return False
-            self.ser = serial.Serial(self.device, 115200, timeout=1)
+            self.ser: serial.Serial = serial.Serial(self.device, 115200, timeout=1)
             if self.ser.is_open == False:
                 self.ser.open()
             sleep(0.1)
@@ -50,16 +50,22 @@ class TFMiniNode(messenger.Node):
 
     def run(self):
 
-        try:
-            start = time()
-            counter = 0
-            while True:
+        start = time()
+        counter = 0
+        missed = 0
+        packet = b""
+        while self.is_alive():
+            try:
                 counter += 1
-                speak = counter % 100 == 0
-                count = self.ser.in_waiting
-                if count > 8:
-                    recv = self.ser.read(9)
-                    self.ser.reset_input_buffer()
+                speak = counter % 1000 == 0
+                # count = self.ser.in_waiting
+                packet += self.ser.read(9)
+                if len(packet) > 8:
+                    missed = 0
+
+                    recv = packet
+                    packet = b""
+
                     low = recv[2]
                     high = recv[3]
                     distance = low + high * 256
@@ -73,17 +79,31 @@ class TFMiniNode(messenger.Node):
                     self.publisher.publish(self.distance)
                     # if int(self.distance) != int(old):
                     if speak:
-                        print(1, f"dist: {self.distance or 0:.1f}, fps: {self.fps:.0f}")
+                        print(1, f"dist: {self.distance or 0:.1f}, fps: {self.fps:.0f}", end=";")
                     self.fps = self.average_fps(1 / (time() - start))
                     start = time()
-                speak and print("tfmini")
-                sleep(0.015)
-        except OSError:
-            self.logger.error("OSError!")
+                else:
+                    missed += 1
+
+                speak and print(f"tfmini-{missed};")
+                sleep(0.005)
+
+            except OSError:
+                self.logger.error("OSError!")
+                self.close()
+                sleep(0.2)
+                self.open()
+            except Exception:
+                self.close()
+                sleep(0.2)
+                self.open()
+
+    def close(self):
+        try:
             self.ser.close()
-        finally:
-            self.ser.close()
-        self.logcritical("tfMini DEAD")
+            self.logcritical("tfMini DEAD")
+        except:
+            pass
 
 
 if __name__ == '__main__':
