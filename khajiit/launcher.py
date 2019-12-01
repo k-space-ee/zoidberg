@@ -130,6 +130,7 @@ class NukingWrapper(RestartWrapper):
 
 
 if __name__ == '__main__':
+    # plz  export ROSCONSOLE_FORMAT='[${severity}-${node}]: ${message}'
     launcer = Launcher()
 
     launcer.launch(messenger.core)

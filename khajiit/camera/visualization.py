@@ -223,9 +223,9 @@ class Visualizer:
 
             frame = np.vstack([
                 frame,
-                field_cutout,
-                goal_blue_cutout,
-                goal_yellow_cutout,
+                # field_cutout,
+                # goal_blue_cutout,
+                # goal_yellow_cutout,
                 balls_cutout,
             ])
 

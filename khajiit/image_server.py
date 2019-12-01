@@ -55,7 +55,7 @@ visualizer = Visualizer(config)
 def generator(type_str):
     visualizer.type_str = type_str
     while True:
-        sleep(0.050)  # Fix this stupid thingie
+        sleep(0.250)  # Fix this stupid thingie
         if visualizer.jpeg:
             yield b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'
             yield visualizer.jpeg

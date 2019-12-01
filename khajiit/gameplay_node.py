@@ -1,3 +1,4 @@
+from math import isnan
 from time import time
 
 import messenger
@@ -94,7 +95,9 @@ class GameplayNode(messenger.Node):
 
     def realsense_distance_callback(self, *_):
         self.realsense_active = time()
-        self.gameplay.real_distance = self.realsense_distance_listener.last_reading.data
+        distance = self.realsense_distance_listener.last_reading.data
+        if not isnan(distance):
+            self.gameplay.real_distance = distance
 
     def tfmini_distance_callback(self, *_):
         angle = self.gameplay.target_goal_angle

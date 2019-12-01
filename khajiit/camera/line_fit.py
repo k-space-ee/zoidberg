@@ -63,6 +63,9 @@ dist_to_rpm = function_fit(
     YY,
 )
 
+for i in range(0, 500, 20):
+    print(f"DIST {i} -> {dist_to_rpm(i):.0f}")
+
 goal_distance = [
     (442, 47),
     (334, 59),

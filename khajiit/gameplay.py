@@ -1,4 +1,5 @@
 import logging
+from math import isnan
 from typing import Optional, Dict
 from uuid import uuid4
 
@@ -458,7 +459,7 @@ class Gameplay:
         # if self.is_in_super_shoot_zone():
         #     maximum = 7000
 
-        if distance:
+        if distance and not isnan(distance):
             speed = dist_to_rpm(distance)
             speed = abs(speed)
             speed = min(maximum, speed)
@@ -470,7 +471,7 @@ class Gameplay:
             speed = sum(self.desired_kicker_seed_cache) / len(self.desired_kicker_seed_cache)
             return max(speed, 4100)
 
-        return 0
+        return 5500
 
     @property
     def kicker_speed_difference(self):
@@ -697,8 +698,8 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
                 if abs(kicker_difference) > limit:
                     factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
 
-            elif self.actor.is_in_super_shoot_zone():
-                factor = max(1.5 + abs_angle / 9 / 2, 1.7) * 0.9
+            # elif self.actor.is_in_super_shoot_zone():
+            #     factor = max(1.5 + abs_angle / 9 / 2, 1.7) * 0.9
 
         self.actor.flank(movement_factor=factor)
         self.actor.kick()
