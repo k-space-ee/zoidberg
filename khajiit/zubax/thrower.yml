@@ -1,0 +1,106 @@
+bec.can_pwr_on:
+- false
+ctl.num_attempts:
+- 100
+ctl.spinup_durat:
+- 1.0
+ctl.vm_cci_comp:
+- false
+ctl.vm_oversatur:
+- false
+ctl.vm_pppwm_thr:
+- 0.949999988079071
+exec_aux_command:
+- -1
+m.current_ctl_bw:
+- 0.019999999552965164
+m.current_ramp:
+- 1000.0
+m.eangvel_ctl_ki:
+- 0.0010000000474974513
+m.eangvel_ctl_kp:
+- 0.003000000026077032
+m.eangvel_rampdn:
+- 500.0
+m.eangvel_rampup:
+- 2000.0
+m.ld_microhenry:
+- 8.120119094848633
+m.lq_microhenry:
+- 8.120119094848633
+m.max_current:
+- 10.0
+m.max_eangvel:
+- 10000.0
+m.min_current:
+- 0.10000000149011612
+m.min_eangvel:
+- 400.0
+m.num_poles:
+- 14
+m.phi_milliweber:
+- 0.38154393434524536
+m.rs_ohm:
+- 0.07896748185157776
+m.spup_current_h:
+- 1.0
+m.spup_current_l:
+- 5.0
+m.voltage_ramp:
+- 20.0
+mid.l.curr_freq:
+- 900.0
+mid.l.curr_mul:
+- 0.05999999865889549
+mid.phi.curr_mul:
+- 0.30000001192092896
+mid.phi.eangvel:
+- 300.0
+mid.phi.stall_th:
+- 5.0
+mid.r.curr_mul:
+- 0.30000001192092896
+o.ekf.cc_comp:
+- 0.0
+o.ekf.p0_eangvel:
+- 0.0010000000474974513
+o.ekf.p0_idq:
+- 0.0010000000474974513
+o.ekf.q_eangvel:
+- 300000000.0
+o.ekf.q_id:
+- 30000.0
+o.ekf.q_iq:
+- 300000.0
+o.mras.gain:
+- 150000.0
+o.type:
+- false
+rcpwm.ctl_mode:
+- 1
+rcpwm.enable:
+- false
+rcpwm.pulse.bot:
+- 0.0010000000474974513
+rcpwm.pulse.hyst:
+- 1.9999999494757503e-05
+rcpwm.pulse.mid:
+- 0.001500000013038516
+rcpwm.pulse.top:
+- 0.0020000000949949026
+rcpwm.ttl:
+- 0.30000001192092896
+uavcan.esc_index:
+- 0
+uavcan.esc_rcm:
+- 1
+uavcan.esc_sint:
+- 0.05000000074505806
+uavcan.esc_sintp:
+- 0.5
+uavcan.esc_ttl:
+- 0.30000001192092896
+uavcan.node_id:
+- 5
+vsi.pwm_freq_khz:
+- 47.000003814697266
