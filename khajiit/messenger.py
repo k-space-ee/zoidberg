@@ -194,6 +194,10 @@ class Node:
         raise NotImplemented("Can't run, please implement Node.step")
 
 
+def is_running():
+    return not rospy.is_shutdown()
+
+
 class Timer:
 
     def __init__(self, count: int, callback: Callable = None) -> None:

@@ -42,13 +42,13 @@ def interpolate(X, Y, kind='slinear', backup=inverse):
     return interpolate
 
 
-rpm_distance = [  # min should be 4100
-    (4400, 80),
-    (5025, 150),
-    (5800, 200),
-    (6470, 250),
-    (7200, 300),
-    (7700, 400),
+rpm_distance = [ # min should be 4100
+    (4775, 100),
+    (5250, 150),
+    (6050, 195),
+    (6800, 250),
+    (7450, 300),
+    (8900, 400),
 ]
 
 rpm_throw_function = lambda x, a, b, c, d, e: e + a ** x * b + c * x ** (1 + d)
@@ -62,9 +62,17 @@ dist_to_rpm = function_fit(
     XX,
     YY,
 )
+#
+# class Distance:
+#     constants = [0.2215416616277008, 0.8260044802493705, -20.362320905330222]
+#     poly = lambda x, a, b, e: a * x ** b + e
+#
+#     @classmethod
+#     def __call__(cls, x: float) -> float:
+#         return cls.poly(x, *cls.constants)
 
-for i in range(0, 500, 20):
-    print(f"DIST {i} -> {dist_to_rpm(i):.0f}")
+for i in range(50, 400, 10):
+    print(f"DIST {i} -> {dist_to_rpm(float(i)):.0f}")
 
 goal_distance = [
     (442, 47),

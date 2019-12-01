@@ -51,7 +51,7 @@ class Gameplay:
 
         self.target_goal_distances = [100]
         self.target_goal_distance: Centimeter = 100
-        self.real_distance: Centimeter = 100
+        self.real_distance: Centimeter = None
 
         self.last_kick = time()
 
@@ -454,7 +454,7 @@ class Gameplay:
         return False
 
     def get_desired_kicker_speed(self):
-        distance = self.real_distance or self.target_goal_distance
+        distance = int(round(float(self.real_distance or self.target_goal_distance), 2))
         maximum = 11000
         # if self.is_in_super_shoot_zone():
         #     maximum = 7000
@@ -469,7 +469,7 @@ class Gameplay:
             self.desired_kicker_seed_cache = self.desired_kicker_seed_cache[-3:]
 
             speed = sum(self.desired_kicker_seed_cache) / len(self.desired_kicker_seed_cache)
-            return max(speed, 4100)
+            return max(speed, 4650)
 
         return 5500
 
@@ -696,7 +696,8 @@ class Flank(RetreatMixin, DangerZoneMixin, StateNode):
                 limit = 200
                 reduction = 0.4
                 if abs(kicker_difference) > limit:
-                    factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
+                    # factor = (1 - reduction) + limit / abs(kicker_difference) * reduction
+                    factor = 0.3
 
             # elif self.actor.is_in_super_shoot_zone():
             #     factor = max(1.5 + abs_angle / 9 / 2, 1.7) * 0.9

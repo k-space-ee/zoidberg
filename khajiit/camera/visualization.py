@@ -24,7 +24,7 @@ def right_bottom(args):
 
 
 class Visualizer:
-    ZOOM = 0.5  # 0.2
+    ZOOM = 0.1  # 0.2
     DEBUG_MASK = True
     type_str = 'VIDEO'
 

@@ -2,7 +2,7 @@
 As OpenCV doesn't handle camera unplugging very well
 here is an example using inotify and udev symlinks
 """
-
+from messenger import is_running
 from .v4l2 import *
 import fcntl
 import mmap
@@ -224,7 +224,7 @@ class Grabber(Thread):
 
     def run(self):
         wait_count = 0
-        while self.running:
+        while self.running and is_running():
             sleep(0.005)
             self.ready.clear()
 
@@ -417,7 +417,7 @@ class PanoramaGrabber(Thread):
         logger.info("%s thread spawned with PID %d", self.__class__.__name__, self.tid)
         self.running = True
 
-        while self.running:
+        while self.running and is_running():
             then = time()
             # Synchronize producers
             products = [(queue.get() if slave.alive else (BLANK,)) for queue, slave in
